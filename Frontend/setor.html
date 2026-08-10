@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard Setor — Chiptronic TravelOps</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1 id="sector-title">Dashboard Setor</h1>
+          <p id="sector-subtitle">Visão gerencial da equipe, viagens e tarefas realizadas</p>
+        </div>
+      </div>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+
+      <div class="cards cards-4" id="summary-cards">
+        <div class="stat-card"><div class="label">Integrantes</div><div class="value" id="s-members">—</div></div>
+        <div class="stat-card"><div class="label">Viagens da equipe</div><div class="value" id="s-trips">—</div></div>
+        <div class="stat-card"><div class="label">Tarefas realizadas</div><div class="value" id="s-tasks">—</div></div>
+        <div class="stat-card" id="s-pending-card"><div class="label">Relatórios pendentes</div><div class="value" id="s-pending">—</div></div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="panel">
+          <div class="panel-header"><h2>Quem viajou mais</h2></div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-ranking"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h2>Viagens por mês (equipe)</h2></div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-monthly"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h2>Tarefas por tipo</h2></div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-worktypes"></canvas>
+            <p id="worktypes-empty" class="empty-state hidden">Nenhuma tarefa registrada pela equipe.</p>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h2>Ranking da equipe</h2></div>
+          <div class="panel-body" id="ranking-list">
+            <p class="empty-state">Carregando…</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="team-root">
+        <p class="empty-state">Carregando equipe…</p>
+      </div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="js/setor.js"></script>
+</body>
+</html>

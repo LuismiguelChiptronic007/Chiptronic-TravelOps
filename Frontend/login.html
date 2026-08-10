@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login — Chiptronic TravelOps</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="brand-mark">CT</div>
+        <span>Chiptronic TravelOps</span>
+      </div>
+      <h1>Entrar</h1>
+      <p class="subtitle">Acesse com seu e-mail corporativo</p>
+      <div id="alert" class="alert alert-error hidden"></div>
+      <form id="login-form" class="form-grid">
+        <div>
+          <label for="email">E-mail corporativo</label>
+          <input id="email" name="email" type="email" required autocomplete="username" placeholder="nome@chiptronic.com.br" />
+        </div>
+        <div>
+          <label for="password">Senha</label>
+          <input id="password" name="password" type="password" required autocomplete="current-password" minlength="6" />
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-block" id="btn-submit">Entrar</button>
+        </div>
+      </form>
+      <div class="form-footer">
+        <a href="forgot.html">Esqueci minha senha</a>
+        <span> · </span>
+        <a href="register.html">Criar conta</a>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="js/login.js"></script>
+</body>
+</html>

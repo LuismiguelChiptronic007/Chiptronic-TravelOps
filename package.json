@@ -1,0 +1,24 @@
+{
+  "name": "chiptronic-travelops",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chiptronic TravelOps — controle de viagens corporativas (Cloudflare Workers + D1 + R2)",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:local": "wrangler d1 execute travelops-db --local --file=./migrations/0001_init.sql",
+    "db:local:members": "wrangler d1 execute travelops-db --local --file=./migrations/0002_members_tasks.sql",
+    "db:local:roles": "wrangler d1 execute travelops-db --local --file=./migrations/0003_roles_notifications.sql",
+    "db:remote": "wrangler d1 execute travelops-db --remote --file=./migrations/0001_init.sql",
+    "db:remote:members": "wrangler d1 execute travelops-db --remote --file=./migrations/0002_members_tasks.sql",
+    "db:create": "wrangler d1 create travelops-db",
+    "r2:create": "wrangler r2 bucket create travelops-files"
+  },
+  "dependencies": {
+    "hono": "^4.7.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

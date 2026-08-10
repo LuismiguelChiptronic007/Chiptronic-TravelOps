@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cadastro — Chiptronic TravelOps</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card wide">
+      <div class="auth-logo">
+        <div class="brand-mark">CT</div>
+        <span>Chiptronic TravelOps</span>
+      </div>
+      <h1>Criar conta</h1>
+      <p class="subtitle">Cadastro de funcionário</p>
+      <div id="alert" class="alert alert-error hidden"></div>
+      <form id="register-form" class="form-grid">
+        <div>
+          <label for="full_name">Nome completo</label>
+          <input id="full_name" name="full_name" required minlength="3" autocomplete="name" />
+        </div>
+        <div>
+          <label for="email">E-mail corporativo</label>
+          <input id="email" name="email" type="email" required autocomplete="username" placeholder="nome@chiptronic.com.br" />
+        </div>
+        <div class="form-grid two">
+          <div>
+            <label for="sector">Setor</label>
+            <select id="sector" name="sector" required>
+              <option value="">Selecione seu setor</option>
+              <option value="APLICAÇÃO">APLICAÇÃO</option>
+              <option value="CRIPTO">CRIPTO</option>
+              <option value="DIESELDIAG">DIESELDIAG</option>
+              <option value="ECU TEST">ECU TEST</option>
+              <option value="HARDWARE">HARDWARE</option>
+              <option value="MOBILE">MOBILE</option>
+              <option value="MOTODIAG">MOTODIAG</option>
+              <option value="OBDMAP">OBDMAP</option>
+              <option value="PROJETOS ESPECIAIS">PROJETOS ESPECIAIS</option>
+              <option value="RESOLVE">RESOLVE</option>
+              <option value="T.I INTERNO">T.I INTERNO</option>
+              <option value="T.I TELEMETRIA">T.I TELEMETRIA</option>
+              <option value="TELEMETRIA ADM">TELEMETRIA ADM</option>
+              <option value="TELEMETRIA HW">TELEMETRIA HW</option>
+              <option value="TELEMETRIA SW">TELEMETRIA SW</option>
+            </select>
+          </div>
+          <div>
+            <label for="position_title">Cargo</label>
+            <select id="position_title" name="position_title" required>
+              <option value="">Selecione…</option>
+              <option value="Líder">Líder</option>
+              <option value="Integrante">Integrante</option>
+            </select>
+          </div>
+        </div>
+        <p class="field-hint hidden" id="leader-hint">
+          Como <strong>Líder</strong>, você será o gestor dos integrantes que se cadastrarem no mesmo setor.
+        </p>
+        <div>
+          <label for="password">Senha</label>
+          <div class="password-field" data-password-field>
+            <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password" data-password-input />
+            <button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha">👁</button>
+          </div>
+          <ul class="password-rules" id="password-rules">
+            <li data-rule-length>Mínimo de 8 caracteres</li>
+            <li data-rule-letter>Pelo menos uma letra</li>
+            <li data-rule-number>Pelo menos um número</li>
+          </ul>
+        </div>
+        <div>
+          <label for="password_confirm">Confirmar senha</label>
+          <div class="password-field" data-password-field>
+            <input id="password_confirm" name="password_confirm" type="password" required minlength="8" autocomplete="new-password" data-password-input />
+            <button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha">👁</button>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary btn-block" id="btn-submit">Cadastrar</button>
+        </div>
+      </form>
+      <div class="form-footer">
+        Já tem conta? <a href="login.html">Entrar</a>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="js/register.js"></script>
+</body>
+</html>
