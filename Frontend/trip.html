@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Detalhe da viagem — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1 id="trip-title">Viagem</h1>
+          <p id="trip-subtitle" class="text-muted">Carregando…</p>
+        </div>
+        <div class="form-actions mb-0">
+          <span id="trip-status"></span>
+          <a href="index.html" class="btn btn-secondary">Voltar</a>
+        </div>
+      </div>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+      <div id="overdue-banner" class="alert alert-warning hidden">
+        Esta viagem encerrou e o relatório ainda não foi preenchido.
+      </div>
+
+      <div class="stack">
+        <div class="panel">
+          <div class="panel-header"><h2>Dados gerais</h2></div>
+          <div class="panel-body">
+            <div class="detail-grid">
+              <div class="kv" id="trip-kv"></div>
+              <div>
+                <label>Motivo</label>
+                <p id="trip-reason" class="mb-0"></p>
+                <div class="mt-2">
+                  <label>Integrantes</label>
+                  <div id="trip-members" class="members-list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Checklist de encerramento</h2>
+            <span class="text-muted" style="font-size:0.85rem">Registre as tarefas realizadas</span>
+          </div>
+          <div class="panel-body">
+            <div id="trip-days" class="trip-days"></div>
+            <div id="tasks-board" class="tasks-board"></div>
+
+            <div id="task-form-wrap" class="task-form-wrap mt-2">
+              <div class="panel-subheader">
+                <h3 id="task-form-title">Nova tarefa</h3>
+              </div>
+              <form id="task-form" class="checklist-box form-grid">
+                <div class="form-grid two">
+                  <div>
+                    <label for="work_type">Tipo de trabalho *</label>
+                    <select id="work_type" required>
+                      <option value="">Selecione…</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="task_date">Data da tarefa *</label>
+                    <input id="task_date" type="date" required />
+                  </div>
+                </div>
+                <div>
+                  <label for="location">Local do serviço *</label>
+                  <input id="location" required placeholder="Ex: Cliente XYZ — unidade centro" />
+                </div>
+                <div class="form-grid two">
+                  <div>
+                    <label for="start_time">Hora de início *</label>
+                    <input id="start_time" type="time" required />
+                  </div>
+                  <div>
+                    <label for="end_time">Hora de término *</label>
+                    <input id="end_time" type="time" required />
+                  </div>
+                </div>
+                <div id="dieseldiag-fields" class="form-grid two hidden-fields">
+                  <div>
+                    <label for="approved_loads">Cargas aprovadas</label>
+                    <input id="approved_loads" />
+                  </div>
+                  <div>
+                    <label for="rejected_loads">Cargas reprovadas</label>
+                    <input id="rejected_loads" />
+                  </div>
+                </div>
+                <div id="controlelogs-fields" class="form-grid two hidden-fields">
+                  <div>
+                    <label for="logs_realizados">Logs realizados</label>
+                    <input id="logs_realizados" />
+                  </div>
+                  <div>
+                    <label for="sistemas_logados">Sistemas logados</label>
+                    <input id="sistemas_logados" />
+                  </div>
+                </div>
+                <div id="nome-sistemas-field" class="hidden-fields">
+                  <label for="nome_sistemas_logados">Nome de sistemas logados</label>
+                  <input id="nome_sistemas_logados" />
+                </div>
+                <div>
+                  <label for="summary">Resumo do que foi feito *</label>
+                  <textarea id="summary" required placeholder="Descreva a atividade realizada…"></textarea>
+                </div>
+                <div>
+                  <label for="pending_items">Pendências neste trabalho</label>
+                  <textarea id="pending_items" placeholder="O que ficou pendente neste mesmo trabalho…"></textarea>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary" id="btn-save-task">Salvar tarefa</button>
+                  <button type="button" class="btn btn-success" id="btn-complete">Concluir viagem</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/trip-detail.js"></script>
+</body>
+</html>

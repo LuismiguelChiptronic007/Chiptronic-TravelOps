@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Perfil — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1>Meu perfil</h1>
+          <p>Dados pessoais e histórico de viagens</p>
+        </div>
+      </div>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+
+      <div class="stack">
+        <div class="panel">
+          <div class="panel-body">
+            <div class="profile-hero">
+              <div class="avatar lg" id="profile-avatar">?</div>
+              <div style="flex:1;min-width:200px">
+                <h2 id="profile-name" style="margin:0">—</h2>
+                <p class="text-muted mb-0" id="profile-meta">—</p>
+                <div class="form-actions mt-2">
+                  <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+                    Alterar foto
+                    <input type="file" id="avatar-input" accept="image/*" class="hidden" />
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div class="stats-row" id="stats-row">
+              <div class="mini-stat"><div class="n" id="s-total">0</div><div class="l">Viagens</div></div>
+              <div class="mini-stat"><div class="n" id="s-days">0</div><div class="l">Dias fora</div></div>
+              <div class="mini-stat"><div class="n" id="s-done">0</div><div class="l">Concluídas</div></div>
+              <div class="mini-stat"><div class="n" id="s-pending">0</div><div class="l">Pendentes</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h2>Editar dados</h2></div>
+          <div class="panel-body">
+            <form id="profile-form" class="form-grid two">
+              <div>
+                <label for="full_name">Nome completo</label>
+                <input id="full_name" required />
+              </div>
+              <div>
+                <label for="position_title">Cargo</label>
+                <select id="position_title" required>
+                  <option value="">Selecione…</option>
+                  <option value="Líder">Líder</option>
+                  <option value="Integrante">Integrante</option>
+                </select>
+              </div>
+              <div>
+                <label for="sector">Setor</label>
+                <select id="sector" required></select>
+              </div>
+              <div>
+                <label for="manager_name">Gestor</label>
+                <input id="manager_name" />
+                <p class="field-hint">Definido automaticamente com base no líder do seu setor.</p>
+              </div>
+              <div>
+                <label>E-mail</label>
+                <input id="email" disabled />
+              </div>
+              <div>
+                <label>Matrícula</label>
+                <input id="employee_id" disabled />
+              </div>
+              <div class="form-actions" style="grid-column:1/-1">
+                <button type="submit" class="btn btn-primary">Salvar alterações</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h2>Histórico de viagens</h2></div>
+          <div class="table-wrap">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Destino</th>
+                  <th>Período</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="history-body">
+                <tr><td colspan="4" class="empty-state">Carregando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/profile.js"></script>
+</body>
+</html>

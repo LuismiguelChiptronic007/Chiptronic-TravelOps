@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Configuração — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1>Configuração</h1>
+          <p>Preferências da sua conta</p>
+        </div>
+      </div>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+
+      <div class="panel">
+        <div class="panel-header"><h2>Aparência</h2></div>
+        <div class="panel-body stack">
+          <div class="settings-row">
+            <div>
+              <strong>Tema da interface</strong>
+              <p class="text-muted mb-0">Alterne entre modo claro e escuro</p>
+            </div>
+            <button type="button" class="btn btn-secondary" id="btn-theme-toggle">Alternar tema</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><h2>Conta</h2></div>
+        <div class="panel-body stack">
+          <div class="settings-row">
+            <div>
+              <strong>Editar perfil</strong>
+              <p class="text-muted mb-0">Nome, cargo, setor e foto</p>
+            </div>
+            <a href="profile.html" class="btn btn-primary">Abrir perfil</a>
+          </div>
+          <div class="settings-row">
+            <div>
+              <strong>Sair da conta</strong>
+              <p class="text-muted mb-0">Encerrar sessão neste dispositivo</p>
+            </div>
+            <button type="button" class="btn btn-secondary" id="btn-logout-settings">Sair</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/settings.js"></script>
+</body>
+</html>
