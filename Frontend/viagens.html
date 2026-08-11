@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Viagens — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1>Viagens</h1>
+          <p>Lista de viagens realizadas e agendadas.</p>
+        </div>
+        <a href="trip-new.html" class="btn btn-primary">+ Nova Viagem</a>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Viagens recentes</h2>
+          <div class="filters">
+            <input type="search" id="filter-q" placeholder="Buscar…" />
+            <select id="filter-status">
+              <option value="all">Todos os status</option>
+              <option value="planned">Planejada</option>
+              <option value="in_progress">Em andamento</option>
+              <option value="awaiting_report">Aguardando relatório</option>
+              <option value="completed">Concluída</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap panel-body">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Destino</th>
+                <th>Período</th>
+                <th>Setor</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="trips-body">
+              <tr><td colspan="5" class="empty-state">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="js/viagens.js"></script>
+</body>
+</html>

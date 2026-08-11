@@ -1,0 +1,115 @@
+import { api, hideAlert, showAlert } from './api.js';
+import { mountShell } from './layout.js';
+import { fillWorkTypes, prepareTaskForm, renderTrip, taskFormPayload } from './trip-render.js';
+import { confirmDialog } from './ui.js';
+
+function getTripDays(startDate, endDate) {
+  const days = [];
+  if (!startDate || !endDate || endDate < startDate) return days;
+  let current = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  while (current <= end) {
+    days.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+  return days;
+}
+
+function hasTaskEveryTripDay(trip) {
+  if (!trip || !trip.start_date || !trip.end_date || !Array.isArray(trip.tasks)) return false;
+  const requiredDays = getTripDays(trip.start_date, trip.end_date);
+  const taskDates = new Set(trip.tasks.map((task) => String(task.task_date || '').trim()).filter(Boolean));
+  return requiredDays.every((date) => taskDates.has(date));
+}
+
+const params = new URLSearchParams(location.search);
+const tripId = Number(params.get('id'));
+const alertEl = document.getElementById('alert');
+
+async function init() {
+  if (!tripId) {
+    location.href = 'index.html';
+    return;
+  }
+  const user = await mountShell({ active: 'dashboard' });
+  if (!user) return;
+
+  try {
+    try {
+      const typesRes = await api.workTypes();
+      fillWorkTypes(typesRes.work_types || []);
+    } catch {
+      fillWorkTypes([
+        'Instalação',
+        'Manutenção',
+        'Treinamento',
+        'Visita técnica',
+        'Suporte',
+        'Comercial',
+        'Auditoria',
+        'Outro',
+      ]);
+    }
+
+    const res = await api.getTrip(tripId);
+    renderTrip(res.trip);
+  } catch (err) {
+    showAlert(alertEl, err.message);
+  }
+}
+
+document.getElementById('task-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideAlert(alertEl);
+  const btn = document.getElementById('btn-save-task');
+  if (btn) btn.disabled = true;
+
+  try {
+    const payload = taskFormPayload();
+    const res = await api.addTask(tripId, payload);
+    renderTrip(res.trip);
+    prepareTaskForm(res.trip, { keepDate: true });
+    showAlert(alertEl, 'Tarefa salva com sucesso.', 'success');
+  } catch (err) {
+    showAlert(alertEl, err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+});
+
+document.getElementById('btn-complete')?.addEventListener('click', async () => {
+  hideAlert(alertEl);
+  const trip = window.__currentTrip;
+  const valid = hasTaskEveryTripDay(trip);
+  const confirmed = await confirmDialog({
+    title: 'Concluir viagem',
+    message: valid ? '' : 'Só é possível concluir quando cada dia do período tiver pelo menos uma tarefa registrada.',
+    confirmLabel: 'Concluir',
+    cancelLabel: 'Cancelar',
+    tone: valid ? 'confirm' : 'danger',
+    confirmTone: valid ? 'primary' : 'danger'
+  });
+  if (!confirmed) return;
+  try {
+    const res = await api.completeTrip(tripId);
+    renderTrip(res.trip);
+    showAlert(alertEl, 'Viagem concluída com sucesso!', 'success');
+  } catch (err) {
+    showAlert(alertEl, err.message);
+  }
+});
+
+document.getElementById('tasks-board')?.addEventListener('click', async (e) => {
+  const id = e.target.getAttribute('data-del-task');
+  if (!id || !confirm('Excluir esta tarefa?')) return;
+  hideAlert(alertEl);
+  try {
+    const res = await api.deleteTask(tripId, id);
+    renderTrip(res.trip);
+    showAlert(alertEl, 'Tarefa excluída.', 'success');
+  } catch (err) {
+    showAlert(alertEl, err.message);
+  }
+});
+
+init();

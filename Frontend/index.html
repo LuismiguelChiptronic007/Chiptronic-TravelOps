@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p>Visão analítica das suas viagens corporativas</p>
+        </div>
+      </div>
+
+      <div id="alert-pending" class="alert alert-warning hidden"></div>
+
+      <div class="cards cards-4">
+        <div class="stat-card">
+          <div class="label">Em andamento</div>
+          <div class="value" id="stat-progress">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Concluídas no mês</div>
+          <div class="value" id="stat-done">—</div>
+        </div>
+        <div class="stat-card" id="stat-pending-card">
+          <div class="label">Pendentes de relatório</div>
+          <div class="value" id="stat-pending">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="label">Dias fora (total)</div>
+          <div class="value" id="stat-days">—</div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Status das viagens</h2>
+          </div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-status"></canvas>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Viagens por mês</h2>
+          </div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-monthly"></canvas>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Top destinos</h2>
+          </div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-destinations"></canvas>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Trabalhos por tipo</h2>
+          </div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-worktypes"></canvas>
+            <p id="worktypes-empty" class="empty-state hidden">Nenhum trabalho registrado ainda.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:1rem;">
+        <div class="panel-header">
+          <h2>Atividade recente</h2>
+          <a href="viagens.html" class="btn btn-secondary btn-sm">Ver todas as viagens</a>
+        </div>
+        <div class="table-wrap panel-body">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Destino</th>
+                <th>Período</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="recent-body">
+              <tr><td colspan="4" class="empty-state">Carregando…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>
