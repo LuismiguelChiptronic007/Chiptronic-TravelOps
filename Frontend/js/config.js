@@ -1,1 +1,1 @@
- window.__API_BASE = "https://chiptronic-travelops.luismiguelgomesoliveira-014.workers.dev";
+ window.__API_BASE = "https://chiptronic-travelops.luismiguelgomesoliveira-014.workers.dev/api";
