@@ -313,7 +313,7 @@ textarea {
 
 .btn-secondary {
   background: rgba(255,255,255,0.8);
-  color: var(--text-2);
+  color: var(--text);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-xs);
   backdrop-filter: blur(8px);

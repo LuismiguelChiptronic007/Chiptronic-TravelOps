@@ -1137,7 +1137,17 @@ html[data-theme='dark'] .panel {
   background: linear-gradient(180deg, #111827, #0f172a);
 }
 html[data-theme='dark'] .btn-secondary {
-  background: rgba(17, 24, 39, 0.85);
+  background: rgba(17, 24, 39, 0.95);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: var(--text);
+}
+html[data-theme='dark'] .btn-secondary:hover:not(:disabled) {
+  background: rgba(51, 65, 85, 0.95);
+  border-color: rgba(99, 102, 241, 0.28);
+  color: var(--text);
+}
+html[data-theme='dark'] #drawer-logout {
+  color: var(--text) !important;
 }
 html[data-theme='dark'] .auth-card {
   background: rgba(15, 23, 42, 0.72);

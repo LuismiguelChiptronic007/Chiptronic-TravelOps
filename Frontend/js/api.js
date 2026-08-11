@@ -5,8 +5,19 @@ const TOKEN_KEY = 'cto_token';
 const USER_KEY = 'cto_user';
 
 // Allow overriding the API base via `window.__API_BASE` for deploy flexibility.
-// Default to relative `/api` so the Worker that serves assets can also handle API routes.
-const API_BASE = (window && window.__API_BASE) || '/api';
+// Use the deployed worker API as fallback for local file/localhost pages.
+const DEPLOYED_API_BASE = 'https://chiptronic-travelops.luismiguelgomesoliveira-014.workers.dev/api';
+const API_BASE = (() => {
+  if (typeof window === 'undefined') return '/api';
+  if (window.__API_BASE) return window.__API_BASE;
+  if (location.protocol === 'file:' || location.origin === 'null') {
+    return DEPLOYED_API_BASE;
+  }
+  if (location.origin.includes('localhost') || location.origin.includes('127.0.0.1')) {
+    return DEPLOYED_API_BASE;
+  }
+  return `${location.origin}/api`;
+})();
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
