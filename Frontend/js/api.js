@@ -4,10 +4,9 @@
 const TOKEN_KEY = 'cto_token';
 const USER_KEY = 'cto_user';
 
-const useDevWorker = window.location.port === '8787';
-const API_BASE = useDevWorker
-  ? '/api'
-  : 'http://127.0.0.1:8787/api';
+// Allow overriding the API base via `window.__API_BASE` for deploy flexibility.
+// Default to relative `/api` so the Worker that serves assets can also handle API routes.
+const API_BASE = (window && window.__API_BASE) || '/api';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
