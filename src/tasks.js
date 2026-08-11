@@ -27,6 +27,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
   let end_time = '';
   let summary = '';
   let task_date = '';
+  let responsible_id = '';
   let pending_items = '';
   let approved_loads = '';
   let rejected_loads = '';
@@ -43,6 +44,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
     end_time = String(form.get('end_time') || '').trim();
     summary = String(form.get('summary') || '').trim();
     task_date = String(form.get('task_date') || '').trim();
+    responsible_id = String(form.get('responsible_id') || '').trim();
     pending_items = String(form.get('pending_items') || '').trim();
       approved_loads = String(form.get('approved_loads') || '').trim();
       rejected_loads = String(form.get('rejected_loads') || '').trim();
@@ -68,6 +70,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
     end_time = String(body.end_time || '').trim();
     summary = String(body.summary || '').trim();
     task_date = String(body.task_date || '').trim();
+    responsible_id = String(body.responsible_id || '').trim();
     pending_items = String(body.pending_items || '').trim();
       approved_loads = String(body.approved_loads || '').trim();
       rejected_loads = String(body.rejected_loads || '').trim();
@@ -86,12 +89,35 @@ taskRoutes.post('/:id/tasks', async (c) => {
     return err('A data da tarefa deve estar dentro do período da viagem.');
   }
 
+  let responsibleIdValue = null;
+  if (responsible_id) {
+    const parsed = Number(responsible_id);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      return err('Responsável da tarefa inválido.');
+    }
+    const responsibleUser = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?')
+      .bind(parsed)
+      .first();
+    if (!responsibleUser) {
+      return err('Responsável da tarefa inválido.');
+    }
+    const member = await c.env.DB.prepare(
+      'SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ?'
+    )
+      .bind(id, parsed)
+      .first();
+    if (!member) {
+      return err('O responsável deve ser um integrante da viagem.');
+    }
+    responsibleIdValue = parsed;
+  }
+
   const result = await c.env.DB.prepare(
     `INSERT INTO trip_tasks (
-       trip_id, work_type, location, start_time, end_time, summary, task_date,
+       trip_id, work_type, location, start_time, end_time, summary, task_date, responsible_id,
        pending_items, approved_loads, rejected_loads,
        logs_realizados, sistemas_logados, nome_sistemas_logados
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
@@ -101,6 +127,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
       end_time,
       summary,
       task_date,
+      responsibleIdValue,
       pending_items || null,
       approved_loads || null,
       rejected_loads || null,

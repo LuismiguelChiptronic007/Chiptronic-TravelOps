@@ -55,6 +55,15 @@ function formatTask(task, photos = []) {
     end_time: task.end_time,
     summary: task.summary,
     task_date: task.task_date,
+    responsible_id: task.responsible_id || null,
+    responsible: task.responsible_id
+      ? {
+          id: task.responsible_id,
+          full_name: task.responsible_full_name || '—',
+          employee_id: task.responsible_employee_id || null,
+          position_title: task.responsible_position_title || null,
+        }
+      : null,
     approved_loads: task.approved_loads || '',
     rejected_loads: task.rejected_loads || '',
     logs_realizados: task.logs_realizados || '',
@@ -165,10 +174,47 @@ export async function fetchTripFull(db, tripId, userId) {
     members = [];
   }
 
+  // Ensure the trip creator (owner) is present in members list so they can
+  // be selected as responsible for tasks. If not present, fetch owner info
+  // from users and prepend to members.
+  try {
+    const owner = await db
+      .prepare('SELECT id, full_name, sector, manager_name, position_title, employee_id FROM users WHERE id = ?')
+      .bind(trip.user_id)
+      .first();
+    if (owner) {
+      const exists = (members || []).some((m) => Number(m.user_id || m.id) === Number(owner.id));
+      if (!exists) {
+        // Create a trip_member-like object so formatMember can handle it uniformly
+        const ownerMember = {
+          id: null,
+          trip_id: tripId,
+          user_id: owner.id,
+          full_name: owner.full_name,
+          sector: owner.sector || null,
+          manager_name: owner.manager_name || null,
+          position_title: owner.position_title || null,
+          employee_id: owner.employee_id || null,
+        };
+        // Prepend owner to make them appear first in dropdowns
+        members = [ownerMember, ...(members || [])];
+      }
+    }
+  } catch (e) {
+    // ignore owner fetch failures — members list will remain as-is
+  }
+
   let tasks = [];
   try {
     const { results: taskRows } = await db
-      .prepare('SELECT * FROM trip_tasks WHERE trip_id = ? ORDER BY task_date ASC, start_time ASC, id ASC')
+      .prepare(
+        `SELECT tt.*, u.id AS responsible_id, u.full_name AS responsible_full_name,
+                u.employee_id AS responsible_employee_id, u.position_title AS responsible_position_title
+         FROM trip_tasks tt
+         LEFT JOIN users u ON u.id = tt.responsible_id
+         WHERE tt.trip_id = ?
+         ORDER BY tt.task_date ASC, tt.start_time ASC, tt.id ASC`
+      )
       .bind(tripId)
       .all();
 

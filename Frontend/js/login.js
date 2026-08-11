@@ -5,10 +5,13 @@ import {
   setSession,
   showAlert,
 } from './api.js';
+import { initPasswordFields } from './password-field.js';
 
 if (redirectIfAuth()) {
   /* already logged in */
 }
+
+initPasswordFields();
 
 const form = document.getElementById('login-form');
 const alertEl = document.getElementById('alert');

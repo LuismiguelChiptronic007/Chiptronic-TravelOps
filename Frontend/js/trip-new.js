@@ -93,6 +93,20 @@ async function init() {
   try {
     const res = await api.usersForMembers();
     availableUsers = res.users || [];
+    // Ensure the logged-in user is available to be added as a trip member
+    if (user && !availableUsers.some((u) => Number(u.id) === Number(user.id))) {
+      // create a lightweight user object matching the shape used elsewhere
+      const me = {
+        id: user.id,
+        full_name: user.full_name,
+        sector: user.sector || '',
+        manager_name: user.manager_name || null,
+        position_title: user.position_title || null,
+        employee_id: user.employee_id || null,
+      };
+      // put current user at the top of the list
+      availableUsers.unshift(me);
+    }
     fillMemberSelect();
   } catch (err) {
     showAlert(alertEl, err.message || 'Não foi possível carregar integrantes.');

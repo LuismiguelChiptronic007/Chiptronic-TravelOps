@@ -120,6 +120,7 @@ export const api = {
     fd.append('end_time', payload.end_time || '');
     fd.append('summary', payload.summary || '');
     fd.append('task_date', payload.task_date || '');
+    fd.append('responsible_id', payload.responsible_id || '');
     fd.append('pending_items', payload.pending_items || '');
     for (const file of payload.photos || []) {
       fd.append('photos', file);

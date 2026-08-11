@@ -63,9 +63,11 @@ async function fetchTeamData(db, user) {
 
       const { results: taskRows } = await db
         .prepare(
-          `SELECT tt.*, t.user_id, t.destination, t.status AS trip_status
+          `SELECT tt.*, t.user_id, t.destination, t.status AS trip_status,
+                  u.full_name AS responsible_full_name
            FROM trip_tasks tt
            INNER JOIN trips t ON t.id = tt.trip_id
+           LEFT JOIN users u ON u.id = tt.responsible_id
            WHERE t.user_id IN (${placeholders})
            ORDER BY tt.task_date DESC, tt.start_time DESC`
         )
@@ -85,6 +87,7 @@ async function fetchTeamData(db, user) {
           summary: task.summary,
           destination: task.destination,
           trip_status: task.trip_status,
+          responsible_full_name: task.responsible_full_name || null,
         });
       }
     }

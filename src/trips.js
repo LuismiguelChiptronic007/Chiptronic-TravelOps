@@ -203,7 +203,16 @@ trips.post('/', async (c) => {
   const tripId = result.meta.last_row_id;
   await c.env.DB.prepare('INSERT INTO trip_checklists (trip_id) VALUES (?)').bind(tripId).run();
 
-  await saveTripMembers(c.env.DB, tripId, memberIds);
+  // Always include the trip creator as a trip member so they can be
+  // selected as responsible for tasks.
+  try {
+    const ids = Array.isArray(memberIds) ? [...new Set(memberIds.map((i) => Number(i)).filter((n) => n > 0))] : [];
+    if (!ids.includes(user.id)) ids.unshift(user.id);
+    await saveTripMembers(c.env.DB, tripId, ids);
+  } catch (e) {
+    // fallback: try to save whatever was provided
+    await saveTripMembers(c.env.DB, tripId, memberIds);
+  }
 
   // Notifica o líder do setor sobre a nova viagem
   try {
@@ -291,7 +300,10 @@ trips.put('/:id', async (c) => {
 
   if (Array.isArray(body.member_ids)) {
     try {
-      await saveTripMembers(c.env.DB, id, body.member_ids);
+      const provided = Array.isArray(body.member_ids) ? body.member_ids.map((i) => Number(i)).filter((n) => n > 0) : [];
+      const ids = [...new Set(provided)];
+      if (!ids.includes(userId)) ids.unshift(userId);
+      await saveTripMembers(c.env.DB, id, ids);
     } catch (e) {
       console.error('Falha ao atualizar integrantes:', e);
     }

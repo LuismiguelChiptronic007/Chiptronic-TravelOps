@@ -46,11 +46,17 @@
         </div>
         <div>
           <label for="password">Nova senha</label>
-          <input id="password" type="password" required minlength="6" />
+          <div class="password-field" data-password-field>
+            <input id="password" type="password" required minlength="6" data-password-input />
+            <button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha">👁</button>
+          </div>
         </div>
         <div>
           <label for="password_confirm">Confirmar senha</label>
-          <input id="password_confirm" type="password" required minlength="6" />
+          <div class="password-field" data-password-field>
+            <input id="password_confirm" type="password" required minlength="6" data-password-input />
+            <button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha">👁</button>
+          </div>
         </div>
         <button type="submit" class="btn btn-secondary btn-block">Redefinir senha</button>
       </form>

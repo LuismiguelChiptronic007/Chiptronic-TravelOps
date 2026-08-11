@@ -31,7 +31,10 @@
         </div>
         <div>
           <label for="password">Senha</label>
-          <input id="password" name="password" type="password" required autocomplete="current-password" minlength="6" />
+          <div class="password-field" data-password-field>
+            <input id="password" name="password" type="password" required autocomplete="current-password" minlength="6" data-password-input />
+            <button type="button" class="password-toggle" data-password-toggle aria-label="Mostrar senha">👁</button>
+          </div>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary btn-block" id="btn-submit">Entrar</button>

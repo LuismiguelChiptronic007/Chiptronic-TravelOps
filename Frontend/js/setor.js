@@ -154,12 +154,13 @@ function renderMemberCard(member) {
           <td>${formatDateBR(t.task_date)}</td>
           <td><strong>${escapeHtml(t.work_type)}</strong></td>
           <td>${escapeHtml(t.location)}</td>
+          <td>${escapeHtml(t.responsible_full_name || '—')}</td>
           <td>${escapeHtml(t.destination)}</td>
           <td class="text-muted" style="max-width:200px">${escapeHtml((t.summary || '').slice(0, 80))}${(t.summary || '').length > 80 ? '…' : ''}</td>
         </tr>`
         )
         .join('')
-    : '<tr><td colspan="5" class="empty-state">Nenhuma tarefa registrada</td></tr>';
+    : '<tr><td colspan="6" class="empty-state">Nenhuma tarefa registrada</td></tr>';
 
   return `
     <div class="panel team-member-card">
@@ -195,7 +196,22 @@ function renderMemberCard(member) {
         </table>
       </div>
 
-      
+      <div class="panel-subheader" style="padding:0 1.25rem"><h3>Tarefas recentes</h3></div>
+      <div class="table-wrap panel-body" style="padding-top:0">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Local</th>
+              <th>Responsável</th>
+              <th>Destino</th>
+              <th>Resumo</th>
+            </tr>
+          </thead>
+          <tbody>${tasksHtml}</tbody>
+        </table>
+      </div>
     </div>`;
 }
 
@@ -283,7 +299,7 @@ function showTripSummaryModal(report, tasks) {
         <div class="table-wrap">
           <table class="data">
             <thead>
-              <tr><th>Data</th><th>Hora</th><th>Tipo</th><th>Local</th><th>Resumo</th></tr>
+              <tr><th>Data</th><th>Hora</th><th>Tipo</th><th>Local</th><th>Responsável</th><th>Resumo</th></tr>
             </thead>
             <tbody>
               ${tasks.length ? tasks.map(t => `
@@ -292,9 +308,10 @@ function showTripSummaryModal(report, tasks) {
                   <td>${escapeHtml((t.start_time||'') + (t.end_time ? ' — ' + t.end_time : ''))}</td>
                   <td>${escapeHtml(t.work_type)}</td>
                   <td>${escapeHtml(t.location)}</td>
+                  <td>${escapeHtml(t.responsible_full_name || '—')}</td>
                   <td class="text-muted">${escapeHtml(t.summary || '')}</td>
                 </tr>
-              `).join('') : '<tr><td colspan="5" class="empty-state">Nenhuma tarefa registrada</td></tr>'}
+              `).join('') : '<tr><td colspan="6" class="empty-state">Nenhuma tarefa registrada</td></tr>'}
             </tbody>
           </table>
         </div>

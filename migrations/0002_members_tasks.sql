@@ -21,6 +21,7 @@ CREATE INDEX IF NOT EXISTS idx_trip_members_user ON trip_members(user_id);
 CREATE TABLE IF NOT EXISTS trip_tasks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   trip_id INTEGER NOT NULL,
+  responsible_id INTEGER REFERENCES users(id),
   work_type TEXT NOT NULL,
   location TEXT NOT NULL,
   start_time TEXT NOT NULL,

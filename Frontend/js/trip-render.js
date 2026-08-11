@@ -76,6 +76,37 @@ function renderMembers(t) {
     .join('');
 }
 
+function fillTaskResponsibleOptions(t) {
+  const select = document.getElementById('responsible_id');
+  if (!select) return;
+
+  const current = select.value;
+  const members = Array.isArray(t.members) ? t.members : [];
+  // debug: expose members for quick inspection in console
+  try { window.__tripMembers = members; } catch (e) {}
+  select.innerHTML = '<option value="">Selecione um responsável…</option>';
+
+  if (members.length) {
+    for (const member of members) {
+      const opt = document.createElement('option');
+      opt.value = String(member.user_id || member.id || '');
+      // mark the trip creator so it's visible in the dropdown
+      const isCreator = String(member.user_id || member.id || '') === String(t.user_id || '');
+      opt.textContent = `${member.full_name}${member.employee_id ? ` — ${member.employee_id}` : ''}${isCreator ? ' (Criador)' : ''}`;
+      select.appendChild(opt);
+    }
+  } else {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'Nenhum integrante cadastrado na viagem';
+    select.appendChild(opt);
+  }
+
+  if (current && [...select.options].some((o) => o.value === current)) {
+    select.value = current;
+  }
+}
+
 function renderTasks(t) {
   const board = document.getElementById('tasks-board');
   if (!board) return;
@@ -116,6 +147,7 @@ function renderTasks(t) {
               </div>
               <div class="task-card-body">
                 <div class="kv-item"><label>Local</label><div>${escapeHtml(task.location)}</div></div>
+                <div class="kv-item"><label>Responsável</label><div>${escapeHtml(task.responsible?.full_name || '—')}</div></div>
                 <div class="kv-item"><label>Resumo</label><div>${escapeHtml(task.summary)}</div></div>
                 ${
                   task.pending_items
@@ -278,6 +310,7 @@ export function renderTrip(t) {
   else banner.classList.add('hidden');
 
   renderMembers(t);
+  fillTaskResponsibleOptions(t);
   renderTripDays(t);
   renderTasks(t);
 
@@ -295,6 +328,7 @@ export function taskFormPayload() {
     location: document.getElementById('location').value.trim(),
     start_time: document.getElementById('start_time').value,
     end_time: document.getElementById('end_time').value,
+    responsible_id: document.getElementById('responsible_id')?.value || null,
     approved_loads: document.getElementById('approved_loads')?.value.trim() || null,
     rejected_loads: document.getElementById('rejected_loads')?.value.trim() || null,
     logs_realizados: document.getElementById('logs_realizados')?.value.trim() || null,

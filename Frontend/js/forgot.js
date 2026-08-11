@@ -1,8 +1,11 @@
 import { api, hideAlert, showAlert } from './api.js';
+import { initPasswordFields } from './password-field.js';
 
 const alertEl = document.getElementById('alert');
 const forgotForm = document.getElementById('forgot-form');
 const resetForm = document.getElementById('reset-form');
+
+initPasswordFields();
 
 forgotForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
