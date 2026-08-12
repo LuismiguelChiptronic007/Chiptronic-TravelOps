@@ -1,5 +1,5 @@
-import { api, formatDateBR, showAlert, hideAlert } from './api.js';
-import { escapeHtml, mountShell } from './layout.js';
+import { api, formatDateBR, formatSectorName, showAlert, hideAlert } from './api.js';
+import { escapeHtml, mountShell, triggerPageTransition, showToast } from './layout.js';
 
 const alertEl = document.getElementById('alert');
 const teamRoot = document.getElementById('team-root');
@@ -23,17 +23,22 @@ function renderRankingList(ranking) {
     return;
   }
   el.innerHTML = ranking
-    .map(
-      (r, i) => `
+    .map((r, i) => {
+      const overdue = r.overdue_reports || 0;
+      const pendingOnly = (r.pending_reports || 0) - overdue;
+      const badges = [];
+      if (overdue > 0) badges.push(`<span class="badge badge-overdue">${overdue} atrasada${overdue === 1 ? '' : 's'}</span>`);
+      if (pendingOnly > 0) badges.push(`<span class="badge badge-awaiting_report">${pendingOnly} pendente${pendingOnly === 1 ? '' : 's'}</span>`);
+      return `
     <div class="ranking-row">
       <span class="ranking-pos">${i + 1}º</span>
       <div class="ranking-info">
         <strong>${escapeHtml(r.full_name)}</strong>
         <small class="text-muted">${r.trip_count} viagens · ${r.task_count} tarefas · ${r.days_away} dias fora</small>
       </div>
-      ${r.pending_reports > 0 ? `<span class="badge badge-awaiting_report">${r.pending_reports} pendente(s)</span>` : ''}
-    </div>`
-    )
+      ${badges.join(' ')}
+    </div>`;
+    })
     .join('');
 }
 
@@ -220,9 +225,8 @@ async function load() {
   if (!user) return;
 
   if (!user.is_sector_leader || !user.led_sector) {
-    showAlert(alertEl, 'Você não tem permissão para acessar o dashboard do setor.');
-    teamRoot.innerHTML = '';
-    document.getElementById('summary-cards')?.classList.add('hidden');
+    showToast({ type: 'warning', title: 'Acesso negado', msg: 'Você não tem permissão para acessar o dashboard do setor.', duration: 2800 });
+    triggerPageTransition('index.html');
     return;
   }
 
@@ -230,7 +234,7 @@ async function load() {
 
   try {
     const data = await api.sectorDashboard();
-    const sectorName = data.sector || user.led_sector;
+    const sectorName = formatSectorName(data.sector || user.led_sector);
 
     document.getElementById('sector-title').textContent = `Dashboard ${sectorName}`;
     document.getElementById('sector-subtitle').textContent =
@@ -243,8 +247,50 @@ async function load() {
     document.getElementById('s-pending').textContent = s.pending_reports ?? 0;
 
     const pendingCard = document.getElementById('s-pending-card');
-    pendingCard?.classList.toggle('danger-accent', (s.pending_reports || 0) > 0);
-    pendingCard?.classList.toggle('warn', false);
+    pendingCard?.classList.toggle('danger-accent', (s.overdue_reports || 0) > 0);
+    pendingCard?.classList.toggle('warn', (s.overdue_reports || 0) === 0 && (s.pending_reports || 0) > 0);
+
+    const alertsWrap = document.getElementById('sector-alerts');
+    const pendingAlertCard = document.getElementById('alert-pending-card');
+    const overdueAlertCard = document.getElementById('alert-overdue-card');
+
+    const hasPending = (s.pending_reports || 0) > 0;
+    const hasOverdue = (s.overdue_reports || 0) > 0;
+
+    if (hasPending || hasOverdue) {
+      alertsWrap?.classList.remove('hidden-fields');
+
+      const onlyPending = hasPending && !hasOverdue;
+      const pendingOnlyCount = (s.pending_reports || 0) - (s.overdue_reports || 0);
+
+      if (pendingAlertCard) {
+        if (onlyPending || pendingOnlyCount > 0) {
+          pendingAlertCard.classList.remove('hidden-fields');
+          const n = hasOverdue ? pendingOnlyCount : s.pending_reports;
+          document.getElementById('alert-pending-title').textContent =
+            `${n} ${n === 1 ? 'viagem' : 'viagens'} aguardando relatório`;
+          document.getElementById('alert-pending-text').textContent =
+            `${n} ${n === 1 ? 'integrante precisa' : 'integrantes precisam'} preencher o relatório de encerramento.`;
+        } else {
+          pendingAlertCard.classList.add('hidden-fields');
+        }
+      }
+
+      if (overdueAlertCard) {
+        if (hasOverdue) {
+          overdueAlertCard.classList.remove('hidden-fields');
+          const n = s.overdue_reports || 0;
+          document.getElementById('alert-overdue-title').textContent =
+            `${n} ${n === 1 ? 'relatório' : 'relatórios'} em atraso`;
+          document.getElementById('alert-overdue-text').textContent =
+            `A data de término passou e o relatório ainda não foi entregue.`;
+        } else {
+          overdueAlertCard.classList.add('hidden-fields');
+        }
+      }
+    } else {
+      alertsWrap?.classList.add('hidden-fields');
+    }
 
     renderCharts(data);
     renderRankingList(data.ranking || []);

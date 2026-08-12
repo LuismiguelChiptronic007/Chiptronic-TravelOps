@@ -93,16 +93,22 @@ async function fetchTeamData(db, user) {
     }
   }
 
+  const today = new Date().toISOString().slice(0, 10);
+
   const team = (members || []).map((m) => {
     const trips = tripsByUser[m.id] || [];
     const tasks = tasksByUser[m.id] || [];
     const byStatus = { planned: 0, in_progress: 0, awaiting_report: 0, completed: 0 };
     let daysAway = 0;
     let pendingReports = 0;
+    let overdueReports = 0;
 
     for (const t of trips) {
       if (byStatus[t.status] !== undefined) byStatus[t.status]++;
-      if (t.status === 'awaiting_report') pendingReports++;
+      if (t.status === 'awaiting_report') {
+        pendingReports++;
+        if (t.end_date < today) overdueReports++;
+      }
       daysAway += daysBetween(t.start_date, t.end_date);
     }
 
@@ -129,6 +135,7 @@ async function fetchTeamData(db, user) {
         total_tasks: tasks.length,
         total_days_away: daysAway,
         pending_reports: pendingReports,
+        overdue_reports: overdueReports,
         by_status: byStatus,
       },
       trips,
@@ -155,6 +162,7 @@ sector.get('/dashboard', async (c) => {
   let totalTasks = 0;
   let totalDays = 0;
   let pendingReports = 0;
+  let overdueReports = 0;
   let completedTrips = 0;
   const workTypeCounts = {};
   const monthlyCounts = {};
@@ -165,6 +173,7 @@ sector.get('/dashboard', async (c) => {
       totalTasks += m.stats.total_tasks;
       totalDays += m.stats.total_days_away;
       pendingReports += m.stats.pending_reports;
+      overdueReports += m.stats.overdue_reports || 0;
       completedTrips += m.stats.by_status.completed || 0;
 
       for (const t of m.tasks || []) {
@@ -182,6 +191,7 @@ sector.get('/dashboard', async (c) => {
         task_count: m.stats.total_tasks,
         days_away: m.stats.total_days_away,
         pending_reports: m.stats.pending_reports,
+        overdue_reports: m.stats.overdue_reports || 0,
       };
     })
     .sort((a, b) => b.trip_count - a.trip_count || b.task_count - a.task_count);
@@ -207,6 +217,7 @@ sector.get('/dashboard', async (c) => {
       total_tasks: totalTasks,
       total_days_away: totalDays,
       pending_reports: pendingReports,
+      overdue_reports: overdueReports,
       completed_trips: completedTrips,
     },
     ranking,

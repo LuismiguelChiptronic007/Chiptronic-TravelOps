@@ -63,8 +63,8 @@ auth.post('/register', async (c) => {
   const password_confirm = String(body.password_confirm || '');
 
   if (!full_name || full_name.length < 3) return err('Informe o nome completo.');
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return err('E-mail corporativo inválido.');
+  if (!email || !/^[^\s@]+@chiptronic\.com\.br$/.test(email)) {
+    return err('E-mail corporativo inválido. Use @chiptronic.com.br.');
   }
   if (!sector || !SECTORS.includes(sector)) return err('Selecione um setor válido.');
   if (!position_title || !POSITIONS.includes(position_title)) {

@@ -1,6 +1,6 @@
-/* ui.js — Toast, Confirm Dialog, Command Palette (Ctrl+K), Hotkeys */
+/* ui.js — Toast, Confirm Dialog, Hotkeys */
 
-const __UI_INSTALLED = { toast: false, confirm: false, palette: false, hotkeys: false };
+const __UI_INSTALLED = { toast: false, confirm: false, hotkeys: false };
 
 const TOAST_ICONS = {
   success: '✓',
@@ -55,8 +55,8 @@ export function confirmDialog({
   message = 'Tem certeza que deseja continuar?',
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
-  tone = 'confirm', // 'danger' | 'confirm' | 'info'
-  confirmTone = ''  // override: 'danger' | 'primary' | ''
+  tone = 'confirm',
+  confirmTone = ''
 } = {}) {
   ensureToastStack();
   return new Promise((resolve) => {
@@ -77,16 +77,12 @@ export function confirmDialog({
     overlay.innerHTML = `
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="__cd_title">
         <div class="modal-head">
-          <div class="modal-icon icon-${ic.cls}">${ic.icon}</div>
+          <div class="modal-icon ${ic.cls}">${ic.icon}</div>
           <div>
             <h3 id="__cd_title" class="modal-title">${title}</h3>
+            ${message ? `<p class="modal-text">${message}</p>` : ''}
           </div>
         </div>
-        ${message ? `
-        <div class="modal-body">
-          <p class="modal-text">${message}</p>
-        </div>
-        ` : ''}
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-action="cancel">${cancelLabel}</button>
           <button type="button" class="btn ${confirmBtnCls}" data-action="confirm">${confirmLabel}</button>
@@ -99,8 +95,12 @@ export function confirmDialog({
     const finish = (val) => {
       if (resolved) return;
       resolved = true;
-      overlay.classList.add('leaving');
-      setTimeout(() => overlay.remove(), 220);
+      const modal = overlay.querySelector('.modal');
+      if (modal) {
+        modal.style.animation = 'modalIn 0.2s var(--ease, ease) reverse both';
+      }
+      overlay.style.animation = 'fadeIn 0.18s var(--ease, ease) reverse both';
+      setTimeout(() => overlay.remove(), 240);
       resolve(val);
     };
 
@@ -144,23 +144,18 @@ function ensurePaletteMarkup() {
   ov.setAttribute('aria-hidden', 'true');
   ov.innerHTML = `
     <div class="cp-box" role="dialog" aria-modal="true" aria-labelledby="__cp_title">
-      <div class="cp-head">
+      <div class="cp-input-wrap">
         <label id="__cp_title" class="hidden">Busca rápida</label>
+        <span class="search-icon">🔍</span>
         <input type="text" class="cp-input" placeholder="Busque uma ação, página ou comando..." autocomplete="off" spellcheck="false" />
-        <kbd class="kbd-inline">ESC</kbd>
+        <button type="button" class="cp-close" aria-label="Fechar">ESC</button>
       </div>
-      <div class="cp-body">
+      <div class="cp-list">
         <div class="cp-section-label">⌨️ Sugestões rápidas</div>
-        <div class="cp-results"></div>
-        <div class="cp-empty hidden">
-          <p class="empty-title">Nenhum resultado</p>
-          <p class="empty-sub">Tente outra palavra-chave.</p>
-        </div>
       </div>
-      <div class="cp-foot">
-        <span><kbd class="kbd-inline">↑ ↓</kbd> Navegar</span>
-        <span><kbd class="kbd-inline">↵</kbd> Abrir</span>
-        <span><kbd class="kbd-inline">Ctrl + K</kbd> Abrir/fechar</span>
+      <div class="cp-empty hidden">
+        <p class="empty-title">Nenhum resultado</p>
+        <p class="empty-sub">Tente outra palavra-chave.</p>
       </div>
     </div>
   `;
@@ -170,7 +165,8 @@ function ensurePaletteMarkup() {
 }
 
 function renderItems(container, items, activeIndex, onPick) {
-  container.innerHTML = '';
+  const sectionLabel = container.querySelector('.cp-section-label')?.outerHTML || '';
+  container.innerHTML = sectionLabel;
   if (!items.length) return;
   items.forEach((it, idx) => {
     const el = document.createElement('button');
@@ -178,14 +174,17 @@ function renderItems(container, items, activeIndex, onPick) {
     el.className = `cp-item ${idx === activeIndex ? 'active' : ''}`;
     el.innerHTML = `
       <span class="cp-icon">${it.icon ?? '•'}</span>
-      <span class="cp-text">
-        <strong>${it.title}</strong>
-        ${it.subtitle ? `<small>${it.subtitle}</small>` : ''}
+      <span>
+        <span class="cp-title">${it.title}</span>
+        ${it.subtitle ? `<div class="cp-sub">${it.subtitle}</div>` : ''}
       </span>
-      ${it.hotkey ? `<kbd class="kbd-inline">${it.hotkey}</kbd>` : ''}
+      ${it.hotkey ? `<kbd class="kbd">${it.hotkey}</kbd>` : ''}
     `;
     el.addEventListener('click', () => onPick(it, idx));
-    el.addEventListener('mouseenter', () => container.querySelectorAll('.cp-item').forEach(i => i.classList.remove('active')));
+    el.addEventListener('mouseenter', () => {
+      container.querySelectorAll('.cp-item').forEach((i) => i.classList.remove('active'));
+      el.classList.add('active');
+    });
     container.appendChild(el);
   });
 }
@@ -193,7 +192,7 @@ function renderItems(container, items, activeIndex, onPick) {
 export function openCommandPalette(extraItems = []) {
   const overlay = ensurePaletteMarkup();
   const input = overlay.querySelector('.cp-input');
-  const resultsEl = overlay.querySelector('.cp-results');
+  const resultsEl = overlay.querySelector('.cp-list');
   const emptyEl = overlay.querySelector('.cp-empty');
 
   const items = [...PALETTE_DEFAULTS, ...extraItems];
@@ -250,6 +249,8 @@ export function openCommandPalette(extraItems = []) {
     input.value = '';
   };
   const closeOnBackdrop = (e) => { if (e.target === overlay) close(); };
+  const closeBtn = overlay.querySelector('.cp-close');
+  if (closeBtn) closeBtn.addEventListener('click', close);
 
   overlay.classList.remove('hidden');
   overlay.setAttribute('aria-hidden', 'false');
@@ -271,7 +272,6 @@ export function closeCommandPalette() {
 
 /* Hotkeys help */
 const DEFAULT_HOTKEYS = [
-  { key: 'Ctrl / ⌘ + K', desc: 'Abrir busca rápida (Command Palette)' },
   { key: 'Ctrl / ⌘ + N', desc: 'Criar nova viagem' },
   { key: 'Ctrl / ⌘ + D', desc: 'Ir para o Dashboard' },
   { key: 'Ctrl / ⌘ + V', desc: 'Ir para listagem de viagens' },
@@ -292,17 +292,26 @@ export function showHotkeysHelp(list = DEFAULT_HOTKEYS) {
     </div>
   `).join('');
   overlay.innerHTML = `
-    <div class="modal wide" role="dialog" aria-modal="true">
-      <div class="modal-icon icon-info">⌨️</div>
-      <h3>Atalhos de teclado</h3>
-      <div class="modal-msg" style="text-align:left;">${rows}</div>
+    <div class="modal" role="dialog" aria-modal="true" style="width:min(560px,100%);">
+      <div class="modal-head">
+        <div class="modal-icon info">⌨️</div>
+        <div>
+          <h3 class="modal-title">Atalhos de teclado</h3>
+        </div>
+      </div>
+      <div class="modal-body" style="text-align:left;">${rows}</div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" data-action="ok">Entendi</button>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
-  const close = () => { overlay.classList.add('leaving'); setTimeout(() => overlay.remove(), 220); };
+  const close = () => {
+    const modal = overlay.querySelector('.modal');
+    if (modal) modal.style.animation = 'modalIn 0.2s var(--ease, ease) reverse both';
+    overlay.style.animation = 'fadeIn 0.18s var(--ease, ease) reverse both';
+    setTimeout(() => overlay.remove(), 240);
+  };
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) close();
     if (e.target.closest('[data-action="ok"]')) close();
@@ -324,7 +333,7 @@ export function registerHotkeys() {
 
   window.addEventListener('keydown', (e) => {
     const isMod = e.ctrlKey || e.metaKey;
-    if (isMod && e.key.toLowerCase() === 'k') { e.preventDefault(); openCommandPalette(); return; }
+
     if (!isMod && e.key === '?') {
       if (e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
       e.preventDefault(); showHotkeysHelp(); return;

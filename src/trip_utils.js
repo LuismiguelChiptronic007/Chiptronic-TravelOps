@@ -64,11 +64,6 @@ function formatTask(task, photos = []) {
           position_title: task.responsible_position_title || null,
         }
       : null,
-    approved_loads: task.approved_loads || '',
-    rejected_loads: task.rejected_loads || '',
-    logs_realizados: task.logs_realizados || '',
-    sistemas_logados: task.sistemas_logados || '',
-    nome_sistemas_logados: task.nome_sistemas_logados || '',
     pending_items: task.pending_items || '',
     created_at: task.created_at,
     updated_at: task.updated_at,

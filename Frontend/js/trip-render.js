@@ -1,4 +1,4 @@
-import { formatDateBR, statusBadge } from './api.js';
+import { formatDateBR, formatSectorName, statusBadge } from './api.js';
 import { escapeHtml } from './layout.js';
 
 let lastTaskDate = '';
@@ -66,7 +66,7 @@ function renderMembers(t) {
       <div class="info">
         <strong>${escapeHtml(m.full_name)}</strong>
         <small>
-          Setor: ${escapeHtml(m.sector || '—')}
+          Setor: ${escapeHtml(formatSectorName(m.sector || '—'))}
           · Responsável: ${escapeHtml(m.manager_name || 'Não informado')}
           ${m.position_title ? ` · ${escapeHtml(m.position_title)}` : ''}
         </small>
@@ -152,31 +152,6 @@ function renderTasks(t) {
                 ${
                   task.pending_items
                     ? `<div class="kv-item"><label>Pendências</label><div>${escapeHtml(task.pending_items)}</div></div>`
-                    : ''
-                }
-                ${
-                  task.approved_loads
-                    ? `<div class="kv-item"><label>Cargas aprovadas</label><div>${escapeHtml(task.approved_loads)}</div></div>`
-                    : ''
-                }
-                ${
-                  task.rejected_loads
-                    ? `<div class="kv-item"><label>Cargas reprovadas</label><div>${escapeHtml(task.rejected_loads)}</div></div>`
-                    : ''
-                }
-                ${
-                  task.logs_realizados
-                    ? `<div class="kv-item"><label>Logs realizados</label><div>${escapeHtml(task.logs_realizados)}</div></div>`
-                    : ''
-                }
-                ${
-                  task.sistemas_logados
-                    ? `<div class="kv-item"><label>Sistemas logados</label><div>${escapeHtml(task.sistemas_logados)}</div></div>`
-                    : ''
-                }
-                ${
-                  task.nome_sistemas_logados
-                    ? `<div class="kv-item"><label>Nome de sistemas logados</label><div>${escapeHtml(task.nome_sistemas_logados)}</div></div>`
                     : ''
                 }
                 ${
@@ -290,6 +265,44 @@ function renderTripDays(t) {
   });
 }
 
+function renderCompletionProgress(t) {
+  const wrap = document.getElementById('completion-progress');
+  if (!wrap) return;
+  if (t.status === 'completed') {
+    wrap.classList.add('hidden-fields');
+    return;
+  }
+  wrap.classList.remove('hidden-fields');
+
+  const requiredDays = getTripDays(t.start_date, t.end_date);
+  const taskDates = new Set(
+    (t.tasks || []).map((task) => String(task.task_date || '').trim()).filter(Boolean)
+  );
+  const total = requiredDays.length;
+  const covered = requiredDays.filter((d) => taskDates.has(d)).length;
+  const missing = total - covered;
+  const pct = total === 0 ? 0 : Math.min(100, Math.round((covered / total) * 100));
+
+  document.getElementById('progress-text').textContent =
+    `${covered} de ${total} ${total === 1 ? 'dia com tarefa' : 'dias com tarefa registrada'}`;
+
+  const fill = document.getElementById('progress-fill');
+  if (fill) {
+    fill.style.width = `${pct}%`;
+    fill.classList.toggle('complete', missing === 0);
+  }
+
+  const hint = document.getElementById('progress-hint');
+  if (hint) {
+    if (missing === 0) {
+      hint.textContent = '✓ Todos os dias têm pelo menos uma tarefa. Você já pode concluir a viagem.';
+    } else {
+      hint.textContent =
+        `Falta${missing === 1 ? '' : 'm'} registrar tarefa${missing === 1 ? '' : 's'} em ${missing} dia${missing === 1 ? '' : 's'} do período para poder concluir.`;
+    }
+  }
+}
+
 export function renderTrip(t) {
   document.getElementById('trip-title').textContent = `${t.origin} → ${t.destination}`;
   document.getElementById('trip-subtitle').textContent =
@@ -302,7 +315,7 @@ export function renderTrip(t) {
     <div class="kv-item"><label>Destino</label><div>${escapeHtml(t.destination)}</div></div>
     <div class="kv-item"><label>Início</label><div>${formatDateBR(t.start_date)}</div></div>
     <div class="kv-item"><label>Término</label><div>${formatDateBR(t.end_date)}</div></div>
-    <div class="kv-item"><label>Setor</label><div>${escapeHtml(t.sector)}</div></div>
+    <div class="kv-item"><label>Setor</label><div>${escapeHtml(formatSectorName(t.sector))}</div></div>
   `;
 
   const banner = document.getElementById('overdue-banner');
@@ -313,12 +326,18 @@ export function renderTrip(t) {
   fillTaskResponsibleOptions(t);
   renderTripDays(t);
   renderTasks(t);
+  renderCompletionProgress(t);
 
   document.getElementById('task-form-title').textContent =
     selectedTripDate ? `Nova tarefa — ${formatDateBR(selectedTripDate)}` : 'Nova tarefa';
 
+  const completeBtn = document.getElementById('btn-complete');
+  if (completeBtn) {
+    completeBtn.classList.toggle('hidden', t.status === 'completed');
+  }
+
   prepareTaskForm(t, { clearDate: false });
-  setReadOnly(t.status === 'completed');
+  setReadOnly(false);
   window.__currentTrip = t;
 }
 
@@ -329,11 +348,6 @@ export function taskFormPayload() {
     start_time: document.getElementById('start_time').value,
     end_time: document.getElementById('end_time').value,
     responsible_id: document.getElementById('responsible_id')?.value || null,
-    approved_loads: document.getElementById('approved_loads')?.value.trim() || null,
-    rejected_loads: document.getElementById('rejected_loads')?.value.trim() || null,
-    logs_realizados: document.getElementById('logs_realizados')?.value.trim() || null,
-    sistemas_logados: document.getElementById('sistemas_logados')?.value.trim() || null,
-    nome_sistemas_logados: document.getElementById('nome_sistemas_logados')?.value.trim() || null,
     summary: document.getElementById('summary').value.trim(),
     task_date: document.getElementById('task_date').value,
     pending_items: document.getElementById('pending_items')?.value.trim() || null,

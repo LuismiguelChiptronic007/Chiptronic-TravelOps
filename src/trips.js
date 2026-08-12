@@ -16,19 +16,21 @@ trips.get('/', async (c) => {
   const status = c.req.query('status') || '';
   const q = c.req.query('q') || '';
 
-  let sql = 'SELECT * FROM trips WHERE user_id = ?';
-  const binds = [userId];
+  let sql = `SELECT DISTINCT t.* FROM trips t
+             LEFT JOIN trip_members tm ON tm.trip_id = t.id
+             WHERE t.user_id = ? OR tm.user_id = ?`;
+  const binds = [userId, userId];
 
   if (status && status !== 'all') {
-    sql += ' AND status = ?';
+    sql += ' AND t.status = ?';
     binds.push(status);
   }
   if (q) {
-    sql += ' AND (origin LIKE ? OR destination LIKE ? OR reason LIKE ?)';
+    sql += ' AND (t.origin LIKE ? OR t.destination LIKE ? OR t.reason LIKE ?)';
     const like = `%${q}%`;
     binds.push(like, like, like);
   }
-  sql += ' ORDER BY start_date DESC, id DESC';
+  sql += ' ORDER BY t.start_date DESC, t.id DESC';
 
   const { results } = await c.env.DB.prepare(sql).bind(...binds).all();
   return json({ success: true, trips: (results || []).map((t) => formatTrip(t)) });
@@ -39,9 +41,12 @@ trips.get('/dashboard', async (c) => {
   await syncUserTripStatuses(c.env.DB, userId);
 
   const { results } = await c.env.DB.prepare(
-    'SELECT * FROM trips WHERE user_id = ? ORDER BY start_date DESC, id DESC'
+    `SELECT DISTINCT t.* FROM trips t
+     LEFT JOIN trip_members tm ON tm.trip_id = t.id
+     WHERE t.user_id = ? OR tm.user_id = ?
+     ORDER BY t.start_date DESC, t.id DESC`
   )
-    .bind(userId)
+    .bind(userId, userId)
     .all();
 
   const tripsList = results || [];
@@ -107,11 +112,12 @@ trips.get('/dashboard', async (c) => {
       `SELECT tt.work_type AS name, COUNT(*) AS count
        FROM trip_tasks tt
        INNER JOIN trips t ON t.id = tt.trip_id
-       WHERE t.user_id = ?
+       LEFT JOIN trip_members tm ON tm.trip_id = t.id
+       WHERE t.user_id = ? OR tm.user_id = ?
        GROUP BY tt.work_type
        ORDER BY count DESC`
     )
-      .bind(userId)
+      .bind(userId, userId)
       .all();
     workTypes = (workRows || []).map((r) => ({ name: r.name, count: r.count }));
   } catch {
@@ -251,10 +257,18 @@ trips.get('/:id', async (c) => {
       .bind(tripRow.user_id)
       .first();
     const ledSector = getLedSector(viewer);
+
+    const memberRow = await c.env.DB.prepare(
+      'SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ? LIMIT 1'
+    )
+      .bind(id, userId)
+      .first();
+
     const allowed =
       isAdmin(viewer) ||
       owner?.manager_id === userId ||
-      (ledSector && owner?.sector === ledSector);
+      (ledSector && owner?.sector === ledSector) ||
+      !!memberRow;
     if (!allowed) return err('Viagem não encontrada.', 404);
   }
 
@@ -310,6 +324,26 @@ trips.put('/:id', async (c) => {
   }
 
   return json({ success: true, trip: await fetchTripFull(c.env.DB, id, userId) });
+});
+
+trips.delete('/:id', async (c) => {
+  const id = Number(c.req.param('id'));
+  const userId = c.get('userId');
+
+  const trip = await c.env.DB.prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?')
+    .bind(id, userId)
+    .first();
+  if (!trip) return err('Viagem não encontrada.', 404);
+
+  await c.env.DB.prepare('DELETE FROM trip_task_photos WHERE task_id IN (SELECT id FROM trip_tasks WHERE trip_id = ?)')
+    .bind(id)
+    .run();
+  await c.env.DB.prepare('DELETE FROM trip_tasks WHERE trip_id = ?').bind(id).run();
+  await c.env.DB.prepare('DELETE FROM trip_checklists WHERE trip_id = ?').bind(id).run();
+  await c.env.DB.prepare('DELETE FROM trip_members WHERE trip_id = ?').bind(id).run();
+  await c.env.DB.prepare('DELETE FROM trips WHERE id = ?').bind(id).run();
+
+  return json({ success: true });
 });
 
 trips.route('/', checklistRoutes);

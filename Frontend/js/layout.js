@@ -24,7 +24,14 @@ let uxInstalled = false;
 let transitionInProgress = false;
 
 export async function mountShell({ active } = {}) {
+  document.documentElement.classList.remove('page-entering');
   if (!requireAuthPage()) return null;
+
+  const main = document.getElementById('main') || document.querySelector('main');
+  if (main) {
+    main.style.opacity = '0';
+    main.style.transform = 'translateY(8px)';
+  }
 
   applyTheme(getStoredTheme());
   ensureShellElements();
@@ -47,14 +54,47 @@ export async function mountShell({ active } = {}) {
   renderTopbar(user, active);
   renderDrawer(user);
   bindShellEvents(user);
-  installFabButtons(user);
   refreshNotificationBadge();
 
   if (notifPollTimer) clearInterval(notifPollTimer);
   notifPollTimer = setInterval(refreshNotificationBadge, 60000);
 
-  animatePageIn();
+  animatePageIn(main);
   initScrollReveal();
+  return user;
+}
+
+export async function rebuildShell({ active } = {}) {
+  // Reset shell state to force full re-render
+  shellInstalled = false;
+  uxInstalled = false;
+  
+  // Clear notification poll timer
+  if (notifPollTimer) {
+    clearInterval(notifPollTimer);
+    notifPollTimer = null;
+  }
+  
+  // Re-mount the shell with fresh state
+  return await mountShell({ active });
+}
+
+export async function updateShellUser({ active } = {}) {
+  // Update shell UI with fresh user data without remounting
+  let user = getStoredUser();
+  try {
+    const res = await api.me();
+    user = res.user;
+    updateStoredUser(user);
+  } catch {
+    return null;
+  }
+
+  currentUser = user;
+  renderSidebar(user, active);
+  renderTopbar(user, active);
+  renderDrawer(user);
+  
   return user;
 }
 
@@ -123,9 +163,18 @@ function ensureShellElements() {
   }
 }
 
+const ACTIVE_ALIASES = {
+  'new': 'new-trip',
+  'trip-detail': 'viagens',
+  'trip': 'viagens',
+};
+
 function renderSidebar(user, active) {
   const nav = document.getElementById('sidebar-nav');
   if (!nav) return;
+
+  let resolvedActive = active || '';
+  if (ACTIVE_ALIASES[resolvedActive]) resolvedActive = ACTIVE_ALIASES[resolvedActive];
 
   const links = [
     { id: 'dashboard',   title: 'Dashboard',       icon: '🏠', href: 'index.html' },
@@ -143,7 +192,7 @@ function renderSidebar(user, active) {
   const html = [
     '<div class="sidebar-section">Principal</div>',
     ...links.map((l) => `
-      <a href="${l.href}" class="sidebar-link ${active === l.id ? 'active' : ''}" data-id="${l.id}" data-tooltip="${l.title}">
+      <a href="${l.href}" class="sidebar-link ${resolvedActive === l.id ? 'active' : ''}" data-id="${l.id}" data-tooltip="${l.title}">
         <span class="sl-icon">${l.icon}</span>
         <span>${l.title}</span>
       </a>
@@ -161,33 +210,27 @@ function renderTopbar(user, active) {
     ? `<img src="${user.avatar_url}" alt="">`
     : initials(user.full_name);
 
+  let resolvedActive = active || '';
+  if (ACTIVE_ALIASES[resolvedActive]) resolvedActive = ACTIVE_ALIASES[resolvedActive];
+
   const titles = {
     dashboard:   ['Home', 'Dashboard'],
     viagens:     ['Viagens', 'Listagem'],
     'new-trip':  ['Viagens', 'Nova'],
     setor:       ['Setor', user.led_sector || 'Painel'],
     profile:     ['Conta', 'Meu perfil'],
-    settings:    ['Configurações', 'Sistema'],
-    'trip-detail': ['Viagens', 'Detalhes']
+    settings:    ['Configurações', 'Sistema']
   };
-  const parts = titles[active] || ['Chiptronic', 'Página'];
+  const parts = titles[resolvedActive] || ['Viagens', 'Detalhes'];
 
   topbar.innerHTML = `
     <div class="topbar-left">
-      <button type="button" class="icon-btn sidebar-toggle-btn" id="topbar-sidebar-toggle" aria-label="Alternar menu">
-        ☰
-      </button>
-      <div class="breadcrumb">
-        <span>${parts[0]}</span>
-        <span class="sep">/</span>
-        <span class="current">${parts[1]}</span>
+      <div class="page-breadcrumb">
+        <strong>${parts[0]}</strong>
+        <span>${parts[1]}</span>
       </div>
     </div>
     <div class="topbar-right">
-      <button type="button" class="command-palette-trigger" id="cp-trigger" aria-label="Abrir busca rápida">
-        <span class="cp-icon">🔍</span>
-        <span>Busca rápida…</span>
-      </button>
       <button type="button" class="icon-btn theme-top-btn" id="theme-toggle-btn" aria-label="Alternar tema" data-tooltip="Alternar tema">
         ${getStoredTheme() === 'dark' ? '☀️' : '🌙'}
       </button>
@@ -234,7 +277,6 @@ function renderDrawer(user) {
 }
 
 function bindShellEvents(user) {
-  document.getElementById('topbar-sidebar-toggle')?.addEventListener('click', toggleSidebarMobile);
   document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebarMobile);
   document.getElementById('drawer-overlay')?.addEventListener('click', () => {
     closeDrawer();
@@ -281,6 +323,7 @@ function bindShellEvents(user) {
     e.stopPropagation();
     closeDrawer();
     closeSidebarMobile();
+    refreshOverlay();
     toggleNotifications();
   });
 
@@ -304,32 +347,46 @@ function bindShellEvents(user) {
   });
 }
 
+function isAnyPanelOpen() {
+  const sb = document.getElementById('sidebar');
+  const dr = document.getElementById('profile-drawer');
+  return Boolean(
+    (sb && sb.classList.contains('open') && window.innerWidth < 880) ||
+    (dr && dr.classList.contains('open'))
+  );
+}
+function refreshOverlay() {
+  const ov = document.getElementById('drawer-overlay');
+  if (!ov) return;
+  if (isAnyPanelOpen()) ov.classList.remove('hidden');
+  else ov.classList.add('hidden');
+}
+
 function toggleSidebarMobile() {
   const sb = document.getElementById('sidebar');
-  const ov = document.getElementById('drawer-overlay');
   if (!sb) return;
   const open = sb.classList.toggle('open');
   document.getElementById('sidebar-toggle')?.classList.toggle('is-open', open);
-  if (ov) ov.classList.toggle('hidden', !open);
-  if (open) { ov?.classList.remove('hidden'); closeDrawer(); closeNotifications(); }
+  if (open) { closeDrawer(); closeNotifications(); }
+  refreshOverlay();
 }
 function closeSidebarMobile() {
   const sb = document.getElementById('sidebar');
   if (!sb) return;
   if (window.innerWidth < 880) sb.classList.remove('open');
   document.getElementById('sidebar-toggle')?.classList.remove('is-open');
+  refreshOverlay();
 }
 
 function openDrawer() {
   document.getElementById('profile-drawer')?.classList.add('open');
-  document.getElementById('drawer-overlay')?.classList.remove('hidden');
   closeSidebarMobile();
   closeNotifications();
+  refreshOverlay();
 }
 function closeDrawer() {
   document.getElementById('profile-drawer')?.classList.remove('open');
-  const sidebarOpen = document.getElementById('sidebar')?.classList.contains('open');
-  if (!sidebarOpen) document.getElementById('drawer-overlay')?.classList.add('hidden');
+  refreshOverlay();
 }
 
 async function toggleNotifications() {
@@ -337,13 +394,18 @@ async function toggleNotifications() {
   if (!panel) return;
   if (panel.classList.contains('hidden')) {
     panel.classList.remove('hidden');
+    closeDrawer();
+    closeSidebarMobile();
+    refreshOverlay();
     await loadNotifications();
   } else {
     panel.classList.add('hidden');
+    refreshOverlay();
   }
 }
 function closeNotifications() {
   document.getElementById('notifications-panel')?.classList.add('hidden');
+  refreshOverlay();
 }
 
 async function refreshNotificationBadge() {
@@ -415,15 +477,22 @@ function formatNotifDate(iso) {
   return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-function animatePageIn() {
-  const main = document.getElementById('main') || document.querySelector('main');
+function animatePageIn(mainEl) {
+  const main = mainEl || document.getElementById('main') || document.querySelector('main');
   if (!main) return;
-  main.style.opacity = '0';
-  main.style.transform = 'translateY(8px)';
   requestAnimationFrame(() => {
-    main.style.transition = 'opacity .35s var(--ease, ease), transform .35s var(--ease, ease)';
-    main.style.opacity = '1';
-    main.style.transform = 'translateY(0)';
+    requestAnimationFrame(() => {
+      main.style.transition = 'opacity .38s var(--ease, ease), transform .38s var(--ease, ease)';
+      main.style.opacity = '1';
+      main.style.transform = 'translateY(0)';
+      setTimeout(() => {
+        if (main) {
+          main.style.transition = '';
+          main.style.opacity = '';
+          main.style.transform = '';
+        }
+      }, 500);
+    });
   });
 }
 
@@ -441,8 +510,6 @@ function installUXEnhancements() {
   if (uxInstalled) return;
   uxInstalled = true;
 
-  installProgressBar();
-  installBackToTop();
   installSmoothLinkTransitions();
 }
 
@@ -502,9 +569,19 @@ function triggerPageTransition(url) {
   overlay.setAttribute('aria-hidden', 'true');
   document.body.appendChild(overlay);
 
-  window.setTimeout(() => {
-    window.location.assign(url);
-  }, 320);
+  const navigate = () => {
+    try { window.location.assign(url); }
+    catch (_) { window.location.href = url; }
+  };
+
+  const failSafe = setTimeout(navigate, 600);
+  overlay.addEventListener('animationend', (ev) => {
+    if (ev.animationName === 'pageWipeIn') {
+      clearTimeout(failSafe);
+      navigate();
+    }
+  }, { once: true });
+  setTimeout(navigate, 400);
 }
 
 function installSmoothLinkTransitions() {
@@ -513,9 +590,9 @@ function installSmoothLinkTransitions() {
     if (!link) return;
     const href = link.getAttribute('href');
     if (!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
-    if (link.target === '_blank' || link.download) return;
+    if (link.target === '_blank' || link.hasAttribute('download')) return;
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    if (!href.endsWith('.html')) return;
+    if (!/\.(html|php)$/.test(href) && !href.endsWith('/')) return;
     e.preventDefault();
     triggerPageTransition(href);
   });
@@ -597,4 +674,4 @@ function installFabButtons(user) {
   document.body.appendChild(container);
 }
 
-export { showToast, confirmDialog, openCommandPalette, closeCommandPalette, showHotkeysHelp, emptyStateSVG, triggerPageTransition };
+export { showToast, confirmDialog, showHotkeysHelp, emptyStateSVG, triggerPageTransition };

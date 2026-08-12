@@ -1283,7 +1283,7 @@ html[data-theme='dark'] .auth-card {
   padding-left: 2.75rem;
 }
 .input-wrap.has-icon:focus-within .input-icon {
-  color: var(--brand-500);
+  color: var(--text);
   transform: translateY(-50%) scale(1.1);
 }
 
@@ -1296,34 +1296,46 @@ html[data-theme='dark'] .auth-card {
   transform: scaleX(0);
   transform-origin: left center;
   pointer-events: auto;
-  opacity: 0;
-  transition: opacity 180ms ease;
+  opacity: 1;
+}
+html[data-theme='dark'] .page-transition {
+  background: #fff;
 }
 .page-transition.show,
 .page-transition.active {
   opacity: 1;
+  display: block;
 }
 .page-transition.wipe-in {
   transform-origin: right center;
-  animation: pageWipeIn 380ms var(--ease) forwards;
+  animation: pageWipeIn 360ms var(--ease) forwards;
 }
 .page-transition.wipe-out {
   transform-origin: left center;
-  animation: pageWipeOut 380ms var(--ease) forwards;
+  animation: pageWipeOut 360ms var(--ease) forwards;
 }
 @keyframes pageWipeIn {
-  0%   { transform: scaleX(0); transform-origin: right center; opacity: 1; }
-  100% { transform: scaleX(1); transform-origin: right center; opacity: 1; }
+  0%   { transform: scaleX(0); transform-origin: right center; }
+  100% { transform: scaleX(1); transform-origin: right center; }
 }
 @keyframes pageWipeOut {
-  0%   { transform: scaleX(1); transform-origin: left center;  opacity: 1; }
-  100% { transform: scaleX(0); transform-origin: left center;  opacity: 1; }
+  0%   { transform: scaleX(1); transform-origin: left center; }
+  100% { transform: scaleX(0); transform-origin: left center; }
 }
 
-/* Evita FOUC / tela piscando na entrada */
+/* Evita FOUC / tela piscando na entrada (com fallback para JS falhar) */
 html.page-entering body > #main,
 html.page-entering body > main {
   opacity: 0;
+  visibility: hidden;
+  animation: pageEnteringFallback 3s ease 0.2s forwards;
+}
+@keyframes pageEnteringFallback {
+  to { opacity: 1; visibility: visible; }
+}
+html:not(.page-entering) body > #main,
+html:not(.page-entering) body > main {
+  visibility: visible;
 }
 
 /* === Highlights === */

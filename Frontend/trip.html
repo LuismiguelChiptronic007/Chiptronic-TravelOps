@@ -23,6 +23,8 @@
         </div>
         <div class="form-actions mb-0">
           <span id="trip-status"></span>
+          <button type="button" class="btn btn-secondary" id="btn-edit-trip">Editar viagem</button>
+          <button type="button" class="btn btn-danger" id="btn-delete-trip">Excluir viagem</button>
           <a href="index.html" class="btn btn-secondary">Voltar</a>
         </div>
       </div>
@@ -58,6 +60,17 @@
           <div class="panel-body">
             <div id="trip-days" class="trip-days"></div>
             <div id="tasks-board" class="tasks-board"></div>
+
+            <div id="completion-progress" class="completion-progress mt-2 hidden-fields">
+              <div class="completion-progress-header">
+                <h3>Conclusão da viagem</h3>
+                <span id="progress-text" class="text-muted">0 de 0 dias com tarefa</span>
+              </div>
+              <div class="completion-progress-bar">
+                <div id="progress-fill" class="completion-progress-fill"></div>
+              </div>
+              <p id="progress-hint" class="completion-progress-hint text-muted"></p>
+            </div>
 
             <div id="task-form-wrap" class="task-form-wrap mt-2">
               <div class="panel-subheader">
@@ -95,30 +108,6 @@
                     <label for="end_time">Hora de término *</label>
                     <input id="end_time" type="time" required />
                   </div>
-                </div>
-                <div id="dieseldiag-fields" class="form-grid two hidden-fields">
-                  <div>
-                    <label for="approved_loads">Cargas aprovadas</label>
-                    <input id="approved_loads" />
-                  </div>
-                  <div>
-                    <label for="rejected_loads">Cargas reprovadas</label>
-                    <input id="rejected_loads" />
-                  </div>
-                </div>
-                <div id="controlelogs-fields" class="form-grid two hidden-fields">
-                  <div>
-                    <label for="logs_realizados">Logs realizados</label>
-                    <input id="logs_realizados" />
-                  </div>
-                  <div>
-                    <label for="sistemas_logados">Sistemas logados</label>
-                    <input id="sistemas_logados" />
-                  </div>
-                </div>
-                <div id="nome-sistemas-field" class="hidden-fields">
-                  <label for="nome_sistemas_logados">Nome de sistemas logados</label>
-                  <input id="nome_sistemas_logados" />
                 </div>
                 <div>
                   <label for="summary">Resumo do que foi feito *</label>

@@ -14,6 +14,9 @@ const API_BASE = (() => {
     return DEPLOYED_API_BASE;
   }
   if (location.origin.includes('localhost') || location.origin.includes('127.0.0.1')) {
+    if (location.port === '8787' || location.port === '8788' || location.port === '') {
+      return `${location.origin}/api`;
+    }
     return DEPLOYED_API_BASE;
   }
   return `${location.origin}/api`;
@@ -103,6 +106,7 @@ export const api = {
   getTrip: (id) => request(`/trips/${id}`),
   createTrip: (body) => request('/trips', { method: 'POST', json: body }),
   updateTrip: (id, body) => request(`/trips/${id}`, { method: 'PUT', json: body }),
+  deleteTrip: (id) => request(`/trips/${id}`, { method: 'DELETE' }),
   completeTrip: (id) => request(`/trips/${id}/complete`, { method: 'POST' }),
 
   usersForMembers: (q = '') => {
@@ -200,6 +204,25 @@ export function formatDateBR(iso) {
 
 export function formatMoney(v) {
   return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+export function formatSectorName(name) {
+  if (!name) return '';
+  const s = String(name).trim();
+  if (!s) return s;
+  if (s === s.toUpperCase() && s.length <= 25) {
+    const special = {
+      'T.I INTERNO': 'T.I Interno',
+      'TI INTERNO': 'T.I Interno',
+      'T.I TELEMETRIA': 'T.I Telemetria',
+      'TI TELEMETRIA': 'T.I Telemetria',
+    };
+    if (special[s]) return special[s];
+    return s
+      .toLowerCase()
+      .replace(/(^|\s)\S/g, (m) => m.toUpperCase());
+  }
+  return s;
 }
 
 export function statusBadge(trip) {

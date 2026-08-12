@@ -76,8 +76,10 @@ export function getLedSector(userOrEmail) {
 
   const user = userOrEmail;
   if (!user) return null;
+  // Position title always has priority: if explicitly "Integrante", no sector leadership
   if (isLeaderPosition(user.position_title)) return user.sector;
-  if (isAdminMaster(user)) {
+  // Bootstrap fallback: only use SECTOR_LEADERS if position_title is not explicitly set
+  if (isAdminMaster(user) && !user.position_title) {
     for (const [sector, leaderEmail] of Object.entries(SECTOR_LEADERS)) {
       if (emailsMatch(user.email, leaderEmail)) return sector;
     }

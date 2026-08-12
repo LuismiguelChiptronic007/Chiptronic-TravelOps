@@ -14,13 +14,13 @@ const STATUS_LABELS = {
 };
 
 const STATUS_COLORS = {
-  planned: '#94a3b8',
-  in_progress: '#2563eb',
-  awaiting_report: '#ca8a04',
-  completed: '#16a34a',
+  planned: '#cbd5e1',
+  in_progress: '#0f172a',
+  awaiting_report: '#64748b',
+  completed: '#020617',
 };
 
-const WORK_COLORS = ['#0b5fff', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
+const WORK_COLORS = ['#020617', '#334155', '#64748b', '#94a3b8', '#1e293b', '#475569', '#e2e8f0'];
 
 function destroyChart(key) {
   try {
@@ -97,7 +97,7 @@ function renderCharts(analytics) {
         datasets: [{
           label: 'Viagens',
           data: months.map((m) => m.count),
-          backgroundColor: '#0b5fff',
+          backgroundColor: '#0f172a',
           borderRadius: 6,
         }],
       },

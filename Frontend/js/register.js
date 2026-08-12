@@ -1,5 +1,6 @@
 import {
   api,
+  formatSectorName,
   hideAlert,
   redirectIfAuth,
   setSession,
@@ -66,7 +67,7 @@ async function loadSectors() {
   for (const s of sectors) {
     const opt = document.createElement('option');
     opt.value = s;
-    opt.textContent = s;
+    opt.textContent = formatSectorName(s);
     sectorSelect.appendChild(opt);
   }
 }
@@ -102,6 +103,13 @@ form?.addEventListener('submit', async (e) => {
     return;
   }
 
+  const emailValue = form.email.value.trim().toLowerCase();
+  if (!/^[^@\s]+@chiptronic\.com\.br$/.test(emailValue)) {
+    showAlert(alertEl, 'Use um e-mail corporativo válido @chiptronic.com.br.');
+    isSubmitting = false;
+    return;
+  }
+
   const originalText = btn?.textContent || 'Cadastrar';
   if (btn) {
     btn.disabled = true;
@@ -111,7 +119,7 @@ form?.addEventListener('submit', async (e) => {
   try {
     const data = await api.register({
       full_name: form.full_name.value.trim(),
-      email: form.email.value.trim(),
+      email: emailValue,
       sector: form.sector.value,
       position_title: form.position_title.value,
       password: form.password.value,
@@ -122,7 +130,7 @@ form?.addEventListener('submit', async (e) => {
   } catch (err) {
     const msg = err.message || 'Falha no cadastro';
     if (msg === 'Failed to fetch') {
-      showAlert(alertEl, 'Erro de conexão: verifique se o servidor de desenvolvimento está rodando e abra o app em http://127.0.0.1:8787/');
+      showAlert(alertEl, 'Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.');
     } else if (msg && msg.toLowerCase().includes('já cadastrado')) {
       showAlert(alertEl, msg + ' Se você já se cadastrou, acesse a página de Login ao invés de tentar cadastrar novamente.');
     } else {

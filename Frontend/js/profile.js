@@ -1,13 +1,14 @@
 import {
   api,
   formatDateBR,
+  formatSectorName,
   hideAlert,
   showAlert,
   statusBadge,
   updateStoredUser,
   initials,
 } from './api.js';
-import { escapeHtml, mountShell, showToast, emptyStateSVG } from './layout.js';
+import { escapeHtml, mountShell, updateShellUser, showToast, emptyStateSVG } from './layout.js';
 
 const POSITIONS = ['Líder', 'Integrante'];
 
@@ -26,7 +27,7 @@ async function fillSectors(selected) {
   for (const s of sectors) {
     const opt = document.createElement('option');
     opt.value = s;
-    opt.textContent = s;
+    opt.textContent = formatSectorName(s);
     if (s === selected) opt.selected = true;
     select.appendChild(opt);
   }
@@ -71,7 +72,7 @@ async function load() {
     renderAvatar(u);
     document.getElementById('profile-name').textContent = u.full_name;
     document.getElementById('profile-meta').textContent =
-      `${u.sector} · ${u.position_title} · Mat. ${u.employee_id}`;
+      `${formatSectorName(u.sector)} · ${u.position_title}`;
 
     document.getElementById('s-total').textContent = res.stats.total_trips;
     document.getElementById('s-days').textContent = res.stats.total_days_away;
@@ -82,10 +83,7 @@ async function load() {
     document.getElementById('full_name').value = u.full_name;
     const positionSelect = document.getElementById('position_title');
     positionSelect.value = POSITIONS.includes(u.position_title) ? u.position_title : '';
-    document.getElementById('manager_name').value = u.manager_name || '';
-    document.getElementById('manager_name').readOnly = true;
     document.getElementById('email').value = u.email;
-    document.getElementById('employee_id').value = u.employee_id;
 
     renderHistory(res.trips || []);
   } catch (err) {
@@ -107,6 +105,8 @@ document.getElementById('profile-form')?.addEventListener('submit', async (e) =>
     });
     updateStoredUser(res.user);
     showAlert(alertEl, 'Perfil atualizado.', 'success');
+    // Update shell UI with new permissions/role
+    await updateShellUser({ active: 'profile' });
     await load();
   } catch (err) {
     showAlert(alertEl, err.message);
@@ -121,6 +121,8 @@ document.getElementById('avatar-input')?.addEventListener('change', async (e) =>
     const res = await api.uploadAvatar(file);
     updateStoredUser(res.user);
     showAlert(alertEl, 'Foto atualizada.', 'success');
+    // Update shell UI with new avatar
+    await updateShellUser({ active: 'profile' });
     await load();
   } catch (err) {
     showAlert(alertEl, err.message);

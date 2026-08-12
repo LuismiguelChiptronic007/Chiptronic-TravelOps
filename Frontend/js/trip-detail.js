@@ -53,6 +53,11 @@ async function init() {
 
     const res = await api.getTrip(tripId);
     renderTrip(res.trip);
+
+    const editBtn = document.getElementById('btn-edit-trip');
+    if (editBtn) {
+      editBtn.textContent = res.trip.status === 'completed' ? 'Editar checklist' : 'Editar viagem';
+    }
   } catch (err) {
     showAlert(alertEl, err.message);
   }
@@ -107,6 +112,27 @@ document.getElementById('tasks-board')?.addEventListener('click', async (e) => {
     const res = await api.deleteTask(tripId, id);
     renderTrip(res.trip);
     showAlert(alertEl, 'Tarefa excluída.', 'success');
+  } catch (err) {
+    showAlert(alertEl, err.message);
+  }
+});
+
+document.getElementById('btn-edit-trip')?.addEventListener('click', () => {
+  const trip = window.__currentTrip;
+  if (!trip) return;
+  if (trip.status === 'completed') {
+    document.getElementById('task-form-wrap')?.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  location.href = `trip-new.html?id=${tripId}`;
+});
+
+document.getElementById('btn-delete-trip')?.addEventListener('click', async () => {
+  if (!confirm('Deseja excluir esta viagem? Esta ação não pode ser desfeita.')) return;
+  hideAlert(alertEl);
+  try {
+    await api.deleteTrip(tripId);
+    location.href = 'index.html';
   } catch (err) {
     showAlert(alertEl, err.message);
   }

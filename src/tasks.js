@@ -29,11 +29,6 @@ taskRoutes.post('/:id/tasks', async (c) => {
   let task_date = '';
   let responsible_id = '';
   let pending_items = '';
-  let approved_loads = '';
-  let rejected_loads = '';
-  let logs_realizados = '';
-  let sistemas_logados = '';
-  let nome_sistemas_logados = '';
   const photoFiles = [];
 
   if (contentType.includes('multipart/form-data')) {
@@ -46,15 +41,10 @@ taskRoutes.post('/:id/tasks', async (c) => {
     task_date = String(form.get('task_date') || '').trim();
     responsible_id = String(form.get('responsible_id') || '').trim();
     pending_items = String(form.get('pending_items') || '').trim();
-      approved_loads = String(form.get('approved_loads') || '').trim();
-      rejected_loads = String(form.get('rejected_loads') || '').trim();
-      logs_realizados = String(form.get('logs_realizados') || '').trim();
-      sistemas_logados = String(form.get('sistemas_logados') || '').trim();
-      nome_sistemas_logados = String(form.get('nome_sistemas_logados') || '').trim();
 
-    for (const [key, value] of form.entries()) {
-      if ((key === 'photos' || key === 'photos[]' || key === 'photo') && value && typeof value === 'object' && value.size > 0) {
-        photoFiles.push(value);
+    for (const entry of form.getAll('photos')) {
+      if (entry instanceof File) {
+        photoFiles.push(entry);
       }
     }
   } else {
@@ -72,24 +62,21 @@ taskRoutes.post('/:id/tasks', async (c) => {
     task_date = String(body.task_date || '').trim();
     responsible_id = String(body.responsible_id || '').trim();
     pending_items = String(body.pending_items || '').trim();
-      approved_loads = String(body.approved_loads || '').trim();
-      rejected_loads = String(body.rejected_loads || '').trim();
-      logs_realizados = String(body.logs_realizados || '').trim();
-      sistemas_logados = String(body.sistemas_logados || '').trim();
-      nome_sistemas_logados = String(body.nome_sistemas_logados || '').trim();
   }
 
-  if (!work_type) return err('Selecione o tipo de trabalho.');
-  if (!location) return err('Informe o local do serviço.');
-  if (!start_time || !end_time) return err('Informe o horário de início e fim.');
-  if (end_time < start_time) return err('Horário de fim deve ser >= horário de início.');
-  if (!summary) return err('Descreva o resumo da atividade.');
-  if (!task_date) return err('Informe a data da tarefa.');
-  if (task_date < trip.start_date || task_date > trip.end_date) {
-    return err('A data da tarefa deve estar dentro do período da viagem.');
+  if (!work_type || !location || !start_time || !end_time || !summary || !task_date) {
+    return err('Preencha todos os campos da tarefa.');
   }
 
-  let responsibleIdValue = null;
+  if (!task_date || task_date < trip.start_date || task_date > trip.end_date) {
+    return err('Data da tarefa deve estar dentro do período da viagem.');
+  }
+
+  if (end_time < start_time) {
+    return err('Hora de término deve ser igual ou posterior à hora de início.');
+  }
+
+  let responsibleIdValue = trip.user_id;
   if (responsible_id) {
     const parsed = Number(responsible_id);
     if (!Number.isInteger(parsed) || parsed <= 0) {
@@ -115,9 +102,8 @@ taskRoutes.post('/:id/tasks', async (c) => {
   const result = await c.env.DB.prepare(
     `INSERT INTO trip_tasks (
        trip_id, work_type, location, start_time, end_time, summary, task_date, responsible_id,
-       pending_items, approved_loads, rejected_loads,
-       logs_realizados, sistemas_logados, nome_sistemas_logados
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       pending_items
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
@@ -128,12 +114,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
       summary,
       task_date,
       responsibleIdValue,
-      pending_items || null,
-      approved_loads || null,
-      rejected_loads || null,
-      logs_realizados || null,
-      sistemas_logados || null,
-      nome_sistemas_logados || null
+      pending_items || null
     )
     .run();
 
@@ -157,7 +138,6 @@ taskRoutes.post('/:id/tasks', async (c) => {
       .run();
   }
 
-  // Notifica o líder do setor sobre a nova tarefa
   try {
     const { results: leaders } = await c.env.DB.prepare(
       `SELECT id FROM users WHERE sector = ? AND LOWER(REPLACE(REPLACE(position_title, 'í', 'i'), 'Í', 'I')) = 'lider'`
