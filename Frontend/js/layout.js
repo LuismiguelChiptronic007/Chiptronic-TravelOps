@@ -348,12 +348,8 @@ function bindShellEvents(user) {
 }
 
 function isAnyPanelOpen() {
-  const sb = document.getElementById('sidebar');
   const dr = document.getElementById('profile-drawer');
-  return Boolean(
-    (sb && sb.classList.contains('open') && window.innerWidth < 880) ||
-    (dr && dr.classList.contains('open'))
-  );
+  return Boolean(dr && dr.classList.contains('open'));
 }
 function refreshOverlay() {
   const ov = document.getElementById('drawer-overlay');
