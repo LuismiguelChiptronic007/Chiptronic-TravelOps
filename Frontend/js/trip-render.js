@@ -33,21 +33,33 @@ function showElement(el) {
   if (el) el.classList.remove('hidden-fields');
 }
 
+function normalizeWorkType(type) {
+  return String(type || '').trim().toLowerCase();
+}
+
+function requiresVehicleFields(type) {
+  const normalized = normalizeWorkType(type);
+  return [
+    'dieseldiag ontime',
+    'controle de logs',
+    'logs de telemetria',
+  ].includes(normalized);
+}
+
 function updateTaskTypeFields() {
   const type = document.getElementById('work_type')?.value;
-  const dieselFields = document.getElementById('dieseldiag-fields');
-  const logsFields = document.getElementById('controlelogs-fields');
-  const nomeSistemas = document.getElementById('nome-sistemas-field');
+  const vehicleFields = document.getElementById('vehicle-fields');
+  const vehicleInput = document.getElementById('vehicle');
+  const plateInput = document.getElementById('plate');
 
-  hideElement(dieselFields);
-  hideElement(logsFields);
-  hideElement(nomeSistemas);
+  hideElement(vehicleFields);
+  if (vehicleInput) vehicleInput.required = false;
+  if (plateInput) plateInput.required = false;
 
-  if (type === 'Dieseldiag Ontime') {
-    showElement(dieselFields);
-  } else if (type === 'Controle de Logs') {
-    showElement(logsFields);
-    showElement(nomeSistemas);
+  if (requiresVehicleFields(type)) {
+    showElement(vehicleFields);
+    if (vehicleInput) vehicleInput.required = true;
+    if (plateInput) plateInput.required = true;
   }
 }
 
@@ -150,6 +162,11 @@ function renderTasks(t) {
                 <div class="kv-item"><label>Responsável</label><div>${escapeHtml(task.responsible?.full_name || '—')}</div></div>
                 <div class="kv-item"><label>Resumo</label><div>${escapeHtml(task.summary)}</div></div>
                 ${
+                  task.vehicle || task.plate
+                    ? `<div class="kv-item"><label>Veículo / Placa</label><div>${escapeHtml(task.vehicle || '—')} ${task.plate ? `· ${escapeHtml(task.plate)}` : ''}</div></div>`
+                    : ''
+                }
+                ${
                   task.pending_items
                     ? `<div class="kv-item"><label>Pendências</label><div>${escapeHtml(task.pending_items)}</div></div>`
                     : ''
@@ -189,9 +206,22 @@ export function prepareTaskForm(t, { keepDate = false, clearDate = false } = {})
 
   form.reset();
 
+  const startInput = document.getElementById('start_time');
+  const endInput = document.getElementById('end_time');
+
   if (typeSelect && !typeSelect.dataset.listenerAttached) {
     typeSelect.addEventListener('change', updateTaskTypeFields);
     typeSelect.dataset.listenerAttached = '1';
+  }
+
+  if (startInput && !startInput.dataset.listenerAttached) {
+    startInput.addEventListener('input', () => updateTaskAvailability(t, selectedTripDate));
+    startInput.dataset.listenerAttached = '1';
+  }
+
+  if (endInput && !endInput.dataset.listenerAttached) {
+    endInput.addEventListener('input', () => updateTaskAvailability(t, selectedTripDate));
+    endInput.dataset.listenerAttached = '1';
   }
 
   if (dateInput) {
@@ -259,10 +289,152 @@ function renderTripDays(t) {
       selectedTripDate = date;
       renderTripDays(t);
       renderTasks(t);
+      updateTaskAvailability(t, selectedTripDate);
       document.getElementById('task-form-title').textContent = `Nova tarefa — ${formatDateBR(selectedTripDate)}`;
       prepareTaskForm(t, { clearDate: false });
     });
   });
+}
+
+function minutesFromTime(value) {
+  if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
+  const [h, m] = value.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function formatTimeLabel(value) {
+  if (!value) return '—';
+  const [h, m] = String(value).split(':');
+  return `${String(h).padStart(2, '0')}:${String(m || '00').padStart(2, '0')}`;
+}
+
+function formatMinutesLabel(totalMinutes) {
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function computeTimeline(tasksForDate = []) {
+  const dayStart = 8 * 60;
+  const dayEnd = 18 * 60;
+  const lunch = { start: 12 * 60, end: 13 * 60, label: 'Almoço', kind: 'lunch' };
+
+  const blocks = (tasksForDate || [])
+    .map((task) => ({
+      start: minutesFromTime(task.start_time),
+      end: minutesFromTime(task.end_time),
+      label: task.work_type || 'Trabalho',
+      kind: 'work',
+    }))
+    .filter((block) => block.start != null && block.end != null && block.end > block.start)
+    .sort((a, b) => a.start - b.start);
+
+  const lunchOverlap = blocks.some((block) => block.start < lunch.end && block.end > lunch.start);
+  if (!lunchOverlap) {
+    blocks.push({ ...lunch, kind: 'lunch' });
+  }
+
+  blocks.sort((a, b) => a.start - b.start);
+
+  const timeline = [];
+  let cursor = dayStart;
+
+  for (const block of blocks) {
+    if (block.start > cursor) {
+      timeline.push({ start: cursor, end: block.start, label: 'Horário disponível', kind: 'free' });
+    }
+    timeline.push({ ...block, end: Math.min(block.end, dayEnd) });
+    cursor = Math.max(cursor, Math.min(block.end, dayEnd));
+  }
+
+  if (cursor < dayEnd) {
+    timeline.push({ start: cursor, end: dayEnd, label: 'Horário disponível', kind: 'free' });
+  }
+
+  return timeline.filter((entry) => entry.end > entry.start);
+}
+
+function findConflict(startMinutes, endMinutes, tasksForDate = []) {
+  const dayStart = 8 * 60;
+  const dayEnd = 18 * 60;
+  if (startMinutes < dayStart || endMinutes > dayEnd || endMinutes <= startMinutes) {
+    return { label: 'fora do expediente (08:00–18:00)' };
+  }
+
+  const timeline = computeTimeline(tasksForDate);
+  const freeWindow = timeline.find((slot) => slot.kind === 'free' && slot.start <= startMinutes && slot.end >= endMinutes);
+  if (freeWindow) return null;
+
+  const clash = timeline.find((slot) => slot.start < endMinutes && slot.end > startMinutes && slot.kind !== 'free');
+  if (clash) return clash;
+
+  return { label: 'horário indisponível' };
+}
+
+function getAvailabilitySummary(tasksForDate) {
+  const timeline = computeTimeline(tasksForDate);
+  const freeSlots = timeline.filter((slot) => slot.kind === 'free');
+
+  const chipStyle =
+    'display:inline-block;padding:1px 6px;margin:0 4px 2px 0;border-radius:10px;background:#eef4ee;color:#2f6b46;font-size:0.68rem;font-weight:600;white-space:nowrap;';
+  const labelStyle = 'color:#6b7280;margin-right:4px;';
+
+  if (!freeSlots.length) {
+    return `<div style="${labelStyle}">Sem horários livres neste dia.</div>`;
+  }
+
+  const chips = freeSlots
+    .map((slot) => `<span style="${chipStyle}">${formatMinutesLabel(slot.start)}–${formatMinutesLabel(slot.end)}</span>`)
+    .join('');
+
+  return `<span style="${labelStyle}">Livre:</span>${chips}`;
+}
+
+export function updateTaskAvailability(t, selectedDate) {
+  const panel = document.getElementById('task-time-availability');
+  if (!panel) return;
+
+  const form = document.getElementById('task-form');
+  const startValue = form?.querySelector('#start_time')?.value || '';
+  const endValue = form?.querySelector('#end_time')?.value || '';
+
+  if (startValue && endValue) {
+    panel.innerHTML = '';
+    panel.classList.add('hidden-fields');
+    return;
+  }
+
+  if (!selectedDate) {
+    panel.innerHTML = '';
+    panel.classList.add('hidden-fields');
+    return;
+  }
+
+  const tasksForDate = (t.tasks || []).filter((task) => task.task_date === selectedDate);
+  panel.innerHTML = getAvailabilitySummary(tasksForDate);
+  panel.classList.remove('hidden-fields');
+}
+
+export function validateTaskTimeAvailability(t, selectedDate, startTime, endTime) {
+  if (!selectedDate || !startTime || !endTime) return { ok: true, message: '' };
+
+  const tasksForDate = (t.tasks || []).filter((task) => task.task_date === selectedDate);
+  const startMinutes = minutesFromTime(startTime);
+  const endMinutes = minutesFromTime(endTime);
+
+  if (startMinutes == null || endMinutes == null) {
+    return { ok: true, message: '' };
+  }
+
+  const conflict = findConflict(startMinutes, endMinutes, tasksForDate);
+  if (conflict) {
+    return {
+      ok: false,
+      message: 'Já tem uma tarefa nesse horário, coloque um dos horários disponíveis.'
+    };
+  }
+
+  return { ok: true, message: '' };
 }
 
 function renderCompletionProgress(t) {
@@ -326,6 +498,7 @@ export function renderTrip(t) {
   fillTaskResponsibleOptions(t);
   renderTripDays(t);
   renderTasks(t);
+  updateTaskAvailability(t, selectedTripDate);
   renderCompletionProgress(t);
 
   document.getElementById('task-form-title').textContent =
@@ -351,5 +524,7 @@ export function taskFormPayload() {
     summary: document.getElementById('summary').value.trim(),
     task_date: document.getElementById('task_date').value,
     pending_items: document.getElementById('pending_items')?.value.trim() || null,
+    vehicle: document.getElementById('vehicle')?.value.trim() || null,
+    plate: document.getElementById('plate')?.value.trim() || null,
   };
 }

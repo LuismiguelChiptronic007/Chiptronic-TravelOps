@@ -56,6 +56,8 @@ function formatTask(task, photos = []) {
     summary: task.summary,
     task_date: task.task_date,
     responsible_id: task.responsible_id || null,
+    vehicle: task.vehicle || null,
+    plate: task.plate || null,
     responsible: task.responsible_id
       ? {
           id: task.responsible_id,

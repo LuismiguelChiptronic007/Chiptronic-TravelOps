@@ -95,6 +95,16 @@
                     <option value="">Selecione um responsável…</option>
                   </select>
                 </div>
+                <div id="vehicle-fields" class="form-grid two hidden-fields">
+                  <div>
+                    <label for="vehicle">Veículo</label>
+                    <input id="vehicle" placeholder="Ex: Caminhão / Van / Carreta" />
+                  </div>
+                  <div>
+                    <label for="plate">Placa</label>
+                    <input id="plate" placeholder="Ex: ABC-1234" />
+                  </div>
+                </div>
                 <div>
                   <label for="location">Local do serviço *</label>
                   <input id="location" required placeholder="Ex: Cliente XYZ — unidade centro" />
@@ -109,6 +119,7 @@
                     <input id="end_time" type="time" required />
                   </div>
                 </div>
+                <div id="task-time-availability" class="hidden-fields" style="font-size:0.7rem; color:#4b5563; line-height:1.2; margin-top:-6px;"></div>
                 <div>
                   <label for="summary">Resumo do que foi feito *</label>
                   <textarea id="summary" required placeholder="Descreva a atividade realizada…"></textarea>

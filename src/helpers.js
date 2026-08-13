@@ -166,8 +166,10 @@ export function canViewSectorPage(user) {
 }
 
 export const WORK_TYPES = [
+  'Viagem',
   'Dieseldiag Ontime',
   'Controle de Logs',
+  'LOGS de Telemetria',
 ];
 
 export const STATUS_LABELS = {

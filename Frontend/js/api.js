@@ -126,6 +126,8 @@ export const api = {
     fd.append('task_date', payload.task_date || '');
     fd.append('responsible_id', payload.responsible_id || '');
     fd.append('pending_items', payload.pending_items || '');
+    fd.append('vehicle', payload.vehicle || '');
+    fd.append('plate', payload.plate || '');
     for (const file of payload.photos || []) {
       fd.append('photos', file);
     }
@@ -239,6 +241,7 @@ export function showAlert(el, message, type = 'error') {
   el.className = `alert alert-${type}`;
   el.textContent = message;
   el.classList.remove('hidden');
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 export function hideAlert(el) {

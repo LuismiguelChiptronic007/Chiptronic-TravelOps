@@ -18,7 +18,6 @@ taskRoutes.post('/:id/tasks', async (c) => {
   const userId = c.get('userId');
   const trip = await getOwnedTrip(c, id);
   if (!trip) return err('Viagem não encontrada.', 404);
-  if (trip.status === 'completed') return err('Viagem concluída não aceita novas tarefas.');
 
   const contentType = c.req.header('content-type') || '';
   let work_type = '';
@@ -29,6 +28,8 @@ taskRoutes.post('/:id/tasks', async (c) => {
   let task_date = '';
   let responsible_id = '';
   let pending_items = '';
+  let vehicle = '';
+  let plate = '';
   const photoFiles = [];
 
   if (contentType.includes('multipart/form-data')) {
@@ -41,6 +42,8 @@ taskRoutes.post('/:id/tasks', async (c) => {
     task_date = String(form.get('task_date') || '').trim();
     responsible_id = String(form.get('responsible_id') || '').trim();
     pending_items = String(form.get('pending_items') || '').trim();
+    vehicle = String(form.get('vehicle') || '').trim();
+    plate = String(form.get('plate') || '').trim();
 
     for (const entry of form.getAll('photos')) {
       if (entry instanceof File) {
@@ -62,10 +65,17 @@ taskRoutes.post('/:id/tasks', async (c) => {
     task_date = String(body.task_date || '').trim();
     responsible_id = String(body.responsible_id || '').trim();
     pending_items = String(body.pending_items || '').trim();
+    vehicle = String(body.vehicle || '').trim();
+    plate = String(body.plate || '').trim();
   }
 
   if (!work_type || !location || !start_time || !end_time || !summary || !task_date) {
     return err('Preencha todos os campos da tarefa.');
+  }
+
+  const requiresVehicle = ['Dieseldiag Ontime', 'Controle de Logs', 'LOGS de Telemetria'].includes(work_type);
+  if (requiresVehicle && (!vehicle || !plate)) {
+    return err('Para este tipo de trabalho, informe o veículo e a placa.');
   }
 
   if (!task_date || task_date < trip.start_date || task_date > trip.end_date) {
@@ -102,8 +112,8 @@ taskRoutes.post('/:id/tasks', async (c) => {
   const result = await c.env.DB.prepare(
     `INSERT INTO trip_tasks (
        trip_id, work_type, location, start_time, end_time, summary, task_date, responsible_id,
-       pending_items
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       pending_items, vehicle, plate
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
@@ -114,7 +124,9 @@ taskRoutes.post('/:id/tasks', async (c) => {
       summary,
       task_date,
       responsibleIdValue,
-      pending_items || null
+      pending_items || null,
+      requiresVehicle ? vehicle : null,
+      requiresVehicle ? plate : null
     )
     .run();
 

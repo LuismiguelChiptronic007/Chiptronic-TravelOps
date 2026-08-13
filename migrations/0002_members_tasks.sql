@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS trip_tasks (
   summary TEXT NOT NULL,
   task_date TEXT NOT NULL,
   pending_items TEXT,
+  vehicle TEXT,
+  plate TEXT,
   approved_loads TEXT,
   rejected_loads TEXT,
   logs_realizados TEXT,

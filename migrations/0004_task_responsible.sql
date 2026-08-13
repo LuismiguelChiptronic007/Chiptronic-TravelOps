@@ -1,6 +1,10 @@
--- Add responsible member to trip tasks
--- Obs.: a coluna responsible_id já foi criada na migration 0002_members_tasks.sql
---       diretamente no CREATE TABLE trip_tasks. Esta migration está vazia para
---       manter compatibilidade com ambientes onde 0004 já foi aplicada e para
---       evitar erro de "duplicate column name" em ambientes novos.
+-- Corrige schema antigo de trip_tasks para suportar veículo/placa em tarefas.
+-- Em bancos criados a partir da migration 0002, estas colunas já existem.
+-- Em bancos antigos, esta migration adiciona as colunas faltantes.
+-- Importante: o SQLite/D1 não suporta IF NOT EXISTS em ALTER TABLE, então
+-- esta migration deve ser aplicada somente em bancos que ainda não tenham
+-- vehicle e plate na tabela trip_tasks.
 PRAGMA foreign_keys = ON;
+
+ALTER TABLE trip_tasks ADD COLUMN vehicle TEXT;
+ALTER TABLE trip_tasks ADD COLUMN plate TEXT;

@@ -1,6 +1,12 @@
 import { api, hideAlert, showAlert } from './api.js';
 import { mountShell } from './layout.js';
-import { fillWorkTypes, prepareTaskForm, renderTrip, taskFormPayload } from './trip-render.js';
+import {
+  fillWorkTypes,
+  prepareTaskForm,
+  renderTrip,
+  taskFormPayload,
+  validateTaskTimeAvailability,
+} from './trip-render.js';
 import { confirmDialog } from './ui.js';
 
 function getTripDays(startDate, endDate) {
@@ -40,14 +46,10 @@ async function init() {
       fillWorkTypes(typesRes.work_types || []);
     } catch {
       fillWorkTypes([
-        'Instalação',
-        'Manutenção',
-        'Treinamento',
-        'Visita técnica',
-        'Suporte',
-        'Comercial',
-        'Auditoria',
-        'Outro',
+        'Viagem',
+        'Dieseldiag Ontime',
+        'Controle de Logs',
+        'LOGS de Telemetria',
       ]);
     }
 
@@ -70,13 +72,29 @@ document.getElementById('task-form')?.addEventListener('submit', async (e) => {
   if (btn) btn.disabled = true;
 
   try {
+    const trip = window.__currentTrip;
     const payload = taskFormPayload();
+    const validation = validateTaskTimeAvailability(
+      trip,
+      payload.task_date,
+      payload.start_time,
+      payload.end_time
+    );
+
+    if (!validation.ok) {
+      showAlert(alertEl, validation.message);
+      alertEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+
     const res = await api.addTask(tripId, payload);
     renderTrip(res.trip);
     prepareTaskForm(res.trip, { keepDate: true });
     showAlert(alertEl, 'Tarefa salva com sucesso.', 'success');
+    alertEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
     showAlert(alertEl, err.message);
+    alertEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   } finally {
     if (btn) btn.disabled = false;
   }
