@@ -124,7 +124,19 @@ document.getElementById('btn-complete')?.addEventListener('click', async () => {
 
 document.getElementById('tasks-board')?.addEventListener('click', async (e) => {
   const id = e.target.getAttribute('data-del-task');
-  if (!id || !confirm('Excluir esta tarefa?')) return;
+  if (!id) return;
+
+  const confirmed = await confirmDialog({
+    title: 'Excluir tarefa',
+    message: 'Deseja realmente excluir esta tarefa? Esta ação não pode ser desfeita.',
+    confirmLabel: 'Excluir',
+    cancelLabel: 'Cancelar',
+    tone: 'danger',
+    confirmTone: 'danger'
+  });
+
+  if (!confirmed) return;
+
   hideAlert(alertEl);
   try {
     const res = await api.deleteTask(tripId, id);
@@ -146,7 +158,17 @@ document.getElementById('btn-edit-trip')?.addEventListener('click', () => {
 });
 
 document.getElementById('btn-delete-trip')?.addEventListener('click', async () => {
-  if (!confirm('Deseja excluir esta viagem? Esta ação não pode ser desfeita.')) return;
+  const confirmed = await confirmDialog({
+    title: 'Excluir viagem',
+    message: 'Deseja excluir esta viagem? Esta ação não pode ser desfeita.',
+    confirmLabel: 'Excluir',
+    cancelLabel: 'Cancelar',
+    tone: 'danger',
+    confirmTone: 'danger'
+  });
+
+  if (!confirmed) return;
+
   hideAlert(alertEl);
   try {
     await api.deleteTrip(tripId);

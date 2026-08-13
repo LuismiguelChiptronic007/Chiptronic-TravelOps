@@ -38,6 +38,31 @@
       </div>
 
       <div class="panel">
+        <div class="panel-header"><h2>Horário de almoço</h2></div>
+        <div class="panel-body stack">
+          <div class="settings-row">
+            <div>
+              <strong>Janela de almoço</strong>
+              <p class="text-muted mb-0">Ajuste quando o sistema considera uma pausa como almoço no calendário da viagem.</p>
+            </div>
+          </div>
+          <div class="form-grid two">
+            <label>
+              <span>Início</span>
+              <input id="lunch-window-start" type="time" value="11:00" />
+            </label>
+            <label>
+              <span>Fim</span>
+              <input id="lunch-window-end" type="time" value="14:00" />
+            </label>
+          </div>
+          <div class="settings-row">
+            <button type="button" class="btn btn-primary" id="btn-save-lunch-window">Salvar janela</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
         <div class="panel-header"><h2>Conta</h2></div>
         <div class="panel-body stack">
           <div class="settings-row">

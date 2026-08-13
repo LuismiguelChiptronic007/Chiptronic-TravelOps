@@ -7,6 +7,7 @@ import { files, tripFiles } from './files.js';
 import { profile } from './profile.js';
 import { notifications } from './notifications.js';
 import { sector } from './sector.js';
+import { configuracoes } from './configuracoes.js';
 import { err, json } from './helpers.js';
 
 const app = new Hono();
@@ -35,6 +36,7 @@ app.route('/api/trips', tripFiles);
 app.route('/api/profile', profile);
 app.route('/api/notifications', notifications);
 app.route('/api/sector', sector);
+app.route('/api/configuracoes', configuracoes);
 app.route('/api', files);
 
 app.notFound((c) => {

@@ -46,11 +46,19 @@ function requiresVehicleFields(type) {
   ].includes(normalized);
 }
 
+function isLunchType(type) {
+  return normalizeWorkType(type) === 'almoço';
+}
+
 function updateTaskTypeFields() {
   const type = document.getElementById('work_type')?.value;
   const vehicleFields = document.getElementById('vehicle-fields');
   const vehicleInput = document.getElementById('vehicle');
   const plateInput = document.getElementById('plate');
+  const locationField = document.getElementById('location-field');
+  const locationInput = document.getElementById('location');
+  const summaryField = document.getElementById('summary-field');
+  const summaryInput = document.getElementById('summary');
 
   hideElement(vehicleFields);
   if (vehicleInput) vehicleInput.required = false;
@@ -60,6 +68,20 @@ function updateTaskTypeFields() {
     showElement(vehicleFields);
     if (vehicleInput) vehicleInput.required = true;
     if (plateInput) plateInput.required = true;
+  }
+
+  const lunch = isLunchType(type);
+
+  if (locationField) lunch ? hideElement(locationField) : showElement(locationField);
+  if (locationInput) {
+    locationInput.required = !lunch;
+    if (lunch && !locationInput.value) locationInput.value = 'Almoço';
+  }
+
+  if (summaryField) lunch ? hideElement(summaryField) : showElement(summaryField);
+  if (summaryInput) {
+    summaryInput.required = !lunch;
+    if (lunch && !summaryInput.value) summaryInput.value = 'Horário de almoço';
   }
 }
 
@@ -314,11 +336,31 @@ function formatMinutesLabel(totalMinutes) {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
-function computeTimeline(tasksForDate = []) {
-  const dayStart = 8 * 60;
-  const dayEnd = 18 * 60;
-  const lunch = { start: 12 * 60, end: 13 * 60, label: 'Almoço', kind: 'lunch' };
+function getLunchWindowConfig() {
+  try {
+    const start = localStorage.getItem('cto_lunch_window_start');
+    const end = localStorage.getItem('cto_lunch_window_end');
+    
+    // Se não houver nenhuma config explícita, retorna null
+    if (!start || !end) return null;
+    
+    const startMinutes = minutesFromTime(start);
+    const endMinutes = minutesFromTime(end);
 
+    if (startMinutes == null || endMinutes == null || endMinutes <= startMinutes) {
+      return null;
+    }
+
+    return { start, end };
+  } catch (_err) {
+    return null;
+  }
+}
+
+function computeTimeline(tasksForDate = []) {
+  const dayStart = 0;
+  const dayEnd = 24 * 60;
+  
   const blocks = (tasksForDate || [])
     .map((task) => ({
       start: minutesFromTime(task.start_time),
@@ -329,9 +371,27 @@ function computeTimeline(tasksForDate = []) {
     .filter((block) => block.start != null && block.end != null && block.end > block.start)
     .sort((a, b) => a.start - b.start);
 
-  const lunchOverlap = blocks.some((block) => block.start < lunch.end && block.end > lunch.start);
-  if (!lunchOverlap) {
-    blocks.push({ ...lunch, kind: 'lunch' });
+  // Só adicionar almoço se houver tarefas criadas OU config explícita
+  const hasTasks = tasksForDate && tasksForDate.length > 0;
+  const lunchConfig = getLunchWindowConfig();
+  const shouldAddLunch = hasTasks || lunchConfig !== null;
+  
+  if (shouldAddLunch && lunchConfig) {
+    const lunchStart = minutesFromTime(lunchConfig.start);
+    const lunchEnd = minutesFromTime(lunchConfig.end);
+    const lunch = { start: lunchStart, end: lunchEnd, label: 'Almoço', kind: 'lunch' };
+    
+    const lunchOverlap = blocks.some((block) => block.start < lunch.end && block.end > lunch.start);
+    if (!lunchOverlap && lunch.start >= dayStart && lunch.end <= dayEnd && lunch.end > lunch.start) {
+      blocks.push({ ...lunch, kind: 'lunch' });
+    }
+  } else if (shouldAddLunch && !lunchConfig && hasTasks) {
+    // Se houver tarefas mas não houver config explícita, usar padrão 11:00-14:00
+    const lunch = { start: 11 * 60, end: 14 * 60, label: 'Almoço', kind: 'lunch' };
+    const lunchOverlap = blocks.some((block) => block.start < lunch.end && block.end > lunch.start);
+    if (!lunchOverlap && lunch.start >= dayStart && lunch.end <= dayEnd && lunch.end > lunch.start) {
+      blocks.push({ ...lunch, kind: 'lunch' });
+    }
   }
 
   blocks.sort((a, b) => a.start - b.start);
@@ -355,10 +415,10 @@ function computeTimeline(tasksForDate = []) {
 }
 
 function findConflict(startMinutes, endMinutes, tasksForDate = []) {
-  const dayStart = 8 * 60;
-  const dayEnd = 18 * 60;
+  const dayStart = 0;
+  const dayEnd = 24 * 60;
   if (startMinutes < dayStart || endMinutes > dayEnd || endMinutes <= startMinutes) {
-    return { label: 'fora do expediente (08:00–18:00)' };
+    return { label: 'fora do intervalo válido (00:00–23:59)' };
   }
 
   const timeline = computeTimeline(tasksForDate);

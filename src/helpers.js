@@ -170,6 +170,7 @@ export const WORK_TYPES = [
   'Dieseldiag Ontime',
   'Controle de Logs',
   'LOGS de Telemetria',
+  'Almoço',
 ];
 
 export const STATUS_LABELS = {

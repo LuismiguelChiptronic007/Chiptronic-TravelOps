@@ -134,8 +134,8 @@ export function formatTrip(trip, checklist = null, expenses = [], attachments = 
 export async function fetchTripFull(db, tripId, userId) {
   await autoUpdateTripStatus(db, tripId);
   const trip = await db
-    .prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?')
-    .bind(tripId, userId)
+    .prepare('SELECT * FROM trips WHERE id = ?')
+    .bind(tripId)
     .first();
   if (!trip) return null;
 

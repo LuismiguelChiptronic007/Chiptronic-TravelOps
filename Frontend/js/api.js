@@ -164,6 +164,15 @@ export const api = {
   notificationUnreadCount: () => request('/notifications/unread-count'),
   markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: 'POST' }),
   markAllNotificationsRead: () => request('/notifications/read-all', { method: 'POST' }),
+  lunchConfig: () => request('/configuracoes/almoco'),
+  saveLunchConfig: (config) =>
+    request('/configuracoes/almoco', {
+      method: 'POST',
+      json: {
+        janelaAlmocoInicio: config?.janelaAlmocoInicio ?? config?.inicio ?? '11:00',
+        janelaAlmocoFim: config?.janelaAlmocoFim ?? config?.fim ?? '14:00',
+      },
+    }),
 
   sectorTeam: (sector = '') => {
     const qs = sector ? `?sector=${encodeURIComponent(sector)}` : '';

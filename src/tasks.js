@@ -5,18 +5,62 @@ import { notifyUsers } from './notifications.js';
 
 export const taskRoutes = new Hono();
 
+function timeToMinutes(value) {
+  if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
+  const [hours, minutes] = value.split(':').map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+  return hours * 60 + minutes;
+}
+
+function rangesOverlap(startA, endA, startB, endB) {
+  return startA < endB && endA > startB;
+}
+
 taskRoutes.get('/work-types', (c) => json({ success: true, work_types: WORK_TYPES }));
 
-async function getOwnedTrip(c, tripId) {
-  return c.env.DB.prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?')
-    .bind(tripId, c.get('userId'))
+async function getAccessibleTrip(c, tripId) {
+  const userId = c.get('userId');
+  const viewer = c.get('user');
+
+  const trip = await c.env.DB.prepare('SELECT * FROM trips WHERE id = ?')
+    .bind(tripId)
     .first();
+  if (!trip) return null;
+
+  if (trip.user_id === userId) return trip;
+
+  const member = await c.env.DB.prepare(
+    'SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ? LIMIT 1'
+  )
+    .bind(tripId, userId)
+    .first();
+  if (member) return trip;
+
+  const isAdminUser = viewer?.role === 'admin' || viewer?.role === 'admin_master';
+  if (isAdminUser) return trip;
+
+  const ledSector = viewer?.sector
+    ? await c.env.DB.prepare(
+        `SELECT id FROM users WHERE sector = ?
+         AND LOWER(REPLACE(REPLACE(position_title, 'í', 'i'), 'Í', 'I')) = 'lider'
+         AND id = ? LIMIT 1`
+      )
+        .bind(viewer.sector, userId)
+        .first()
+    : null;
+
+  if (ledSector) return trip;
+
+  const owner = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(trip.user_id).first();
+  if (owner && owner.manager_id === userId) return trip;
+
+  return null;
 }
 
 taskRoutes.post('/:id/tasks', async (c) => {
   const id = Number(c.req.param('id'));
   const userId = c.get('userId');
-  const trip = await getOwnedTrip(c, id);
+  const trip = await getAccessibleTrip(c, id);
   if (!trip) return err('Viagem não encontrada.', 404);
 
   const contentType = c.req.header('content-type') || '';
@@ -69,6 +113,12 @@ taskRoutes.post('/:id/tasks', async (c) => {
     plate = String(body.plate || '').trim();
   }
 
+  const isLunch = work_type === 'Almoço';
+  if (isLunch) {
+    if (!location) location = 'Almoço';
+    if (!summary) summary = 'Horário de almoço';
+  }
+
   if (!work_type || !location || !start_time || !end_time || !summary || !task_date) {
     return err('Preencha todos os campos da tarefa.');
   }
@@ -84,6 +134,29 @@ taskRoutes.post('/:id/tasks', async (c) => {
 
   if (end_time < start_time) {
     return err('Hora de término deve ser igual ou posterior à hora de início.');
+  }
+
+  const startMinutes = timeToMinutes(start_time);
+  const endMinutes = timeToMinutes(end_time);
+  if (startMinutes == null || endMinutes == null || endMinutes <= startMinutes) {
+    return err('Informe um intervalo de horário válido.', 400);
+  }
+
+  const { results: conflictingTasks } = await c.env.DB.prepare(
+    'SELECT start_time, end_time FROM trip_tasks WHERE trip_id = ? AND task_date = ?'
+  )
+    .bind(id, task_date)
+    .all();
+
+  const hasConflict = (conflictingTasks || []).some((task) => {
+    const existingStart = timeToMinutes(task.start_time);
+    const existingEnd = timeToMinutes(task.end_time);
+    if (existingStart == null || existingEnd == null) return false;
+    return rangesOverlap(startMinutes, endMinutes, existingStart, existingEnd);
+  });
+
+  if (hasConflict) {
+    return err('Já existe outra tarefa neste mesmo horário para este dia.', 409);
   }
 
   let responsibleIdValue = trip.user_id;
@@ -178,7 +251,7 @@ taskRoutes.delete('/:id/tasks/:taskId', async (c) => {
   const taskId = Number(c.req.param('taskId'));
   const userId = c.get('userId');
 
-  const trip = await getOwnedTrip(c, id);
+  const trip = await getAccessibleTrip(c, id);
   if (!trip) return err('Viagem não encontrada.', 404);
   if (trip.status === 'completed') return err('Viagem concluída é somente leitura.');
 
