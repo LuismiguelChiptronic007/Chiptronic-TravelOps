@@ -6,6 +6,7 @@ import {
   renderTrip,
   taskFormPayload,
   validateTaskTimeAvailability,
+  setupPanelToggles,
 } from './trip-render.js';
 import { confirmDialog } from './ui.js';
 
@@ -57,6 +58,7 @@ async function init() {
 
     const res = await api.getTrip(tripId);
     renderTrip(res.trip);
+    setupPanelToggles();
 
     const editBtn = document.getElementById('btn-edit-trip');
     if (editBtn) {
@@ -91,6 +93,7 @@ document.getElementById('task-form')?.addEventListener('submit', async (e) => {
 
     const res = await api.addTask(tripId, payload);
     renderTrip(res.trip);
+    setupPanelToggles();
     prepareTaskForm(res.trip, { keepDate: true });
     showAlert(alertEl, 'Tarefa salva com sucesso.', 'success');
     alertEl?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -118,14 +121,18 @@ document.getElementById('btn-complete')?.addEventListener('click', async () => {
   try {
     const res = await api.completeTrip(tripId);
     renderTrip(res.trip);
+    setupPanelToggles();
     showAlert(alertEl, 'Viagem finalizada com sucesso!', 'success');
   } catch (err) {
     showAlert(alertEl, err.message);
   }
 });
 
-document.getElementById('tasks-board')?.addEventListener('click', async (e) => {
-  const id = e.target.getAttribute('data-del-task');
+document.addEventListener('click', async (e) => {
+  const deleteBtn = e.target.closest('[data-del-task]');
+  if (!deleteBtn) return;
+
+  const id = deleteBtn.getAttribute('data-del-task');
   if (!id) return;
 
   const confirmed = await confirmDialog({

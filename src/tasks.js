@@ -12,6 +12,17 @@ function timeToMinutes(value) {
   return hours * 60 + minutes;
 }
 
+function parseResponsibleIds(value) {
+  const raw = Array.isArray(value) ? value : String(value || '').split(',');
+  const ids = raw
+    .map((item) => String(item || '').trim())
+    .filter(Boolean)
+    .map((item) => Number(item))
+    .filter((id) => Number.isInteger(id) && id > 0)
+    .filter((id, index, arr) => arr.indexOf(id) === index);
+  return ids;
+}
+
 function rangesOverlap(startA, endA, startB, endB) {
   return startA < endB && endA > startB;
 }
@@ -71,9 +82,13 @@ taskRoutes.post('/:id/tasks', async (c) => {
   let summary = '';
   let task_date = '';
   let responsible_id = '';
+  let responsible_ids = [];
   let pending_items = '';
   let vehicle = '';
   let plate = '';
+  let montadora = '';
+  let modelo = '';
+  let submodelo = '';
   const photoFiles = [];
 
   if (contentType.includes('multipart/form-data')) {
@@ -85,9 +100,14 @@ taskRoutes.post('/:id/tasks', async (c) => {
     summary = String(form.get('summary') || '').trim();
     task_date = String(form.get('task_date') || '').trim();
     responsible_id = String(form.get('responsible_id') || '').trim();
+    responsible_ids = parseResponsibleIds(form.getAll('responsible_ids'));
+    if (!responsible_ids.length && responsible_id) responsible_ids = [Number(responsible_id)];
     pending_items = String(form.get('pending_items') || '').trim();
     vehicle = String(form.get('vehicle') || '').trim();
     plate = String(form.get('plate') || '').trim();
+    montadora = String(form.get('montadora') || '').trim();
+    modelo = String(form.get('modelo') || '').trim();
+    submodelo = String(form.get('submodelo') || '').trim();
 
     for (const entry of form.getAll('photos')) {
       if (entry instanceof File) {
@@ -108,9 +128,14 @@ taskRoutes.post('/:id/tasks', async (c) => {
     summary = String(body.summary || '').trim();
     task_date = String(body.task_date || '').trim();
     responsible_id = String(body.responsible_id || '').trim();
+    responsible_ids = parseResponsibleIds(body.responsible_ids || body.responsible_id || []);
+    if (!responsible_ids.length && responsible_id) responsible_ids = [Number(responsible_id)];
     pending_items = String(body.pending_items || '').trim();
     vehicle = String(body.vehicle || '').trim();
     plate = String(body.plate || '').trim();
+    montadora = String(body.montadora || '').trim();
+    modelo = String(body.modelo || '').trim();
+    submodelo = String(body.submodelo || '').trim();
   }
 
   const normalizedWorkType = work_type
@@ -132,8 +157,8 @@ taskRoutes.post('/:id/tasks', async (c) => {
     'controle de logs',
     'logs de telemetria',
   ].includes(normalizedWorkType);
-  if (requiresVehicle && (!vehicle || !plate)) {
-    return err('Para este tipo de trabalho, informe o veículo e a placa.');
+  if (requiresVehicle && (!vehicle || !plate || !montadora || !modelo || !submodelo)) {
+    return err('Para este tipo de trabalho, informe a montadora, o modelo, a versão e a placa.');
   }
 
   if (!task_date || task_date < trip.start_date || task_date > trip.end_date) {
@@ -167,12 +192,10 @@ taskRoutes.post('/:id/tasks', async (c) => {
     return err('Já existe outra tarefa neste mesmo horário para este dia.', 409);
   }
 
-  let responsibleIdValue = trip.user_id;
-  if (responsible_id) {
-    const parsed = Number(responsible_id);
-    if (!Number.isInteger(parsed) || parsed <= 0) {
-      return err('Responsável da tarefa inválido.');
-    }
+  const selectedResponsibleIds = responsible_ids.length ? responsible_ids : (responsible_id ? [Number(responsible_id)] : [trip.user_id]);
+  const validResponsibleIds = [];
+
+  for (const parsed of selectedResponsibleIds) {
     const responsibleUser = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?')
       .bind(parsed)
       .first();
@@ -184,17 +207,20 @@ taskRoutes.post('/:id/tasks', async (c) => {
     )
       .bind(id, parsed)
       .first();
-    if (!member) {
+    if (!member && parsed !== trip.user_id) {
       return err('O responsável deve ser um integrante da viagem.');
     }
-    responsibleIdValue = parsed;
+    validResponsibleIds.push(parsed);
   }
+
+  const primaryResponsibleId = validResponsibleIds[0] || trip.user_id;
+  const responsibleIdsCsv = validResponsibleIds.length ? validResponsibleIds.join(',') : String(trip.user_id);
 
   const result = await c.env.DB.prepare(
     `INSERT INTO trip_tasks (
        trip_id, work_type, location, start_time, end_time, summary, task_date, responsible_id,
-       pending_items, vehicle, plate
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       responsible_ids, pending_items, vehicle, plate, montadora, modelo, submodelo
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
@@ -204,10 +230,14 @@ taskRoutes.post('/:id/tasks', async (c) => {
       end_time,
       summary,
       task_date,
-      responsibleIdValue,
+      primaryResponsibleId,
+      responsibleIdsCsv,
       pending_items || null,
-      requiresVehicle ? vehicle : null,
-      requiresVehicle ? plate : null
+      vehicle || null,
+      plate || null,
+      montadora || null,
+      modelo || null,
+      submodelo || null
     )
     .run();
 
@@ -289,3 +319,212 @@ taskRoutes.delete('/:id/tasks/:taskId', async (c) => {
 
   return json({ success: true, trip: await fetchTripFull(c.env.DB, id, userId) });
 });
+
+taskRoutes.put('/:id/tasks/:taskId', async (c) => {
+  const id = Number(c.req.param('id'));
+  const taskId = Number(c.req.param('taskId'));
+  const userId = c.get('userId');
+
+  const trip = await getAccessibleTrip(c, id);
+  if (!trip) return err('Viagem não encontrada.', 404);
+
+  const task = await c.env.DB.prepare('SELECT * FROM trip_tasks WHERE id = ? AND trip_id = ?')
+    .bind(taskId, id)
+    .first();
+  if (!task) return err('Tarefa não encontrada.', 404);
+
+  const contentType = c.req.header('content-type') || '';
+  let work_type = task.work_type;
+  let location = task.location;
+  let start_time = task.start_time;
+  let end_time = task.end_time;
+  let summary = task.summary;
+  let task_date = task.task_date;
+  let responsible_id = task.responsible_id;
+  let responsible_ids = [];
+  let pending_items = task.pending_items;
+  let vehicle = task.vehicle;
+  let plate = task.plate;
+  let montadora = task.montadora;
+  let modelo = task.modelo;
+  let submodelo = task.submodelo;
+
+  if (contentType.includes('multipart/form-data')) {
+    const form = await c.req.formData();
+    work_type = String(form.get('work_type') || '').trim() || work_type;
+    location = String(form.get('location') || '').trim() || location;
+    start_time = String(form.get('start_time') || '').trim() || start_time;
+    end_time = String(form.get('end_time') || '').trim() || end_time;
+    summary = String(form.get('summary') || '').trim() || summary;
+    task_date = String(form.get('task_date') || '').trim() || task_date;
+    responsible_ids = parseResponsibleIds(form.getAll('responsible_ids'));
+    if (!responsible_ids.length) {
+      const rid = String(form.get('responsible_id') || '').trim();
+      if (rid) responsible_ids = [Number(rid)];
+    }
+    pending_items = String(form.get('pending_items') || '').trim();
+    vehicle = String(form.get('vehicle') || '').trim();
+    plate = String(form.get('plate') || '').trim();
+    montadora = String(form.get('montadora') || '').trim();
+    modelo = String(form.get('modelo') || '').trim();
+    submodelo = String(form.get('submodelo') || '').trim();
+  } else {
+    let body;
+    try {
+      body = await c.req.json();
+    } catch {
+      return err('JSON inválido.');
+    }
+    work_type = String(body.work_type || '').trim() || work_type;
+    location = String(body.location || '').trim() || location;
+    start_time = String(body.start_time || '').trim() || start_time;
+    end_time = String(body.end_time || '').trim() || end_time;
+    summary = String(body.summary || '').trim() || summary;
+    task_date = String(body.task_date || '').trim() || task_date;
+    responsible_ids = parseResponsibleIds(body.responsible_ids || body.responsible_id || []);
+    if (!responsible_ids.length) {
+      const rid = String(body.responsible_id || '').trim();
+      if (rid) responsible_ids = [Number(rid)];
+    }
+    pending_items = String(body.pending_items || '').trim();
+    vehicle = String(body.vehicle || '').trim();
+    plate = String(body.plate || '').trim();
+    montadora = String(body.montadora || '').trim();
+    modelo = String(body.modelo || '').trim();
+    submodelo = String(body.submodelo || '').trim();
+  }
+
+  const normalizedWorkType = work_type
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const isLunch = normalizedWorkType === 'refeicao';
+  if (isLunch) {
+    if (!location) location = 'Refeição';
+    if (!summary) summary = 'Horário de refeição';
+  }
+
+  if (!work_type || !location || !start_time || !end_time || !summary || !task_date) {
+    return err('Preencha todos os campos da tarefa.');
+  }
+
+  const requiresVehicle = [
+    'dieseldiag ontime',
+    'controle de logs',
+    'logs de telemetria',
+  ].includes(normalizedWorkType);
+  if (requiresVehicle && (!vehicle || !plate || !montadora || !modelo || !submodelo)) {
+    return err('Para este tipo de trabalho, informe a montadora, o modelo, a versão e a placa.');
+  }
+
+  if (!task_date || task_date < trip.start_date || task_date > trip.end_date) {
+    return err('Data da tarefa deve estar dentro do período da viagem.');
+  }
+
+  if (end_time < start_time) {
+    return err('Hora de término deve ser igual ou posterior à hora de início.');
+  }
+
+  const startMinutes = timeToMinutes(start_time);
+  const endMinutes = timeToMinutes(end_time);
+  if (startMinutes == null || endMinutes == null || endMinutes <= startMinutes) {
+    return err('Informe um intervalo de horário válido.', 400);
+  }
+
+  const { results: conflictingTasks } = await c.env.DB.prepare(
+    'SELECT id, start_time, end_time FROM trip_tasks WHERE trip_id = ? AND task_date = ? AND id != ?'
+  )
+    .bind(id, task_date, taskId)
+    .all();
+
+  const hasConflict = (conflictingTasks || []).some((t) => {
+    const existingStart = timeToMinutes(t.start_time);
+    const existingEnd = timeToMinutes(t.end_time);
+    if (existingStart == null || existingEnd == null) return false;
+    return rangesOverlap(startMinutes, endMinutes, existingStart, existingEnd);
+  });
+
+  if (hasConflict) {
+    return err('Já existe outra tarefa neste mesmo horário para este dia.', 409);
+  }
+
+  const selectedResponsibleIds = responsible_ids.length ? responsible_ids : [task.responsible_id || trip.user_id];
+  const validResponsibleIds = [];
+
+  for (const parsed of selectedResponsibleIds) {
+    const responsibleUser = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?')
+      .bind(parsed)
+      .first();
+    if (!responsibleUser) {
+      return err('Responsável da tarefa inválido.');
+    }
+    const member = await c.env.DB.prepare(
+      'SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ?'
+    )
+      .bind(id, parsed)
+      .first();
+    if (!member && parsed !== trip.user_id) {
+      return err('O responsável deve ser um integrante da viagem.');
+    }
+    validResponsibleIds.push(parsed);
+  }
+
+  const primaryResponsibleId = validResponsibleIds[0] || trip.user_id;
+  const responsibleIdsCsv = validResponsibleIds.length ? validResponsibleIds.join(',') : String(trip.user_id);
+
+  try {
+    await c.env.DB.prepare(
+      `UPDATE trip_tasks SET
+         work_type = ?, location = ?, start_time = ?, end_time = ?, summary = ?, task_date = ?, 
+         responsible_id = ?, responsible_ids = ?, pending_items = ?, vehicle = ?, plate = ?, 
+         montadora = ?, modelo = ?, submodelo = ?
+       WHERE id = ?`
+    )
+      .bind(
+        work_type,
+        location,
+        start_time,
+        end_time,
+        summary,
+        task_date,
+        primaryResponsibleId,
+        responsibleIdsCsv,
+        pending_items || null,
+        vehicle || null,
+        plate || null,
+        montadora || null,
+        modelo || null,
+        submodelo || null,
+        taskId
+      )
+      .run();
+  } catch (updateError) {
+    if (String(updateError).includes('no such column')) {
+      await c.env.DB.prepare(
+        `UPDATE trip_tasks SET
+           work_type = ?, location = ?, start_time = ?, end_time = ?, summary = ?, task_date = ?, 
+           responsible_id = ?, pending_items = ?, vehicle = ?, plate = ?
+         WHERE id = ?`
+      )
+        .bind(
+          work_type,
+          location,
+          start_time,
+          end_time,
+          summary,
+          task_date,
+          primaryResponsibleId,
+          pending_items || null,
+          requiresVehicle ? null : vehicle || null,
+          requiresVehicle ? null : plate || null,
+          taskId
+        )
+        .run();
+    } else {
+      throw updateError;
+    }
+  }
+
+  return json({ success: true, trip: await fetchTripFull(c.env.DB, id, userId) });
+});
+

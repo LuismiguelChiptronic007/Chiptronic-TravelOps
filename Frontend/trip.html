@@ -36,8 +36,11 @@
 
       <div class="stack">
         <div class="panel">
-          <div class="panel-header"><h2>Dados gerais</h2></div>
-          <div class="panel-body">
+          <div class="panel-header">
+            <h2>Dados gerais</h2>
+            <button type="button" class="panel-toggle" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+          </div>
+          <div class="panel-body panel-content">
             <div class="detail-grid">
               <div class="kv" id="trip-kv"></div>
               <div>
@@ -54,10 +57,13 @@
 
         <div class="panel">
           <div class="panel-header">
-            <h2>Checklist de encerramento</h2>
-            <span class="text-muted" style="font-size:0.85rem">Registre as tarefas realizadas</span>
+            <div>
+              <h2>Checklist de encerramento</h2>
+              <span class="text-muted" style="font-size:0.85rem">Registre as tarefas realizadas</span>
+            </div>
+            <button type="button" class="panel-toggle" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
           </div>
-          <div class="panel-body">
+          <div class="panel-body panel-content">
             <div id="trip-days" class="trip-days"></div>
             <div id="tasks-board" class="tasks-board"></div>
 
@@ -75,8 +81,9 @@
             <div id="task-form-wrap" class="task-form-wrap mt-2">
               <div class="panel-subheader">
                 <h3 id="task-form-title">Nova tarefa</h3>
+                <button type="button" class="panel-toggle" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
               </div>
-              <form id="task-form" class="checklist-box form-grid">
+              <form id="task-form" class="checklist-box form-grid panel-content">
                 <div class="form-grid two">
                   <div>
                     <label for="work_type">Tipo de trabalho *</label>
@@ -90,10 +97,8 @@
                   </div>
                 </div>
                 <div>
-                  <label for="responsible_id">Responsável pela tarefa</label>
-                  <select id="responsible_id">
-                    <option value="">Selecione um responsável…</option>
-                  </select>
+                  <label>Responsáveis pela tarefa</label>
+                  <div id="responsible_id" class="responsible-list" aria-label="Responsáveis pela tarefa"></div>
                 </div>
                 <div id="vehicle-fields" class="form-grid two hidden-fields">
                   <div>
@@ -103,6 +108,20 @@
                   <div>
                     <label for="plate">Placa</label>
                     <input id="plate" placeholder="Ex: ABC-1234" />
+                  </div>
+                </div>
+                <div id="vehicle-detail-fields" class="form-grid three hidden-fields">
+                  <div>
+                    <label for="montadora">Montadora</label>
+                    <input id="montadora" placeholder="Ex: Chevrolet" />
+                  </div>
+                  <div>
+                    <label for="modelo">Modelo</label>
+                    <input id="modelo" placeholder="Ex: S10" />
+                  </div>
+                  <div>
+                    <label for="submodelo">Submodelo</label>
+                    <input id="submodelo" placeholder="Ex: LTZ 2.8" />
                   </div>
                 </div>
                 <div id="location-field">

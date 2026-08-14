@@ -124,10 +124,18 @@ export const api = {
     fd.append('end_time', payload.end_time || '');
     fd.append('summary', payload.summary || '');
     fd.append('task_date', payload.task_date || '');
+    if (Array.isArray(payload.responsible_ids) && payload.responsible_ids.length) {
+      payload.responsible_ids.forEach((id) => fd.append('responsible_ids', String(id)));
+    } else if (payload.responsible_id) {
+      fd.append('responsible_ids', String(payload.responsible_id));
+    }
     fd.append('responsible_id', payload.responsible_id || '');
     fd.append('pending_items', payload.pending_items || '');
     fd.append('vehicle', payload.vehicle || '');
     fd.append('plate', payload.plate || '');
+    fd.append('montadora', payload.montadora || '');
+    fd.append('modelo', payload.modelo || '');
+    fd.append('submodelo', payload.submodelo || '');
     for (const file of payload.photos || []) {
       fd.append('photos', file);
     }
@@ -143,6 +151,40 @@ export const api = {
   },
   deleteTask: (id, taskId) =>
     request(`/trips/${id}/tasks/${taskId}`, { method: 'DELETE' }),
+
+  updateTask: async (id, taskId, payload) => {
+    const fd = new FormData();
+    fd.append('work_type', payload.work_type || '');
+    fd.append('location', payload.location || '');
+    fd.append('start_time', payload.start_time || '');
+    fd.append('end_time', payload.end_time || '');
+    fd.append('summary', payload.summary || '');
+    fd.append('task_date', payload.task_date || '');
+    if (Array.isArray(payload.responsible_ids) && payload.responsible_ids.length) {
+      payload.responsible_ids.forEach((id) => fd.append('responsible_ids', String(id)));
+    } else if (payload.responsible_id) {
+      fd.append('responsible_ids', String(payload.responsible_id));
+    }
+    fd.append('responsible_id', payload.responsible_id || '');
+    fd.append('pending_items', payload.pending_items || '');
+    fd.append('vehicle', payload.vehicle || '');
+    fd.append('plate', payload.plate || '');
+    fd.append('montadora', payload.montadora || '');
+    fd.append('modelo', payload.modelo || '');
+    fd.append('submodelo', payload.submodelo || '');
+    const token = getToken();
+    const res = await fetch(
+      `${API_BASE}/trips/${id}/tasks/${taskId}`,
+      {
+        method: 'PUT',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      }
+    );
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Falha ao atualizar tarefa');
+    return data;
+  },
 
   profile: () => request('/profile'),
   updateProfile: (body) => request('/profile', { method: 'PUT', json: body }),

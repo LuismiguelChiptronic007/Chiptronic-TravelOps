@@ -46,6 +46,31 @@ function formatMember(m) {
 }
 
 function formatTask(task, photos = []) {
+  const rawResponsibleIds = Array.isArray(task.responsible_ids)
+    ? task.responsible_ids
+    : String(task.responsible_ids || '')
+        .split(',')
+        .map((id) => Number(String(id).trim()))
+        .filter((id) => Number.isInteger(id) && id > 0);
+
+  const hasLegacySingleResponsible = !rawResponsibleIds.length && Number.isInteger(Number(task.responsible_id)) && Number(task.responsible_id) > 0;
+  const responsibleIds = hasLegacySingleResponsible ? [Number(task.responsible_id)] : rawResponsibleIds;
+
+  const responsibles = Array.isArray(task.responsibles) && task.responsibles.length
+    ? task.responsibles
+    : (responsibleIds.length
+        ? responsibleIds
+            .map((id) => ({
+              id,
+              full_name: task.responsible_full_name && id === Number(task.responsible_id) ? task.responsible_full_name : null,
+            }))
+            .filter((member) => member.full_name)
+        : []);
+
+  const responsibleLabel = responsibles.length
+    ? responsibles.map((member) => member.full_name || '—').filter(Boolean).join(', ')
+    : task.responsible_full_name || '—';
+
   return {
     id: task.id,
     trip_id: task.trip_id,
@@ -55,17 +80,22 @@ function formatTask(task, photos = []) {
     end_time: task.end_time,
     summary: task.summary,
     task_date: task.task_date,
-    responsible_id: task.responsible_id || null,
+    responsible_id: responsibleIds[0] || task.responsible_id || null,
+    responsible_ids: responsibleIds,
     vehicle: task.vehicle || null,
     plate: task.plate || null,
-    responsible: task.responsible_id
+    montadora: task.montadora || null,
+    modelo: task.modelo || null,
+    submodelo: task.submodelo || null,
+    responsible: responsibleIds.length || task.responsible_id
       ? {
-          id: task.responsible_id,
-          full_name: task.responsible_full_name || '—',
+          id: responsibleIds[0] || task.responsible_id || null,
+          full_name: responsibleLabel,
           employee_id: task.responsible_employee_id || null,
           position_title: task.responsible_position_title || null,
         }
       : null,
+    responsibles: responsibles,
     pending_items: task.pending_items || '',
     created_at: task.created_at,
     updated_at: task.updated_at,
@@ -205,7 +235,7 @@ export async function fetchTripFull(db, tripId, userId) {
   try {
     const { results: taskRows } = await db
       .prepare(
-        `SELECT tt.*, u.id AS responsible_id, u.full_name AS responsible_full_name,
+        `SELECT tt.*, u.id AS responsible_id_ref, u.full_name AS responsible_full_name,
                 u.employee_id AS responsible_employee_id, u.position_title AS responsible_position_title
          FROM trip_tasks tt
          LEFT JOIN users u ON u.id = tt.responsible_id
@@ -216,13 +246,47 @@ export async function fetchTripFull(db, tripId, userId) {
       .all();
 
     for (const task of taskRows || []) {
+      const responsibleIds = Array.isArray(task.responsible_ids)
+        ? task.responsible_ids
+        : String(task.responsible_ids || '')
+            .split(',')
+            .map((id) => Number(String(id).trim()))
+            .filter((id) => Number.isInteger(id) && id > 0);
+
+      let responsibleList = [];
+      const idsToLoad = responsibleIds.length ? responsibleIds : (task.responsible_id_ref ? [task.responsible_id_ref] : (task.responsible_id ? [task.responsible_id] : []));
+      if (idsToLoad.length) {
+        const placeholders = idsToLoad.map(() => '?').join(',');
+        const { results: responsibleRows } = await db
+          .prepare(`SELECT id, full_name, employee_id, position_title FROM users WHERE id IN (${placeholders}) ORDER BY full_name ASC`)
+          .bind(...idsToLoad)
+          .all();
+        responsibleList = (responsibleRows || []).map((user) => ({
+          id: user.id,
+          full_name: user.full_name,
+          employee_id: user.employee_id || null,
+          position_title: user.position_title || null,
+        }));
+      }
+
+      const primaryResponsible = responsibleList[0] || null;
+      const taskWithResponsibles = {
+        ...task,
+        responsible_id: primaryResponsible?.id || task.responsible_id || task.responsible_id_ref || null,
+        responsible_full_name: primaryResponsible?.full_name || task.responsible_full_name || null,
+        responsible_employee_id: primaryResponsible?.employee_id || task.responsible_employee_id || null,
+        responsible_position_title: primaryResponsible?.position_title || task.responsible_position_title || null,
+        responsibles: responsibleList,
+      };
+
       const { results: photos } = await db
         .prepare('SELECT * FROM trip_task_photos WHERE task_id = ? ORDER BY id ASC')
         .bind(task.id)
         .all();
-      tasks.push(formatTask(task, photos || []));
+      tasks.push(formatTask(taskWithResponsibles, photos || []));
     }
-  } catch {
+  } catch (error) {
+    console.error('Erro ao carregar tarefas da viagem:', error);
     tasks = [];
   }
 

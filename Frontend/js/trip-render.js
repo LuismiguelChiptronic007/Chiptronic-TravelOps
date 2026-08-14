@@ -1,4 +1,4 @@
-import { formatDateBR, formatSectorName, statusBadge } from './api.js';
+import { formatDateBR, formatSectorName, statusBadge, api, showAlert } from './api.js';
 import { escapeHtml } from './layout.js';
 
 let lastTaskDate = '';
@@ -50,6 +50,10 @@ function requiresVehicleFields(type) {
   ].includes(normalized);
 }
 
+function requiresVehicleDetailFields(type) {
+  return requiresVehicleFields(type);
+}
+
 function isLunchType(type) {
   return normalizeWorkType(type) === 'refeicao';
 }
@@ -59,16 +63,32 @@ function updateTaskTypeFields() {
   const vehicleFields = document.getElementById('vehicle-fields');
   const vehicleInput = document.getElementById('vehicle');
   const plateInput = document.getElementById('plate');
+  const vehicleDetailFields = document.getElementById('vehicle-detail-fields');
+  const montadoraInput = document.getElementById('montadora');
+  const modeloInput = document.getElementById('modelo');
+  const submodeloInput = document.getElementById('submodelo');
   const locationField = document.getElementById('location-field');
   const locationInput = document.getElementById('location');
   const summaryField = document.getElementById('summary-field');
   const summaryInput = document.getElementById('summary');
 
   hideElement(vehicleFields);
+  hideElement(vehicleDetailFields);
   if (vehicleInput) vehicleInput.required = false;
   if (plateInput) plateInput.required = false;
+  if (montadoraInput) montadoraInput.required = false;
+  if (modeloInput) modeloInput.required = false;
+  if (submodeloInput) submodeloInput.required = false;
 
   if (requiresVehicleFields(type)) {
+    showElement(vehicleFields);
+    showElement(vehicleDetailFields);
+    if (vehicleInput) vehicleInput.required = true;
+    if (plateInput) plateInput.required = true;
+    if (montadoraInput) montadoraInput.required = true;
+    if (modeloInput) modeloInput.required = true;
+    if (submodeloInput) submodeloInput.required = true;
+  } else if (type === 'Análise de veículos') {
     showElement(vehicleFields);
     if (vehicleInput) vehicleInput.required = true;
     if (plateInput) plateInput.required = true;
@@ -115,35 +135,48 @@ function renderMembers(t) {
 }
 
 function fillTaskResponsibleOptions(t) {
-  const select = document.getElementById('responsible_id');
-  if (!select) return;
+  const list = document.getElementById('responsible_id');
+  if (!list) return;
 
-  const current = select.value;
+  const currentValues = new Set(
+    Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value)
+  );
+
   const members = Array.isArray(t.members) ? t.members : [];
-  // debug: expose members for quick inspection in console
   try { window.__tripMembers = members; } catch (e) {}
-  select.innerHTML = '<option value="">Selecione um responsável…</option>';
+  list.innerHTML = '';
 
-  if (members.length) {
-    for (const member of members) {
-      const opt = document.createElement('option');
-      opt.value = String(member.user_id || member.id || '');
-      // mark the trip creator so it's visible in the dropdown
-      const isCreator = String(member.user_id || member.id || '') === String(t.user_id || '');
-      opt.textContent = `${member.full_name}${member.employee_id ? ` — ${member.employee_id}` : ''}${isCreator ? ' (Criador)' : ''}`;
-      select.appendChild(opt);
-    }
-  } else {
-    const opt = document.createElement('option');
-    opt.value = '';
-    opt.textContent = 'Nenhum integrante cadastrado na viagem';
-    select.appendChild(opt);
+  if (!members.length) {
+    const empty = document.createElement('div');
+    empty.className = 'responsible-empty';
+    empty.textContent = 'Nenhum integrante cadastrado na viagem';
+    list.appendChild(empty);
+    return;
   }
 
-  if (current && [...select.options].some((o) => o.value === current)) {
-    select.value = current;
+  for (const member of members) {
+    const memberId = String(member.user_id || member.id || '');
+    if (!memberId) continue;
+
+    const option = document.createElement('label');
+    option.className = 'responsible-option';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = 'responsible_id';
+    checkbox.value = memberId;
+    checkbox.checked = currentValues.has(memberId);
+
+    const text = document.createElement('span');
+    const isCreator = memberId === String(t.user_id || '');
+    text.textContent = `${member.full_name}${member.employee_id ? ` — ${member.employee_id}` : ''}${isCreator ? ' (Criador)' : ''}`;
+
+    option.appendChild(checkbox);
+    option.appendChild(text);
+    list.appendChild(option);
   }
 }
+
 
 function renderTasks(t) {
   const board = document.getElementById('tasks-board');
@@ -164,6 +197,31 @@ function renderTasks(t) {
     byDate.get(d).push(task);
   }
 
+  const getResponsibleLabel = (task) => {
+    if (Array.isArray(task.responsibles) && task.responsibles.length) {
+      return task.responsibles.map((r) => r.full_name || '—').join(', ');
+    }
+    if (task.responsible?.full_name) return task.responsible.full_name;
+    return '—';
+  };
+
+  const hasVehicleDetails = (task) => !!(task.montadora || task.modelo || task.submodelo || task.vehicle || task.plate);
+
+  const vehicleDetailHtml = (task) => {
+    const rows = [];
+    if (task.montadora || task.modelo || task.submodelo) {
+      rows.push(
+        `<span>Montadora/Modelo/Versão: <strong>${escapeHtml(task.montadora || '—')} · ${escapeHtml(task.modelo || '—')} · ${escapeHtml(task.submodelo || '—')}</strong></span>`
+      );
+    }
+    if (task.vehicle || task.plate) {
+      rows.push(
+        `<span>Veículo/Placa: <strong>${escapeHtml(task.vehicle || '—')}${task.plate ? ` · ${escapeHtml(task.plate)}` : ''}</strong></span>`
+      );
+    }
+    return rows.length ? `<div class="task-card-body"><div class="task-detail-row">${rows.join('')}</div></div>` : '';
+  };
+
   const dates = [...byDate.keys()].sort();
   board.innerHTML = dates
     .map((date) => {
@@ -178,41 +236,13 @@ function renderTasks(t) {
           ${dayTasks
             .map(
               (task) => `
-            <div class="task-card" data-task-id="${task.id}">
-              <div class="task-card-header">
-                <strong>${escapeHtml(task.work_type)}</strong>
-                <span class="text-muted">${escapeHtml(task.start_time)} – ${escapeHtml(task.end_time)}</span>
-              </div>
-              <div class="task-card-body">
-                <div class="kv-item"><label>Local</label><div>${escapeHtml(task.location)}</div></div>
-                <div class="kv-item"><label>Responsável</label><div>${escapeHtml(task.responsible?.full_name || '—')}</div></div>
-                <div class="kv-item"><label>Resumo</label><div>${escapeHtml(task.summary)}</div></div>
-                ${
-                  task.vehicle || task.plate
-                    ? `<div class="kv-item"><label>Veículo / Placa</label><div>${escapeHtml(task.vehicle || '—')} ${task.plate ? `· ${escapeHtml(task.plate)}` : ''}</div></div>`
-                    : ''
-                }
-                ${
-                  task.pending_items
-                    ? `<div class="kv-item"><label>Pendências</label><div>${escapeHtml(task.pending_items)}</div></div>`
-                    : ''
-                }
-                ${
-                  task.photos?.length
-                    ? `<div class="task-photos">${task.photos
-                        .map(
-                          (p) =>
-                            `<a href="${p.url}" target="_blank" class="task-photo-thumb"><img src="${p.url}" alt="${escapeHtml(p.original_name)}" /></a>`
-                        )
-                        .join('')}</div>`
-                    : ''
-                }
-              </div>
-              ${
-                t.status !== 'completed'
-                  ? `<div class="task-card-actions"><button type="button" class="btn btn-danger btn-sm" data-del-task="${task.id}">Excluir</button></div>`
-                  : ''
-              }
+            <div class="task-card" data-task-id="${task.id}" role="button" tabindex="0" style="cursor: pointer;">
+                <div class="task-card-header">
+                  <span class="task-responsible" title="Responsáveis: ${escapeHtml(getResponsibleLabel(task))}">Responsáveis: ${escapeHtml(getResponsibleLabel(task))}</span>
+                  <span class="task-title" title="${escapeHtml(task.work_type)}">${escapeHtml(task.work_type)}</span>
+                  <span class="task-time">${escapeHtml(task.start_time)} – ${escapeHtml(task.end_time)}</span>
+                </div>
+                ${hasVehicleDetails(task) ? vehicleDetailHtml(task) : ''}
             </div>`
             )
             .join('')}
@@ -220,9 +250,342 @@ function renderTasks(t) {
       </div>`;
     })
     .join('');
+
+  document.querySelectorAll('.task-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      const taskId = card.dataset.taskId;
+      const task = tasks.find((t) => t.id === Number(taskId));
+      if (task) openTaskModal(task);
+    });
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        card.click();
+      }
+    });
+  });
 }
 
+function openTaskModal(task) {
+  const getResponsibleLabel = (task) => {
+    if (Array.isArray(task.responsibles) && task.responsibles.length) {
+      return task.responsibles.map((r) => r.full_name || '—').join(', ');
+    }
+    if (task.responsible?.full_name) return task.responsible.full_name;
+    return '—';
+  };
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'task-modal';
+
+  const vehicleSection = [
+    task.montadora || task.modelo || task.submodelo
+      ? `<div class="kv-item"><label>Montadora / Modelo / Submodelo</label><div>${escapeHtml(task.montadora || '—')} · ${escapeHtml(task.modelo || '—')} · ${escapeHtml(task.submodelo || '—')}</div></div>`
+      : '',
+    task.vehicle || task.plate
+      ? `<div class="kv-item"><label>Veículo / Placa</label><div>${escapeHtml(task.vehicle || '—')}${task.plate ? ` · ${escapeHtml(task.plate)}` : ''}</div></div>`
+      : '',
+  ].filter(Boolean).join('');
+
+  const trip = window.__currentTrip || {};
+  const members = Array.isArray(trip.members) ? trip.members : [];
+
+  modal.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>${escapeHtml(task.work_type)}</h2>
+        <button type="button" class="modal-close" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-view">
+        <div class="kv">
+          <div class="kv-item"><label>Horário</label><div>${escapeHtml(task.start_time)} – ${escapeHtml(task.end_time)}</div></div>
+          <div class="kv-item"><label>Data</label><div>${formatDateBR(task.task_date)}</div></div>
+          <div class="kv-item"><label>Local</label><div>${escapeHtml(task.location)}</div></div>
+          <div class="kv-item"><label>Responsáveis</label><div>${escapeHtml(getResponsibleLabel(task))}</div></div>
+          <div class="kv-item"><label>Resumo</label><div>${escapeHtml(task.summary)}</div></div>
+          ${vehicleSection}
+          ${
+            task.pending_items
+              ? `<div class="kv-item"><label>Pendências</label><div>${escapeHtml(task.pending_items)}</div></div>`
+              : ''
+          }
+        </div>
+        ${
+          task.photos?.length
+            ? `<div class="task-photos-modal">${task.photos
+                .map(
+                  (p) =>
+                    `<a href="${p.url}" target="_blank" class="task-photo-thumb"><img src="${p.url}" alt="${escapeHtml(p.original_name)}" /></a>`
+                )
+                .join('')}</div>`
+            : ''
+        }
+      </div>
+      <div id="modal-edit" class="modal-body hidden-fields">
+        <form class="form-grid" id="task-edit-form">
+          <div class="form-grid two">
+            <div>
+              <label for="edit-work-type">Tipo de trabalho *</label>
+              <select id="edit-work-type" required>
+                <option value="">Selecione…</option>
+              </select>
+            </div>
+            <div>
+              <label for="edit-task-date">Data da tarefa *</label>
+              <input id="edit-task-date" type="date" required />
+            </div>
+          </div>
+          <div>
+            <label>Responsáveis pela tarefa</label>
+            <div id="edit-responsible-list" class="responsible-list"></div>
+          </div>
+          <div id="edit-vehicle-fields" class="form-grid two hidden-fields">
+            <div>
+              <label for="edit-vehicle">Veículo</label>
+              <input id="edit-vehicle" placeholder="Ex: Caminhão / Van / Carreta" />
+            </div>
+            <div>
+              <label for="edit-plate">Placa</label>
+              <input id="edit-plate" placeholder="Ex: ABC-1234" />
+            </div>
+          </div>
+          <div id="edit-vehicle-detail-fields" class="form-grid three hidden-fields">
+            <div>
+              <label for="edit-montadora">Montadora</label>
+              <input id="edit-montadora" placeholder="Ex: Chevrolet" />
+            </div>
+            <div>
+              <label for="edit-modelo">Modelo</label>
+              <input id="edit-modelo" placeholder="Ex: S10" />
+            </div>
+            <div>
+              <label for="edit-submodelo">Submodelo</label>
+              <input id="edit-submodelo" placeholder="Ex: LTZ 2.8" />
+            </div>
+          </div>
+          <div>
+            <label for="edit-location">Local do serviço *</label>
+            <input id="edit-location" required placeholder="Ex: Cliente XYZ — unidade centro" />
+          </div>
+          <div class="form-grid two">
+            <div>
+              <label for="edit-start-time">Hora de início *</label>
+              <input id="edit-start-time" type="time" required />
+            </div>
+            <div>
+              <label for="edit-end-time">Hora de término *</label>
+              <input id="edit-end-time" type="time" required />
+            </div>
+          </div>
+          <div>
+            <label for="edit-summary">Resumo do que foi feito *</label>
+            <textarea id="edit-summary" required placeholder="Descreva a atividade realizada…"></textarea>
+          </div>
+          <div>
+            <label for="edit-pending-items">Pendências neste trabalho</label>
+            <textarea id="edit-pending-items" placeholder="O que ficou pendente neste mesmo trabalho…"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <div id="view-actions">
+          <button type="button" class="btn btn-primary" id="btn-edit-task">Editar</button>
+          <button type="button" class="btn btn-danger btn-sm" data-del-task="${task.id}">Excluir tarefa</button>
+        </div>
+        <div id="edit-actions" class="hidden-fields">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-edit">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-save-edit">Salvar</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const closeBtn = modal.querySelector('.modal-close');
+  const closeHandler = () => modal.remove();
+
+  closeBtn.addEventListener('click', closeHandler);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeHandler();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('task-modal')) closeHandler();
+  });
+
+  // Setup edit mode
+  const viewSection = modal.querySelector('#modal-view');
+  const editSection = modal.querySelector('#modal-edit');
+  const viewActions = modal.querySelector('#view-actions');
+  const editActions = modal.querySelector('#edit-actions');
+  const editBtn = modal.querySelector('#btn-edit-task');
+  const cancelBtn = modal.querySelector('#btn-cancel-edit');
+  const saveBtn = modal.querySelector('#btn-save-edit');
+
+  const fillEditForm = () => {
+    const editWorkTypeSelect = document.getElementById('edit-work-type');
+    const currentWorkTypes = Array.from(editWorkTypeSelect.options).map((o) => o.value).filter(Boolean);
+    
+    if (!currentWorkTypes.length) {
+      const currentFormWorkTypeSelect = document.getElementById('work_type');
+      const formWorkTypes = Array.from(currentFormWorkTypeSelect.options).map((o) => o.value).filter(Boolean);
+      editWorkTypeSelect.innerHTML = '<option value="">Selecione…</option>';
+      for (const type of formWorkTypes) {
+        const opt = document.createElement('option');
+        opt.value = type;
+        opt.textContent = type;
+        editWorkTypeSelect.appendChild(opt);
+      }
+    }
+
+    document.getElementById('edit-work-type').value = task.work_type;
+    document.getElementById('edit-task-date').value = task.task_date;
+    document.getElementById('edit-location').value = task.location;
+    document.getElementById('edit-start-time').value = task.start_time;
+    document.getElementById('edit-end-time').value = task.end_time;
+    document.getElementById('edit-summary').value = task.summary;
+    document.getElementById('edit-pending-items').value = task.pending_items || '';
+    document.getElementById('edit-vehicle').value = task.vehicle || '';
+    document.getElementById('edit-plate').value = task.plate || '';
+    document.getElementById('edit-montadora').value = task.montadora || '';
+    document.getElementById('edit-modelo').value = task.modelo || '';
+    document.getElementById('edit-submodelo').value = task.submodelo || '';
+
+    fillEditResponsibleOptions();
+    updateEditTaskTypeFields();
+  };
+
+  const fillEditResponsibleOptions = () => {
+    const list = document.getElementById('edit-responsible-list');
+    const currentValues = new Set(
+      Array.from(list.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value)
+    );
+
+    list.innerHTML = '';
+
+    if (!members.length) {
+      const empty = document.createElement('div');
+      empty.className = 'responsible-empty';
+      empty.textContent = 'Nenhum integrante cadastrado na viagem';
+      list.appendChild(empty);
+      return;
+    }
+
+    for (const member of members) {
+      const memberId = String(member.user_id || member.id || '');
+      if (!memberId) continue;
+
+      const option = document.createElement('label');
+      option.className = 'responsible-option';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.name = 'edit_responsible_id';
+      checkbox.value = memberId;
+
+      if (Array.isArray(task.responsibles) && task.responsibles.length) {
+        checkbox.checked = task.responsibles.some((r) => String(r.id) === memberId);
+      } else {
+        checkbox.checked = String(task.responsible_id) === memberId;
+      }
+
+      const text = document.createElement('span');
+      const isCreator = memberId === String(trip.user_id || '');
+      text.textContent = `${member.full_name}${member.employee_id ? ` — ${member.employee_id}` : ''}${isCreator ? ' (Criador)' : ''}`;
+
+      option.appendChild(checkbox);
+      option.appendChild(text);
+      list.appendChild(option);
+    }
+  };
+
+  const updateEditTaskTypeFields = () => {
+    const type = document.getElementById('edit-work-type').value;
+    const vehicleFields = document.getElementById('edit-vehicle-fields');
+    const vehicleDetailFields = document.getElementById('edit-vehicle-detail-fields');
+
+    vehicleFields.classList.add('hidden-fields');
+    vehicleDetailFields.classList.add('hidden-fields');
+
+    const normalizedType = String(type || '')
+      .trim()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    const requiresVehicleDetails = [
+      'dieseldiag ontime',
+      'controle de logs',
+      'logs de telemetria',
+    ].includes(normalizedType);
+
+    if (requiresVehicleDetails) {
+      vehicleFields.classList.remove('hidden-fields');
+      vehicleDetailFields.classList.remove('hidden-fields');
+    } else if (type === 'Análise de veículos') {
+      vehicleFields.classList.remove('hidden-fields');
+    }
+  };
+
+  editBtn.addEventListener('click', () => {
+    fillEditForm();
+    viewSection.classList.add('hidden-fields');
+    editSection.classList.remove('hidden-fields');
+    viewActions.classList.add('hidden-fields');
+    editActions.classList.remove('hidden-fields');
+  });
+
+  cancelBtn.addEventListener('click', () => {
+    viewSection.classList.remove('hidden-fields');
+    editSection.classList.add('hidden-fields');
+    viewActions.classList.remove('hidden-fields');
+    editActions.classList.add('hidden-fields');
+  });
+
+  document.getElementById('edit-work-type').addEventListener('change', updateEditTaskTypeFields);
+
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    try {
+      const responsibleList = document.getElementById('edit-responsible-list');
+      const selectedResponsibles = Array.from(responsibleList.querySelectorAll('input[type="checkbox"]:checked'))
+        .map((input) => input.value)
+        .filter(Boolean);
+
+      const payload = {
+        work_type: document.getElementById('edit-work-type').value,
+        location: document.getElementById('edit-location').value.trim(),
+        start_time: document.getElementById('edit-start-time').value,
+        end_time: document.getElementById('edit-end-time').value,
+        responsible_ids: selectedResponsibles,
+        responsible_id: selectedResponsibles[0] || null,
+        summary: document.getElementById('edit-summary').value.trim(),
+        task_date: document.getElementById('edit-task-date').value,
+        pending_items: document.getElementById('edit-pending-items').value.trim() || null,
+        vehicle: document.getElementById('edit-vehicle').value.trim() || null,
+        plate: document.getElementById('edit-plate').value.trim() || null,
+        montadora: document.getElementById('edit-montadora').value.trim() || null,
+        modelo: document.getElementById('edit-modelo').value.trim() || null,
+        submodelo: document.getElementById('edit-submodelo').value.trim() || null,
+      };
+
+      const res = await api.updateTask(trip.id, task.id, payload);
+      window.__currentTrip = res.trip;
+      renderTrip(res.trip);
+      closeHandler();
+      showAlert(document.getElementById('alert'), 'Tarefa atualizada com sucesso.', 'success');
+    } catch (err) {
+      alert(err.message || 'Erro ao atualizar tarefa');
+      saveBtn.disabled = false;
+    }
+  });
+}
+
+
 export function prepareTaskForm(t, { keepDate = false, clearDate = false } = {}) {
+
   const form = document.getElementById('task-form');
   if (!form) return;
 
@@ -539,6 +902,50 @@ function renderCompletionProgress(t) {
   }
 }
 
+export function setupPanelToggles() {
+  document.querySelectorAll('.panel-toggle').forEach((button) => {
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isForm = button.closest('#task-form-wrap');
+      const content = isForm
+        ? button.closest('.panel-subheader').nextElementSibling
+        : button.closest('.panel-header').nextElementSibling;
+      if (!content) return;
+
+      const collapsed = content.classList.toggle('collapsed');
+      button.classList.toggle('collapsed');
+
+      try {
+        const key = isForm ? 'panelState_taskForm' : `panelState_${button.closest('.panel')?.querySelector('h2, h3')?.textContent || 'panel'}`;
+        localStorage.setItem(key, collapsed ? 'collapsed' : 'expanded');
+      } catch (e) {}
+    });
+  });
+
+  try {
+    document.querySelectorAll('.panel').forEach((panel) => {
+      const h2 = panel.querySelector('h2');
+      if (!h2) return;
+      const key = `panelState_${h2.textContent}`;
+      const state = localStorage.getItem(key);
+      const toggle = panel.querySelector('.panel-toggle');
+      const content = panel.querySelector('.panel-content');
+      if (state === 'collapsed' && toggle && content) {
+        toggle.classList.add('collapsed');
+        content.classList.add('collapsed');
+      }
+    });
+
+    const taskFormToggle = document.querySelector('#task-form-wrap .panel-toggle');
+    const taskFormContent = document.querySelector('#task-form');
+    const taskFormState = localStorage.getItem('panelState_taskForm');
+    if (taskFormState === 'collapsed' && taskFormToggle && taskFormContent) {
+      taskFormToggle.classList.add('collapsed');
+      taskFormContent.classList.add('collapsed');
+    }
+  } catch (e) {}
+}
+
 export function renderTrip(t) {
   document.getElementById('trip-title').textContent = `${t.origin} → ${t.destination}`;
   document.getElementById('trip-subtitle').textContent =
@@ -581,16 +988,29 @@ export function renderTrip(t) {
 }
 
 export function taskFormPayload() {
+  const list = document.getElementById('responsible_id');
+  const selectedValues = Array.from(
+    (list || document.querySelectorAll('input[name="responsible_id"]'))
+      ? (list ? list.querySelectorAll('input[type="checkbox"]:checked') : document.querySelectorAll('input[name="responsible_id"]:checked'))
+      : []
+  )
+    .map((input) => input.value)
+    .filter(Boolean);
+
   return {
     work_type: document.getElementById('work_type').value,
     location: document.getElementById('location').value.trim(),
     start_time: document.getElementById('start_time').value,
     end_time: document.getElementById('end_time').value,
-    responsible_id: document.getElementById('responsible_id')?.value || null,
+    responsible_ids: selectedValues,
+    responsible_id: selectedValues[0] || null,
     summary: document.getElementById('summary').value.trim(),
     task_date: document.getElementById('task_date').value,
     pending_items: document.getElementById('pending_items')?.value.trim() || null,
     vehicle: document.getElementById('vehicle')?.value.trim() || null,
     plate: document.getElementById('plate')?.value.trim() || null,
+    montadora: document.getElementById('montadora')?.value.trim() || null,
+    modelo: document.getElementById('modelo')?.value.trim() || null,
+    submodelo: document.getElementById('submodelo')?.value.trim() || null,
   };
 }
