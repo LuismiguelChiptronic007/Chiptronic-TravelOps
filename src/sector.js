@@ -34,21 +34,45 @@ async function fetchTeamData(db, user) {
   const tripsByUser = {};
   const checklistsByTrip = {};
   const tasksByUser = {};
+  const tripUsersByTrip = {};
 
   if (memberIds.length) {
     const placeholders = memberIds.map(() => '?').join(',');
     const { results: tripRows } = await db
       .prepare(
-        `SELECT * FROM trips WHERE user_id IN (${placeholders})
-         ORDER BY start_date DESC, id DESC`
+        `SELECT DISTINCT t.*
+         FROM trips t
+         LEFT JOIN trip_members tm ON tm.trip_id = t.id
+         WHERE t.user_id IN (${placeholders}) OR tm.user_id IN (${placeholders})
+         ORDER BY t.start_date DESC, t.id DESC`
       )
-      .bind(...memberIds)
+      .bind(...memberIds, ...memberIds)
       .all();
 
     const tripIds = (tripRows || []).map((t) => t.id);
     for (const trip of tripRows || []) {
-      if (!tripsByUser[trip.user_id]) tripsByUser[trip.user_id] = [];
-      tripsByUser[trip.user_id].push(formatTrip(trip));
+      const relatedUsers = new Set([Number(trip.user_id)]);
+
+      try {
+        const { results: tripMembers } = await db
+          .prepare('SELECT user_id FROM trip_members WHERE trip_id = ?')
+          .bind(trip.id)
+          .all();
+
+        for (const memberRow of tripMembers || []) {
+          const userId = Number(memberRow.user_id);
+          if (memberIds.includes(userId)) relatedUsers.add(userId);
+        }
+      } catch {
+        // ignore member-loader failures for individual trips
+      }
+
+      tripUsersByTrip[trip.id] = [...relatedUsers].filter((id) => memberIds.includes(id));
+
+      for (const userId of tripUsersByTrip[trip.id]) {
+        if (!tripsByUser[userId]) tripsByUser[userId] = [];
+        tripsByUser[userId].push(formatTrip(trip));
+      }
     }
 
     if (tripIds.length) {
@@ -67,28 +91,32 @@ async function fetchTeamData(db, user) {
                   u.full_name AS responsible_full_name
            FROM trip_tasks tt
            INNER JOIN trips t ON t.id = tt.trip_id
+           LEFT JOIN trip_members tm ON tm.trip_id = t.id
            LEFT JOIN users u ON u.id = tt.responsible_id
-           WHERE t.user_id IN (${placeholders})
+           WHERE t.user_id IN (${placeholders}) OR tm.user_id IN (${placeholders})
            ORDER BY tt.task_date DESC, tt.start_time DESC`
         )
-        .bind(...memberIds)
+        .bind(...memberIds, ...memberIds)
         .all();
 
       for (const task of taskRows || []) {
-        if (!tasksByUser[task.user_id]) tasksByUser[task.user_id] = [];
-        tasksByUser[task.user_id].push({
-          id: task.id,
-          trip_id: task.trip_id,
-          work_type: task.work_type,
-          location: task.location,
-          task_date: task.task_date,
-          start_time: task.start_time,
-          end_time: task.end_time,
-          summary: task.summary,
-          destination: task.destination,
-          trip_status: task.trip_status,
-          responsible_full_name: task.responsible_full_name || null,
-        });
+        const relatedUsers = tripUsersByTrip[task.trip_id] || [Number(task.user_id)];
+        for (const userId of relatedUsers) {
+          if (!tasksByUser[userId]) tasksByUser[userId] = [];
+          tasksByUser[userId].push({
+            id: task.id,
+            trip_id: task.trip_id,
+            work_type: task.work_type,
+            location: task.location,
+            task_date: task.task_date,
+            start_time: task.start_time,
+            end_time: task.end_time,
+            summary: task.summary,
+            destination: task.destination,
+            trip_status: task.trip_status,
+            responsible_full_name: task.responsible_full_name || null,
+          });
+        }
       }
     }
   }
