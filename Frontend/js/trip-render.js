@@ -34,7 +34,11 @@ function showElement(el) {
 }
 
 function normalizeWorkType(type) {
-  return String(type || '').trim().toLowerCase();
+  return String(type || '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 }
 
 function requiresVehicleFields(type) {
@@ -47,7 +51,7 @@ function requiresVehicleFields(type) {
 }
 
 function isLunchType(type) {
-  return normalizeWorkType(type) === 'almoço';
+  return normalizeWorkType(type) === 'refeicao';
 }
 
 function updateTaskTypeFields() {
@@ -75,13 +79,13 @@ function updateTaskTypeFields() {
   if (locationField) lunch ? hideElement(locationField) : showElement(locationField);
   if (locationInput) {
     locationInput.required = !lunch;
-    if (lunch && !locationInput.value) locationInput.value = 'Almoço';
+    if (lunch && !locationInput.value) locationInput.value = 'Refeição';
   }
 
   if (summaryField) lunch ? hideElement(summaryField) : showElement(summaryField);
   if (summaryInput) {
     summaryInput.required = !lunch;
-    if (lunch && !summaryInput.value) summaryInput.value = 'Horário de almoço';
+    if (lunch && !summaryInput.value) summaryInput.value = 'Horário de refeição';
   }
 }
 
@@ -360,7 +364,7 @@ function getLunchWindowConfig() {
 function computeTimeline(tasksForDate = []) {
   const dayStart = 0;
   const dayEnd = 24 * 60;
-  
+
   const blocks = (tasksForDate || [])
     .map((task) => ({
       start: minutesFromTime(task.start_time),
@@ -371,23 +375,12 @@ function computeTimeline(tasksForDate = []) {
     .filter((block) => block.start != null && block.end != null && block.end > block.start)
     .sort((a, b) => a.start - b.start);
 
-  // Só adicionar almoço se houver tarefas criadas OU config explícita
-  const hasTasks = tasksForDate && tasksForDate.length > 0;
   const lunchConfig = getLunchWindowConfig();
-  const shouldAddLunch = hasTasks || lunchConfig !== null;
-  
-  if (shouldAddLunch && lunchConfig) {
+  if (lunchConfig) {
     const lunchStart = minutesFromTime(lunchConfig.start);
     const lunchEnd = minutesFromTime(lunchConfig.end);
     const lunch = { start: lunchStart, end: lunchEnd, label: 'Almoço', kind: 'lunch' };
-    
-    const lunchOverlap = blocks.some((block) => block.start < lunch.end && block.end > lunch.start);
-    if (!lunchOverlap && lunch.start >= dayStart && lunch.end <= dayEnd && lunch.end > lunch.start) {
-      blocks.push({ ...lunch, kind: 'lunch' });
-    }
-  } else if (shouldAddLunch && !lunchConfig && hasTasks) {
-    // Se houver tarefas mas não houver config explícita, usar padrão 11:00-14:00
-    const lunch = { start: 11 * 60, end: 14 * 60, label: 'Almoço', kind: 'lunch' };
+
     const lunchOverlap = blocks.some((block) => block.start < lunch.end && block.end > lunch.start);
     if (!lunchOverlap && lunch.start >= dayStart && lunch.end <= dayEnd && lunch.end > lunch.start) {
       blocks.push({ ...lunch, kind: 'lunch' });
@@ -421,14 +414,16 @@ function findConflict(startMinutes, endMinutes, tasksForDate = []) {
     return { label: 'fora do intervalo válido (00:00–23:59)' };
   }
 
-  const timeline = computeTimeline(tasksForDate);
-  const freeWindow = timeline.find((slot) => slot.kind === 'free' && slot.start <= startMinutes && slot.end >= endMinutes);
-  if (freeWindow) return null;
+  const workBlocks = (tasksForDate || [])
+    .map((task) => ({
+      start: minutesFromTime(task.start_time),
+      end: minutesFromTime(task.end_time),
+      label: task.work_type || 'Trabalho',
+    }))
+    .filter((block) => block.start != null && block.end != null && block.end > block.start);
 
-  const clash = timeline.find((slot) => slot.start < endMinutes && slot.end > startMinutes && slot.kind !== 'free');
-  if (clash) return clash;
-
-  return { label: 'horário indisponível' };
+  const clash = workBlocks.find((block) => block.start < endMinutes && block.end > startMinutes);
+  return clash || null;
 }
 
 function getAvailabilitySummary(tasksForDate) {
@@ -495,6 +490,15 @@ export function validateTaskTimeAvailability(t, selectedDate, startTime, endTime
   }
 
   return { ok: true, message: '' };
+}
+
+function hasTaskEveryTripDay(trip) {
+  if (!trip || !trip.start_date || !trip.end_date || !Array.isArray(trip.tasks)) return false;
+  const requiredDays = getTripDays(trip.start_date, trip.end_date);
+  const taskDates = new Set(
+    trip.tasks.map((task) => String(task.task_date || '').trim()).filter(Boolean)
+  );
+  return requiredDays.every((date) => taskDates.has(date));
 }
 
 function renderCompletionProgress(t) {
@@ -566,7 +570,9 @@ export function renderTrip(t) {
 
   const completeBtn = document.getElementById('btn-complete');
   if (completeBtn) {
-    completeBtn.classList.toggle('hidden', t.status === 'completed');
+    const canFinishEarly = t.status === 'in_progress' && hasTaskEveryTripDay(t);
+    completeBtn.classList.toggle('hidden', !canFinishEarly);
+    completeBtn.textContent = 'Finalizar viagem';
   }
 
   prepareTaskForm(t, { clearDate: false });

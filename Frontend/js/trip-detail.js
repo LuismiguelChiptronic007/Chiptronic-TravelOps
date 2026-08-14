@@ -50,6 +50,8 @@ async function init() {
         'Dieseldiag Ontime',
         'Controle de Logs',
         'LOGS de Telemetria',
+        'Análise de veículos',
+        'Almoço',
       ]);
     }
 
@@ -105,9 +107,9 @@ document.getElementById('btn-complete')?.addEventListener('click', async () => {
   const trip = window.__currentTrip;
   const valid = hasTaskEveryTripDay(trip);
   const confirmed = await confirmDialog({
-    title: 'Concluir viagem',
-    message: valid ? '' : 'Só é possível concluir quando cada dia do período tiver pelo menos uma tarefa registrada.',
-    confirmLabel: 'Concluir',
+    title: 'Finalizar viagem',
+    message: valid ? '' : 'Só é possível finalizar quando cada dia do período tiver pelo menos uma tarefa registrada.',
+    confirmLabel: 'Finalizar',
     cancelLabel: 'Cancelar',
     tone: valid ? 'confirm' : 'danger',
     confirmTone: valid ? 'primary' : 'danger'
@@ -116,7 +118,7 @@ document.getElementById('btn-complete')?.addEventListener('click', async () => {
   try {
     const res = await api.completeTrip(tripId);
     renderTrip(res.trip);
-    showAlert(alertEl, 'Viagem concluída com sucesso!', 'success');
+    showAlert(alertEl, 'Viagem finalizada com sucesso!', 'success');
   } catch (err) {
     showAlert(alertEl, err.message);
   }

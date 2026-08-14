@@ -7,10 +7,34 @@ export const checklistRoutes = new Hono();
 checklistRoutes.post('/:id/complete', async (c) => {
   const id = Number(c.req.param('id'));
   const userId = c.get('userId');
-  const trip = await c.env.DB.prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?')
-    .bind(id, userId)
+  const viewer = c.get('user');
+
+  const trip = await c.env.DB.prepare('SELECT * FROM trips WHERE id = ?')
+    .bind(id)
     .first();
   if (!trip) return err('Viagem não encontrada.', 404);
+
+  const isTripOwner = trip.user_id === userId;
+  const isTripMember = !!(await c.env.DB.prepare(
+    'SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ? LIMIT 1'
+  )
+    .bind(id, userId)
+    .first());
+  const isAdminUser = viewer?.role === 'admin' || viewer?.role === 'admin_master';
+  const ledSector = viewer?.sector
+    ? await c.env.DB.prepare(
+        `SELECT id FROM users WHERE sector = ?
+         AND LOWER(REPLACE(REPLACE(position_title, 'í', 'i'), 'Í', 'I')) = 'lider'
+         AND id = ? LIMIT 1`
+      )
+        .bind(viewer.sector, userId)
+        .first()
+    : null;
+
+  if (!isTripOwner && !isTripMember && !isAdminUser && !ledSector) {
+    return err('Viagem não encontrada.', 404);
+  }
+
   if (trip.status === 'completed') return err('Viagem já concluída.');
 
   let tasks = [];

@@ -170,7 +170,8 @@ export const WORK_TYPES = [
   'Dieseldiag Ontime',
   'Controle de Logs',
   'LOGS de Telemetria',
-  'Almoço',
+  'Análise de veículos',
+  'Refeição',
 ];
 
 export const STATUS_LABELS = {
@@ -219,6 +220,12 @@ export function statusLabel(status) {
 
 export function publicUser(row) {
   const ledSector = getLedSector(row);
+  const avatarUrl = row?.avatar_data
+    ? String(row.avatar_data).trim()
+    : row?.avatar_key
+      ? `/api/files/${row.avatar_key}`
+      : null;
+
   return {
     id: row.id,
     full_name: row.full_name,
@@ -234,7 +241,7 @@ export function publicUser(row) {
     is_sector_leader: Boolean(ledSector),
     led_sector: ledSector,
     can_view_sector: canViewSectorPage(row),
-    avatar_url: row.avatar_key ? `/api/files/${row.avatar_key}` : null,
+    avatar_url: avatarUrl,
     created_at: row.created_at,
   };
 }
@@ -285,6 +292,7 @@ export function daysBetween(start, end) {
 }
 
 export const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+export const MAX_AVATAR_BYTES = 1.5 * 1024 * 1024;
 
 const ALLOWED_MIME = new Set([
   'image/jpeg',
@@ -311,6 +319,14 @@ export function assertAllowedFile(file) {
 export function assertImageFile(file) {
   if (!file || typeof file !== 'object') throw new Error('Arquivo inválido.');
   if (file.size > MAX_UPLOAD_BYTES) throw new Error('Arquivo excede o limite de 8 MB.');
+  const mime = file.type || 'application/octet-stream';
+  if (!IMAGE_MIME.has(mime)) throw new Error('Envie apenas fotos (JPEG, PNG, WebP ou GIF).');
+  return mime;
+}
+
+export function assertAvatarFile(file) {
+  if (!file || typeof file !== 'object') throw new Error('Arquivo inválido.');
+  if (file.size > MAX_AVATAR_BYTES) throw new Error('Avatar excede o limite de 1,5 MB.');
   const mime = file.type || 'application/octet-stream';
   if (!IMAGE_MIME.has(mime)) throw new Error('Envie apenas fotos (JPEG, PNG, WebP ou GIF).');
   return mime;

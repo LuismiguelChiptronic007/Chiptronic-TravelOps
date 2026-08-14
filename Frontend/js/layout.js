@@ -21,6 +21,7 @@ let currentUser = null;
 let notifPollTimer = null;
 let shellInstalled = false;
 let uxInstalled = false;
+let shellEventsInstalled = false;
 let transitionInProgress = false;
 
 export async function mountShell({ active } = {}) {
@@ -68,6 +69,7 @@ export async function rebuildShell({ active } = {}) {
   // Reset shell state to force full re-render
   shellInstalled = false;
   uxInstalled = false;
+  shellEventsInstalled = false;
   
   // Clear notification poll timer
   if (notifPollTimer) {
@@ -277,6 +279,9 @@ function renderDrawer(user) {
 }
 
 function bindShellEvents(user) {
+  if (shellEventsInstalled) return;
+  shellEventsInstalled = true;
+
   document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebarMobile);
   document.getElementById('drawer-overlay')?.addEventListener('click', () => {
     closeDrawer();

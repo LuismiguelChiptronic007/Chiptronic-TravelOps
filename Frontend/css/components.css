@@ -700,6 +700,44 @@ html[data-theme='dark'] .alert-info .alert-icon { background: #fff; color: #0f17
     radial-gradient(500px 200px at 100% 0%, var(--brand-soft), transparent 70%);
   border-bottom: 1px solid var(--border);
 }
+.team-member-head > .team-member-info {
+  flex: 1;
+  min-width: 0;
+}
+.team-member-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.icon-toggle {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+  box-shadow: var(--shadow-xs);
+}
+.icon-toggle:hover {
+  background: var(--neutral-bg);
+  border-color: var(--brand-400);
+  transform: translateY(-1px);
+}
+.icon-toggle-symbol {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.member-card-details {
+  display: block;
+}
+.team-member-card.is-collapsed .member-card-details {
+  display: none;
+}
 .team-stats-mini {
   display: flex; flex-wrap: wrap; gap: 0.35rem;
   padding: 0 1rem 0.85rem;

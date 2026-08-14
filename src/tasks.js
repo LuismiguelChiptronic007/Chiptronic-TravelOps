@@ -113,17 +113,25 @@ taskRoutes.post('/:id/tasks', async (c) => {
     plate = String(body.plate || '').trim();
   }
 
-  const isLunch = work_type === 'Almoço';
+  const normalizedWorkType = work_type
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const isLunch = normalizedWorkType === 'refeicao';
   if (isLunch) {
-    if (!location) location = 'Almoço';
-    if (!summary) summary = 'Horário de almoço';
+    if (!location) location = 'Refeição';
+    if (!summary) summary = 'Horário de refeição';
   }
 
   if (!work_type || !location || !start_time || !end_time || !summary || !task_date) {
     return err('Preencha todos os campos da tarefa.');
   }
 
-  const requiresVehicle = ['Dieseldiag Ontime', 'Controle de Logs', 'LOGS de Telemetria'].includes(work_type);
+  const requiresVehicle = [
+    'dieseldiag ontime',
+    'controle de logs',
+    'logs de telemetria',
+  ].includes(normalizedWorkType);
   if (requiresVehicle && (!vehicle || !plate)) {
     return err('Para este tipo de trabalho, informe o veículo e a placa.');
   }

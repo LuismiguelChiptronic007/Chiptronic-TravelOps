@@ -1,10 +1,9 @@
 import { Hono } from 'hono';
 import { requireUser } from './auth.js';
 import {
-  assertAllowedFile,
+  assertAvatarFile,
   daysBetween,
   err,
-  fileKey,
   hasFileStorage,
   json,
   publicUser,
@@ -132,7 +131,6 @@ profile.put('/', async (c) => {
 });
 
 profile.post('/avatar', async (c) => {
-  if (!hasFileStorage(c.env)) return err('Upload de avatar indisponível: R2 não configurado.', 503);
   const user = c.get('user');
   const form = await c.req.formData();
   const file = form.get('avatar');
@@ -140,15 +138,15 @@ profile.post('/avatar', async (c) => {
     return err('Envie uma imagem.');
   }
 
-  const mime = assertAllowedFile(file);
-  if (!mime.startsWith('image/')) return err('Avatar deve ser uma imagem.');
-
-  const key = fileKey(`avatars/${user.id}`, file.name || 'avatar.jpg');
-  await c.env.FILES.put(key, file.stream(), {
-    httpMetadata: { contentType: mime },
+  const mime = assertAvatarFile(file);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
   });
+  const avatarData = `data:${mime};base64,${btoa(binary)}`;
 
-  if (user.avatar_key) {
+  if (hasFileStorage(c.env) && user.avatar_key) {
     try {
       await c.env.FILES.delete(user.avatar_key);
     } catch {
@@ -157,9 +155,9 @@ profile.post('/avatar', async (c) => {
   }
 
   await c.env.DB.prepare(
-    `UPDATE users SET avatar_key = ?, updated_at = datetime('now') WHERE id = ?`
+    `UPDATE users SET avatar_data = ?, avatar_key = NULL, updated_at = datetime('now') WHERE id = ?`
   )
-    .bind(key, user.id)
+    .bind(avatarData, user.id)
     .run();
 
   const updated = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?')

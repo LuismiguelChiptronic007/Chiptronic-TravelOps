@@ -79,6 +79,34 @@
         </div>
       </div>
 
+      <div class="panel" style="margin-top: 1rem;">
+        <div class="panel-header"><h2>Filtros</h2></div>
+        <div class="panel-body">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items:end;">
+            <div>
+              <label for="filter-member">Integrante</label>
+              <select id="filter-member">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-work-type">Tipo do serviço</label>
+              <select id="filter-work-type">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-date">Data</label>
+              <input id="filter-date" type="date" />
+            </div>
+            <div>
+              <label for="filter-destination">Destino</label>
+              <input id="filter-destination" type="text" placeholder="Filtrar destino" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="team-root">
         <p class="empty-state">Carregando equipe…</p>
       </div>

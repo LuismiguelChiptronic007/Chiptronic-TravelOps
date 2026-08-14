@@ -5,6 +5,92 @@ const alertEl = document.getElementById('alert');
 const teamRoot = document.getElementById('team-root');
 const charts = {};
 const WORK_COLORS = ['#0b5fff', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+const sectorFilters = {
+  member: '',
+  workType: '',
+  date: '',
+  destination: '',
+};
+
+function normalizeFilterText(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function getDateLabel(dateValue) {
+  if (!dateValue) return '';
+  try {
+    const d = new Date(`${dateValue}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return '';
+    return formatDateBR(dateValue);
+  } catch {
+    return '';
+  }
+}
+
+function matchesTaskFilters(task = {}, filters = sectorFilters) {
+  if (filters.workType) {
+    const selected = normalizeFilterText(filters.workType);
+    const current = normalizeFilterText(task.work_type || '');
+    if (!current.includes(selected)) return false;
+  }
+  if (filters.date) {
+    const selectedDate = String(filters.date).trim();
+    if (String(task.task_date || '').trim() !== selectedDate) return false;
+  }
+  if (filters.destination) {
+    const selected = normalizeFilterText(filters.destination);
+    const current = normalizeFilterText(task.destination || '');
+    if (!current.includes(selected)) return false;
+  }
+  return true;
+}
+
+function matchesReportFilters(report = {}, filters = sectorFilters) {
+  if (filters.date) {
+    const selectedDate = String(filters.date).trim();
+    const dateLabel = getDateLabel(selectedDate);
+    const periodText = String(report.period || '');
+    if (selectedDate && !periodText.includes(selectedDate) && !periodText.includes(dateLabel)) {
+      return false;
+    }
+  }
+  if (filters.destination) {
+    const selected = normalizeFilterText(filters.destination);
+    const current = normalizeFilterText(report.destination || '');
+    if (!current.includes(selected)) return false;
+  }
+  return true;
+}
+
+function applyFiltersToMember(member, filters = sectorFilters) {
+  const memberName = normalizeFilterText(member?.user?.full_name || '');
+  if (filters.member) {
+    const selectedMember = String(filters.member);
+    if (String(member?.user?.id) !== selectedMember) return false;
+  }
+
+  const filteredReports = (member.reports || []).filter((report) => matchesReportFilters(report, filters));
+  const filteredTasks = (member.tasks || []).filter((task) => matchesTaskFilters(task, filters));
+
+  if (filters.workType || filters.date || filters.destination) {
+    if (!filteredReports.length && !filteredTasks.length) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function renderFilteredTeam(team = [], filters = sectorFilters) {
+  const filteredTeam = team.filter((member) => applyFiltersToMember(member, filters));
+  if (!filteredTeam.length) {
+    teamRoot.innerHTML = '<div class="panel"><div class="panel-body"><p class="empty-state">Nenhum resultado encontrado para os filtros aplicados.</p></div></div>';
+    return;
+  }
+
+  teamRoot.innerHTML = `<h2 class="section-title">Integrantes e relatórios</h2>${filteredTeam.map((member) => renderMemberCard(member, filters)).join('')}`;
+  window.__sectorTeam = filteredTeam;
+}
 
 function destroyChart(key) {
   try {
@@ -129,11 +215,11 @@ function renderCharts(data) {
   }
 }
 
-function renderMemberCard(member) {
+function renderMemberCard(member, filters = sectorFilters) {
   const u = member.user;
   const stats = member.stats || {};
-  const reports = member.reports || [];
-  const tasks = member.tasks || [];
+  const reports = (member.reports || []).filter((report) => matchesReportFilters(report, filters));
+  const tasks = (member.tasks || []).filter((task) => matchesTaskFilters(task, filters));
 
   const reportsHtml = reports.length
     ? reports
@@ -168,13 +254,18 @@ function renderMemberCard(member) {
     : '<tr><td colspan="6" class="empty-state">Nenhuma tarefa registrada</td></tr>';
 
   return `
-    <div class="panel team-member-card">
+    <div class="panel team-member-card is-collapsed" data-member-card data-expanded="false">
       <div class="panel-header">
         <div class="team-member-head">
           <div class="avatar">${escapeHtml(u.full_name.split(' ').map((p) => p[0]).slice(0, 2).join(''))}</div>
-          <div>
+          <div class="team-member-info">
             <h2 style="margin:0">${escapeHtml(u.full_name)}</h2>
             <p class="text-muted mb-0">${escapeHtml(u.position_title)} · Mat. ${escapeHtml(u.employee_id)}</p>
+          </div>
+          <div class="team-member-actions">
+            <button class="icon-toggle" type="button" data-action="toggle-member-details" data-member-id="${u.id}" aria-label="Expandir relatórios e tarefas" aria-expanded="false">
+              <span class="icon-toggle-symbol">＋</span>
+            </button>
           </div>
         </div>
         <div class="team-stats-mini">
@@ -185,37 +276,39 @@ function renderMemberCard(member) {
         </div>
       </div>
 
-      <div class="panel-subheader" style="padding:0 1.25rem"><h3>Relatórios de viagem</h3></div>
-      <div class="table-wrap panel-body" style="padding-top:0">
-        <table class="data">
-          <thead>
-            <tr>
-              <th>Destino</th>
-              <th>Período</th>
-              <th>Status</th>
-              <th>Tarefas</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>${reportsHtml}</tbody>
-        </table>
-      </div>
+      <div class="member-card-details" hidden>
+        <div class="panel-subheader" style="padding:0 1.25rem"><h3>Relatórios de viagem</h3></div>
+        <div class="table-wrap panel-body" style="padding-top:0">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Destino</th>
+                <th>Período</th>
+                <th>Status</th>
+                <th>Tarefas</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>${reportsHtml}</tbody>
+          </table>
+        </div>
 
-      <div class="panel-subheader" style="padding:0 1.25rem"><h3>Tarefas recentes</h3></div>
-      <div class="table-wrap panel-body" style="padding-top:0">
-        <table class="data">
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Tipo</th>
-              <th>Local</th>
-              <th>Responsável</th>
-              <th>Destino</th>
-              <th>Resumo</th>
-            </tr>
-          </thead>
-          <tbody>${tasksHtml}</tbody>
-        </table>
+        <div class="panel-subheader" style="padding:0 1.25rem"><h3>Tarefas recentes</h3></div>
+        <div class="table-wrap panel-body" style="padding-top:0">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tipo</th>
+                <th>Local</th>
+                <th>Responsável</th>
+                <th>Destino</th>
+                <th>Resumo</th>
+              </tr>
+            </thead>
+            <tbody>${tasksHtml}</tbody>
+          </table>
+        </div>
       </div>
     </div>`;
 }
@@ -302,8 +395,45 @@ async function load() {
       return;
     }
 
-    teamRoot.innerHTML = `<h2 class="section-title">Integrantes e relatórios</h2>${team.map(renderMemberCard).join('')}`;
-    // expose team for handlers
+    const memberSelect = document.getElementById('filter-member');
+    const workTypeSelect = document.getElementById('filter-work-type');
+    if (memberSelect) {
+      const members = team.map((member) => member.user?.full_name).filter(Boolean);
+      const uniqueMembers = [...new Set(members)];
+      const currentValue = memberSelect.value;
+      memberSelect.innerHTML = '<option value="">Todos</option>' + uniqueMembers.map((name) => {
+        const member = team.find((m) => (m.user?.full_name || '') === name);
+        return `<option value="${member?.user?.id ?? ''}">${escapeHtml(name)}</option>`;
+      }).join('');
+      if (currentValue) memberSelect.value = currentValue;
+    }
+
+    if (workTypeSelect) {
+      const workTypes = [...new Set((team.flatMap((member) => member.tasks || [])).map((task) => task.work_type).filter(Boolean))];
+      const currentValue = workTypeSelect.value;
+      workTypeSelect.innerHTML = '<option value="">Todos</option>' + workTypes.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join('');
+      if (currentValue) workTypeSelect.value = currentValue;
+    }
+
+    const applyCurrentFilters = () => {
+      const memberValue = document.getElementById('filter-member')?.value || '';
+      const workTypeValue = document.getElementById('filter-work-type')?.value || '';
+      const dateValue = document.getElementById('filter-date')?.value || '';
+      const destinationValue = document.getElementById('filter-destination')?.value || '';
+
+      sectorFilters.member = memberValue;
+      sectorFilters.workType = workTypeValue;
+      sectorFilters.date = dateValue;
+      sectorFilters.destination = destinationValue;
+      renderFilteredTeam(team, sectorFilters);
+    };
+
+    document.getElementById('filter-member')?.addEventListener('change', applyCurrentFilters);
+    document.getElementById('filter-work-type')?.addEventListener('change', applyCurrentFilters);
+    document.getElementById('filter-date')?.addEventListener('input', applyCurrentFilters);
+    document.getElementById('filter-destination')?.addEventListener('input', applyCurrentFilters);
+
+    renderFilteredTeam(team, sectorFilters);
     window.__sectorTeam = team;
   } catch (err) {
     showAlert(alertEl, err.message);
@@ -315,6 +445,26 @@ load();
 
 // Event delegation: open trip summary modal
 document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('[data-action="toggle-member-details"]');
+  if (toggle) {
+    const card = toggle.closest('.team-member-card');
+    if (!card) return;
+
+    const isExpanded = card.dataset.expanded === 'true';
+    const nextExpanded = !isExpanded;
+    const symbol = toggle.querySelector('.icon-toggle-symbol');
+
+    card.dataset.expanded = String(nextExpanded);
+    card.classList.toggle('is-collapsed', !nextExpanded);
+    const details = card.querySelector('.member-card-details');
+    if (details) details.hidden = !nextExpanded;
+
+    toggle.setAttribute('aria-expanded', String(nextExpanded));
+    toggle.setAttribute('aria-label', nextExpanded ? 'Recolher relatórios e tarefas' : 'Expandir relatórios e tarefas');
+    if (symbol) symbol.textContent = nextExpanded ? '−' : '＋';
+    return;
+  }
+
   const btn = e.target.closest('.btn-trip-summary');
   if (!btn) return;
   const tripId = Number(btn.dataset.tripId);

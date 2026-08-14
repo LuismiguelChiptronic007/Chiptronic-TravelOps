@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   employee_id TEXT NOT NULL UNIQUE,
   manager_name TEXT,
   avatar_key TEXT,
+  avatar_data TEXT,
   reset_token TEXT,
   reset_token_expires TEXT,
   role TEXT NOT NULL DEFAULT 'user'
