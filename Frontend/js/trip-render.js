@@ -3,6 +3,7 @@ import { escapeHtml } from './layout.js';
 
 let lastTaskDate = '';
 let selectedTripDate = '';
+let vehicleFiltersInstalled = false;
 
 function getTripDays(startDate, endDate) {
   const dates = [];
@@ -177,13 +178,95 @@ function fillTaskResponsibleOptions(t) {
   }
 }
 
+const taskFilters = {
+  responsible: '',
+  workType: '',
+  location: '',
+  montadora: '',
+  modelo: '',
+  submodelo: '',
+};
+
+function populateTaskFilters(tasks) {
+  const responsibleSelect = document.getElementById('filter-responsible');
+  const workTypeSelect = document.getElementById('filter-work-type');
+  const locationSelect = document.getElementById('filter-location');
+  const montadoraSelect = document.getElementById('filter-montadora');
+  const modeloSelect = document.getElementById('filter-modelo');
+  const submodeloSelect = document.getElementById('filter-submodelo');
+
+  if (!responsibleSelect || !workTypeSelect || !locationSelect || !montadoraSelect || !modeloSelect || !submodeloSelect) return;
+
+  const responsibles = [...new Set((tasks || []).flatMap((t) => {
+    if (Array.isArray(t.responsibles)) return t.responsibles.map((r) => r.full_name).filter(Boolean);
+    if (t.responsible?.full_name) return [t.responsible.full_name];
+    return [];
+  }))].sort();
+
+  const workTypes = [...new Set((tasks || []).map((t) => (t.work_type || '').trim()).filter(Boolean))].sort();
+  const locations = [...new Set((tasks || []).map((t) => (t.location || '').trim()).filter(Boolean))].sort();
+  const montadoras = [...new Set((tasks || []).map((t) => (t.montadora || '').trim()).filter(Boolean))].sort();
+  const modelos = [...new Set((tasks || []).map((t) => (t.modelo || '').trim()).filter(Boolean))].sort();
+  const submodelos = [...new Set((tasks || []).map((t) => (t.submodelo || '').trim()).filter(Boolean))].sort();
+
+  const currentResponsible = responsibleSelect.value;
+  const currentWorkType = workTypeSelect.value;
+  const currentLocation = locationSelect.value;
+  const currentMontadora = montadoraSelect.value;
+  const currentModelo = modeloSelect.value;
+  const currentSubmodelo = submodeloSelect.value;
+
+  responsibleSelect.innerHTML = '<option value="">Todos</option>' + responsibles.map((r) => `<option value="${escapeHtml(r)}">${escapeHtml(r)}</option>`).join('');
+  workTypeSelect.innerHTML = '<option value="">Todos</option>' + workTypes.map((w) => `<option value="${escapeHtml(w)}">${escapeHtml(w)}</option>`).join('');
+  locationSelect.innerHTML = '<option value="">Todos</option>' + locations.map((l) => `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`).join('');
+  montadoraSelect.innerHTML = '<option value="">Todas</option>' + montadoras.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+  modeloSelect.innerHTML = '<option value="">Todos</option>' + modelos.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+  submodeloSelect.innerHTML = '<option value="">Todas</option>' + submodelos.map((m) => `<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join('');
+
+  if (currentResponsible) responsibleSelect.value = currentResponsible;
+  if (currentWorkType) workTypeSelect.value = currentWorkType;
+  if (currentLocation) locationSelect.value = currentLocation;
+  if (currentMontadora) montadoraSelect.value = currentMontadora;
+  if (currentModelo) modeloSelect.value = currentModelo;
+  if (currentSubmodelo) submodeloSelect.value = currentSubmodelo;
+}
+
+function applyTaskFilters(tasks) {
+  const responsible = (document.getElementById('filter-responsible')?.value || '').trim();
+  const workType = (document.getElementById('filter-work-type')?.value || '').trim();
+  const location = (document.getElementById('filter-location')?.value || '').trim();
+  const montadora = (document.getElementById('filter-montadora')?.value || '').trim();
+  const modelo = (document.getElementById('filter-modelo')?.value || '').trim();
+  const submodelo = (document.getElementById('filter-submodelo')?.value || '').trim();
+
+  taskFilters.responsible = responsible;
+  taskFilters.workType = workType;
+  taskFilters.location = location;
+  taskFilters.montadora = montadora;
+  taskFilters.modelo = modelo;
+  taskFilters.submodelo = submodelo;
+
+  if (!responsible && !workType && !location && !montadora && !modelo && !submodelo) return tasks;
+
+  return tasks.filter((task) => {
+    const responsibleLabel = getResponsibleLabel(task);
+    if (responsible && responsibleLabel !== responsible) return false;
+    if (workType && (task.work_type || '').trim() !== workType) return false;
+    if (location && (task.location || '').trim() !== location) return false;
+    if (montadora && (task.montadora || '').trim() !== montadora) return false;
+    if (modelo && (task.modelo || '').trim() !== modelo) return false;
+    if (submodelo && (task.submodelo || '').trim() !== submodelo) return false;
+    return true;
+  });
+}
 
 function renderTasks(t) {
   const board = document.getElementById('tasks-board');
   if (!board) return;
 
   const tasks = t.tasks || [];
-  const filteredTasks = selectedTripDate ? tasks.filter((task) => task.task_date === selectedTripDate) : tasks;
+  const byDateTasks = selectedTripDate ? tasks.filter((task) => task.task_date === selectedTripDate) : tasks;
+  const filteredTasks = applyTaskFilters(byDateTasks);
   if (!filteredTasks.length) {
     board.innerHTML =
       '<div class="empty-state">Nenhuma tarefa registrada para este dia. Use o formulário abaixo para adicionar uma nova tarefa.</div>';
@@ -903,6 +986,7 @@ function renderCompletionProgress(t) {
 }
 
 export function setupPanelToggles() {
+  setupTaskFilters();
   document.querySelectorAll('.panel-toggle').forEach((button) => {
     button.addEventListener('click', (e) => {
       e.preventDefault();
@@ -946,6 +1030,18 @@ export function setupPanelToggles() {
   } catch (e) {}
 }
 
+function setupTaskFilters() {
+  if (vehicleFiltersInstalled) return;
+  vehicleFiltersInstalled = true;
+
+  ['filter-responsible', 'filter-work-type', 'filter-location', 'filter-montadora', 'filter-modelo', 'filter-submodelo'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('change', () => {
+      const trip = window.__currentTrip;
+      if (trip) renderTasks(trip);
+    });
+  });
+}
+
 export function renderTrip(t) {
   document.getElementById('trip-title').textContent = `${t.origin} → ${t.destination}`;
   document.getElementById('trip-subtitle').textContent =
@@ -969,6 +1065,7 @@ export function renderTrip(t) {
   fillTaskResponsibleOptions(t);
   renderTripDays(t);
   renderTasks(t);
+  populateTaskFilters(t.tasks || []);
   updateTaskAvailability(t, selectedTripDate);
   renderCompletionProgress(t);
 

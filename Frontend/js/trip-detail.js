@@ -42,21 +42,11 @@ async function init() {
   if (!user) return;
 
   try {
-    try {
-      const typesRes = await api.workTypes();
-      fillWorkTypes(typesRes.work_types || []);
-    } catch {
-      fillWorkTypes([
-        'Viagem',
-        'Dieseldiag Ontime',
-        'Controle de Logs',
-        'LOGS de Telemetria',
-        'Análise de veículos',
-        'Almoço',
-      ]);
-    }
-
-    const res = await api.getTrip(tripId);
+    const [typesRes, res] = await Promise.all([
+      api.workTypes(),
+      api.getTrip(tripId),
+    ]);
+    fillWorkTypes(typesRes.work_types || []);
     renderTrip(res.trip);
     setupPanelToggles();
 

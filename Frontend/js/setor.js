@@ -1,5 +1,6 @@
 import { api, formatDateBR, formatSectorName, showAlert, hideAlert } from './api.js';
-import { escapeHtml, mountShell, triggerPageTransition, showToast } from './layout.js';
+import { escapeHtml, mountShell, showToast } from './layout.js';
+import { debounce } from './ui.js';
 
 const alertEl = document.getElementById('alert');
 const teamRoot = document.getElementById('team-root');
@@ -78,17 +79,24 @@ function applyFiltersToMember(member, filters = sectorFilters) {
     }
   }
 
-  return true;
+  return { reports: filteredReports, tasks: filteredTasks };
 }
 
 function renderFilteredTeam(team = [], filters = sectorFilters) {
-  const filteredTeam = team.filter((member) => applyFiltersToMember(member, filters));
+  const filteredTeam = [];
+  const filteredData = new Map();
+  for (const member of team) {
+    const result = applyFiltersToMember(member, filters);
+    if (result === false) continue;
+    filteredTeam.push(member);
+    filteredData.set(member, result);
+  }
   if (!filteredTeam.length) {
     teamRoot.innerHTML = '<div class="panel"><div class="panel-body"><p class="empty-state">Nenhum resultado encontrado para os filtros aplicados.</p></div></div>';
     return;
   }
 
-  teamRoot.innerHTML = `<h2 class="section-title">Integrantes e relatórios</h2>${filteredTeam.map((member) => renderMemberCard(member, filters)).join('')}`;
+  teamRoot.innerHTML = `<h2 class="section-title">Integrantes e relatórios</h2>${filteredTeam.map((member) => renderMemberCard(member, filters, filteredData.get(member))).join('')}`;
   window.__sectorTeam = filteredTeam;
 }
 
@@ -215,11 +223,11 @@ function renderCharts(data) {
   }
 }
 
-function renderMemberCard(member, filters = sectorFilters) {
+function renderMemberCard(member, filters = sectorFilters, preFiltered) {
   const u = member.user;
   const stats = member.stats || {};
-  const reports = (member.reports || []).filter((report) => matchesReportFilters(report, filters));
-  const tasks = (member.tasks || []).filter((task) => matchesTaskFilters(task, filters));
+  const reports = preFiltered?.reports || (member.reports || []).filter((report) => matchesReportFilters(report, filters));
+  const tasks = preFiltered?.tasks || (member.tasks || []).filter((task) => matchesTaskFilters(task, filters));
 
   const reportsHtml = reports.length
     ? reports
@@ -398,12 +406,12 @@ async function load() {
     const memberSelect = document.getElementById('filter-member');
     const workTypeSelect = document.getElementById('filter-work-type');
     if (memberSelect) {
+      const nameToId = new Map(team.map((member) => [member.user?.full_name, member.user?.id]));
       const members = team.map((member) => member.user?.full_name).filter(Boolean);
       const uniqueMembers = [...new Set(members)];
       const currentValue = memberSelect.value;
       memberSelect.innerHTML = '<option value="">Todos</option>' + uniqueMembers.map((name) => {
-        const member = team.find((m) => (m.user?.full_name || '') === name);
-        return `<option value="${member?.user?.id ?? ''}">${escapeHtml(name)}</option>`;
+        return `<option value="${nameToId.get(name) ?? ''}">${escapeHtml(name)}</option>`;
       }).join('');
       if (currentValue) memberSelect.value = currentValue;
     }
@@ -428,10 +436,11 @@ async function load() {
       renderFilteredTeam(team, sectorFilters);
     };
 
+    const debouncedApply = debounce(applyCurrentFilters, 250);
     document.getElementById('filter-member')?.addEventListener('change', applyCurrentFilters);
     document.getElementById('filter-work-type')?.addEventListener('change', applyCurrentFilters);
-    document.getElementById('filter-date')?.addEventListener('input', applyCurrentFilters);
-    document.getElementById('filter-destination')?.addEventListener('input', applyCurrentFilters);
+    document.getElementById('filter-date')?.addEventListener('input', debouncedApply);
+    document.getElementById('filter-destination')?.addEventListener('input', debouncedApply);
 
     renderFilteredTeam(team, sectorFilters);
     window.__sectorTeam = team;

@@ -845,6 +845,22 @@ html[data-theme='dark'] .alert-info .alert-icon { background: #fff; color: #0f17
 
 /* === Tasks board === */
 .tasks-board { display: grid; gap: 1.25rem; margin-bottom: 1.25rem; }
+.task-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.task-filters label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 0.25rem;
+}
+.task-filters select {
+  width: 100%;
+}
 .task-day-group {
   border: 1px solid var(--border);
   border-radius: var(--radius);

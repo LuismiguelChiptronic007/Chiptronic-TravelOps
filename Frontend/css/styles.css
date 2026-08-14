@@ -1342,57 +1342,6 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   transform: translateY(-50%) scale(1.1);
 }
 
-/* === Page Transition Overlay === */
-.page-transition {
-  position: fixed;
-  inset: 0;
-  background: #0a0a0a;
-  z-index: 999999;
-  transform: scaleX(0);
-  transform-origin: left center;
-  pointer-events: auto;
-  opacity: 1;
-}
-html[data-theme='dark'] .page-transition {
-  background: #fff;
-}
-.page-transition.show,
-.page-transition.active {
-  opacity: 1;
-  display: block;
-}
-.page-transition.wipe-in {
-  transform-origin: right center;
-  animation: pageWipeIn 360ms var(--ease) forwards;
-}
-.page-transition.wipe-out {
-  transform-origin: left center;
-  animation: pageWipeOut 360ms var(--ease) forwards;
-}
-@keyframes pageWipeIn {
-  0%   { transform: scaleX(0); transform-origin: right center; }
-  100% { transform: scaleX(1); transform-origin: right center; }
-}
-@keyframes pageWipeOut {
-  0%   { transform: scaleX(1); transform-origin: left center; }
-  100% { transform: scaleX(0); transform-origin: left center; }
-}
-
-/* Evita FOUC / tela piscando na entrada (com fallback para JS falhar) */
-html.page-entering body > #main,
-html.page-entering body > main {
-  opacity: 0;
-  visibility: hidden;
-  animation: pageEnteringFallback 3s ease 0.2s forwards;
-}
-@keyframes pageEnteringFallback {
-  to { opacity: 1; visibility: visible; }
-}
-html:not(.page-entering) body > #main,
-html:not(.page-entering) body > main {
-  visibility: visible;
-}
-
 /* === Highlights === */
 .highlight-row {
   background: linear-gradient(90deg, rgba(10,10,10,0.08), rgba(64,64,64,0.05)) !important;

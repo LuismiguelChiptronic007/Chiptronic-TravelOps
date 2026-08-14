@@ -24,13 +24,33 @@ export async function autoUpdateTripStatus(db, tripId) {
 }
 
 export async function syncUserTripStatuses(db, userId) {
-  const { results } = await db
-    .prepare("SELECT id FROM trips WHERE user_id = ? AND status != 'completed'")
+  await db
+    .prepare(`UPDATE trips SET status = CASE
+      WHEN status = 'completed' THEN 'completed'
+      WHEN end_date < date('now') THEN 'awaiting_report'
+      WHEN start_date <= date('now') AND end_date >= date('now') THEN 'in_progress'
+      ELSE 'planned'
+    END,
+    updated_at = datetime('now')
+    WHERE user_id = ? AND status != 'completed'`)
     .bind(userId)
-    .all();
-  for (const row of results || []) {
-    await autoUpdateTripStatus(db, row.id);
-  }
+    .run();
+}
+
+export async function syncMultipleUsersTripStatuses(db, userIds = []) {
+  if (!userIds.length) return;
+  const placeholders = userIds.map(() => '?').join(',');
+  await db
+    .prepare(`UPDATE trips SET status = CASE
+      WHEN status = 'completed' THEN 'completed'
+      WHEN end_date < date('now') THEN 'awaiting_report'
+      WHEN start_date <= date('now') AND end_date >= date('now') THEN 'in_progress'
+      ELSE 'planned'
+    END,
+    updated_at = datetime('now')
+    WHERE user_id IN (${placeholders}) AND status != 'completed'`)
+    .bind(...userIds)
+    .run();
 }
 
 function formatMember(m) {
@@ -169,41 +189,50 @@ export async function fetchTripFull(db, tripId, userId) {
     .first();
   if (!trip) return null;
 
-  const checklist = await db
-    .prepare('SELECT * FROM trip_checklists WHERE trip_id = ?')
-    .bind(tripId)
-    .first();
+  const [checklist, expenses, attachments, membersResult, taskRowsResult] = await Promise.all([
+    db.prepare('SELECT * FROM trip_checklists WHERE trip_id = ?').bind(tripId).first(),
+    db.prepare('SELECT * FROM expenses WHERE trip_id = ? ORDER BY id ASC').bind(tripId).all(),
+    db.prepare('SELECT * FROM attachments WHERE trip_id = ? ORDER BY id ASC').bind(tripId).all(),
+    (async () => {
+      try {
+        const { results } = await db
+          .prepare(
+            `SELECT tm.*, u.position_title, u.email
+             FROM trip_members tm
+             LEFT JOIN users u ON u.id = tm.user_id
+             WHERE tm.trip_id = ?
+             ORDER BY tm.id ASC`
+          )
+          .bind(tripId)
+          .all();
+        return results || [];
+      } catch {
+        return [];
+      }
+    })(),
+    (async () => {
+      try {
+        const { results } = await db
+          .prepare(
+            `SELECT tt.*, u.id AS responsible_id_ref, u.full_name AS responsible_full_name,
+                    u.employee_id AS responsible_employee_id, u.position_title AS responsible_position_title
+             FROM trip_tasks tt
+             LEFT JOIN users u ON u.id = tt.responsible_id
+             WHERE tt.trip_id = ?
+             ORDER BY tt.task_date ASC, tt.start_time ASC, tt.id ASC`
+          )
+          .bind(tripId)
+          .all();
+        return results || [];
+      } catch (error) {
+        console.error('Erro ao carregar tarefas da viagem:', error);
+        return [];
+      }
+    })(),
+  ]);
 
-  const { results: expenses } = await db
-    .prepare('SELECT * FROM expenses WHERE trip_id = ? ORDER BY id ASC')
-    .bind(tripId)
-    .all();
+  let members = membersResult;
 
-  const { results: attachments } = await db
-    .prepare('SELECT * FROM attachments WHERE trip_id = ? ORDER BY id ASC')
-    .bind(tripId)
-    .all();
-
-  let members = [];
-  try {
-    const { results } = await db
-      .prepare(
-        `SELECT tm.*, u.position_title, u.email
-         FROM trip_members tm
-         LEFT JOIN users u ON u.id = tm.user_id
-         WHERE tm.trip_id = ?
-         ORDER BY tm.id ASC`
-      )
-      .bind(tripId)
-      .all();
-    members = results || [];
-  } catch {
-    members = [];
-  }
-
-  // Ensure the trip creator (owner) is present in members list so they can
-  // be selected as responsible for tasks. If not present, fetch owner info
-  // from users and prepend to members.
   try {
     const owner = await db
       .prepare('SELECT id, full_name, sector, manager_name, position_title, employee_id FROM users WHERE id = ?')
@@ -212,7 +241,6 @@ export async function fetchTripFull(db, tripId, userId) {
     if (owner) {
       const exists = (members || []).some((m) => Number(m.user_id || m.id) === Number(owner.id));
       if (!exists) {
-        // Create a trip_member-like object so formatMember can handle it uniformly
         const ownerMember = {
           id: null,
           trip_id: tripId,
@@ -223,51 +251,70 @@ export async function fetchTripFull(db, tripId, userId) {
           position_title: owner.position_title || null,
           employee_id: owner.employee_id || null,
         };
-        // Prepend owner to make them appear first in dropdowns
         members = [ownerMember, ...(members || [])];
       }
     }
   } catch (e) {
-    // ignore owner fetch failures — members list will remain as-is
+    // ignore owner fetch failures
   }
 
-  let tasks = [];
-  try {
-    const { results: taskRows } = await db
-      .prepare(
-        `SELECT tt.*, u.id AS responsible_id_ref, u.full_name AS responsible_full_name,
-                u.employee_id AS responsible_employee_id, u.position_title AS responsible_position_title
-         FROM trip_tasks tt
-         LEFT JOIN users u ON u.id = tt.responsible_id
-         WHERE tt.trip_id = ?
-         ORDER BY tt.task_date ASC, tt.start_time ASC, tt.id ASC`
-      )
-      .bind(tripId)
-      .all();
+  const taskRows = taskRowsResult;
+  const tasks = [];
 
-    for (const task of taskRows || []) {
-      const responsibleIds = Array.isArray(task.responsible_ids)
+  if (taskRows.length) {
+    const allResponsibleIds = new Set();
+    const allTaskIds = [];
+    for (const task of taskRows) {
+      allTaskIds.push(task.id);
+      const raw = Array.isArray(task.responsible_ids)
         ? task.responsible_ids
         : String(task.responsible_ids || '')
             .split(',')
             .map((id) => Number(String(id).trim()))
             .filter((id) => Number.isInteger(id) && id > 0);
+      const idsToLoad = raw.length ? raw : (task.responsible_id ? [task.responsible_id] : (task.responsible_id_ref ? [task.responsible_id_ref] : []));
+      for (const id of idsToLoad) allResponsibleIds.add(id);
+    }
 
-      let responsibleList = [];
+    const [responsibleUsers, photos] = await Promise.all([
+      allResponsibleIds.size
+        ? db
+            .prepare(`SELECT id, full_name, employee_id, position_title FROM users WHERE id IN (${[...allResponsibleIds].map(() => '?').join(',')}) ORDER BY full_name ASC`)
+            .bind(...allResponsibleIds)
+            .all()
+        : { results: [] },
+      db
+        .prepare(`SELECT * FROM trip_task_photos WHERE task_id IN (${allTaskIds.map(() => '?').join(',')}) ORDER BY id ASC`)
+        .bind(...allTaskIds)
+        .all(),
+    ]);
+
+    const responsibleMap = new Map((responsibleUsers.results || []).map((u) => [u.id, u]));
+    const photosByTask = new Map();
+    for (const p of photos.results || []) {
+      if (!photosByTask.has(p.task_id)) photosByTask.set(p.task_id, []);
+      photosByTask.get(p.task_id).push(p);
+    }
+
+    for (const task of taskRows) {
+      const raw = Array.isArray(task.responsible_ids)
+        ? task.responsible_ids
+        : String(task.responsible_ids || '')
+            .split(',')
+            .map((id) => Number(String(id).trim()))
+            .filter((id) => Number.isInteger(id) && id > 0);
+      const hasLegacy = !raw.length && Number.isInteger(Number(task.responsible_id)) && Number(task.responsible_id) > 0;
+      const responsibleIds = hasLegacy ? [Number(task.responsible_id)] : raw;
       const idsToLoad = responsibleIds.length ? responsibleIds : (task.responsible_id_ref ? [task.responsible_id_ref] : (task.responsible_id ? [task.responsible_id] : []));
-      if (idsToLoad.length) {
-        const placeholders = idsToLoad.map(() => '?').join(',');
-        const { results: responsibleRows } = await db
-          .prepare(`SELECT id, full_name, employee_id, position_title FROM users WHERE id IN (${placeholders}) ORDER BY full_name ASC`)
-          .bind(...idsToLoad)
-          .all();
-        responsibleList = (responsibleRows || []).map((user) => ({
+      const responsibleList = idsToLoad
+        .map((id) => responsibleMap.get(id))
+        .filter(Boolean)
+        .map((user) => ({
           id: user.id,
           full_name: user.full_name,
           employee_id: user.employee_id || null,
           position_title: user.position_title || null,
         }));
-      }
 
       const primaryResponsible = responsibleList[0] || null;
       const taskWithResponsibles = {
@@ -279,18 +326,11 @@ export async function fetchTripFull(db, tripId, userId) {
         responsibles: responsibleList,
       };
 
-      const { results: photos } = await db
-        .prepare('SELECT * FROM trip_task_photos WHERE task_id = ? ORDER BY id ASC')
-        .bind(task.id)
-        .all();
-      tasks.push(formatTask(taskWithResponsibles, photos || []));
+      tasks.push(formatTask(taskWithResponsibles, photosByTask.get(task.id) || []));
     }
-  } catch (error) {
-    console.error('Erro ao carregar tarefas da viagem:', error);
-    tasks = [];
   }
 
-  return formatTrip(trip, checklist, expenses, attachments, members, tasks);
+  return formatTrip(trip, checklist, expenses.results || [], attachments.results || [], members, tasks);
 }
 
 export async function saveTripMembers(db, tripId, memberUserIds = []) {
@@ -298,19 +338,27 @@ export async function saveTripMembers(db, tripId, memberUserIds = []) {
 
   await db.prepare('DELETE FROM trip_members WHERE trip_id = ?').bind(tripId).run();
 
-  for (const userId of ids) {
-    const user = await db
-      .prepare('SELECT id, full_name, sector, manager_name, position_title FROM users WHERE id = ?')
-      .bind(userId)
-      .first();
-    if (!user) continue;
+  if (!ids.length) return;
 
-    await db
-      .prepare(
-        `INSERT INTO trip_members (trip_id, user_id, full_name, sector, manager_name)
-         VALUES (?, ?, ?, ?, ?)`
-      )
-      .bind(tripId, user.id, user.full_name, user.sector, user.manager_name || null)
-      .run();
+  const placeholders = ids.map(() => '?').join(',');
+  const { results: users } = await db
+    .prepare(`SELECT id, full_name, sector, manager_name FROM users WHERE id IN (${placeholders})`)
+    .bind(...ids)
+    .all();
+  const userMap = new Map((users || []).map((u) => [u.id, u]));
+
+  const rows = [];
+  for (const userId of ids) {
+    const user = userMap.get(userId);
+    if (!user) continue;
+    rows.push([tripId, user.id, user.full_name, user.sector || null, user.manager_name || null]);
   }
+  if (!rows.length) return;
+
+  const valuePlaceholders = rows.map(() => '(?, ?, ?, ?, ?)').join(', ');
+  const flatBinds = rows.flat();
+  await db
+    .prepare(`INSERT INTO trip_members (trip_id, user_id, full_name, sector, manager_name) VALUES ${valuePlaceholders}`)
+    .bind(...flatBinds)
+    .run();
 }

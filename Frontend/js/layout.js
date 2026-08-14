@@ -22,22 +22,15 @@ let notifPollTimer = null;
 let shellInstalled = false;
 let uxInstalled = false;
 let shellEventsInstalled = false;
-let transitionInProgress = false;
 
 export async function mountShell({ active } = {}) {
-  document.documentElement.classList.remove('page-entering');
   if (!requireAuthPage()) return null;
-
-  const main = document.getElementById('main') || document.querySelector('main');
-  if (main) {
-    main.style.opacity = '0';
-    main.style.transform = 'translateY(8px)';
-  }
 
   applyTheme(getStoredTheme());
   ensureShellElements();
   installGlobalShortcuts();
-  installUXEnhancements();
+  installProgressBar();
+  initScrollReveal();
 
   let user = getStoredUser();
   try {
@@ -46,7 +39,7 @@ export async function mountShell({ active } = {}) {
     updateStoredUser(user);
   } catch {
     clearSession();
-    triggerPageTransition('login.html');
+    location.href = 'login.html';
     return null;
   }
 
@@ -60,8 +53,6 @@ export async function mountShell({ active } = {}) {
   if (notifPollTimer) clearInterval(notifPollTimer);
   notifPollTimer = setInterval(refreshNotificationBadge, 60000);
 
-  animatePageIn(main);
-  initScrollReveal();
   return user;
 }
 
@@ -478,25 +469,6 @@ function formatNotifDate(iso) {
   return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-function animatePageIn(mainEl) {
-  const main = mainEl || document.getElementById('main') || document.querySelector('main');
-  if (!main) return;
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      main.style.transition = 'opacity .38s var(--ease, ease), transform .38s var(--ease, ease)';
-      main.style.opacity = '1';
-      main.style.transform = 'translateY(0)';
-      setTimeout(() => {
-        if (main) {
-          main.style.transition = '';
-          main.style.opacity = '';
-          main.style.transform = '';
-        }
-      }, 500);
-    });
-  });
-}
-
 export function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;')
@@ -505,26 +477,24 @@ export function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-/* ====== UX Enhancements: Progress Bar, Back to Top, Page Transitions, FAB, Reveal ====== */
-
-function installUXEnhancements() {
-  if (uxInstalled) return;
-  uxInstalled = true;
-
-  installSmoothLinkTransitions();
-}
-
 function installProgressBar() {
   const bar = document.createElement('div');
   bar.className = 'progress-bar';
   bar.id = 'progress-bar';
   document.body.appendChild(bar);
 
+  let ticking = false;
   const update = () => {
-    const doc = document.documentElement;
-    const total = doc.scrollHeight - doc.clientHeight;
-    const pct = total > 0 ? Math.min(100, (doc.scrollTop / total) * 100) : 0;
-    bar.style.width = pct + '%';
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        const doc = document.documentElement;
+        const total = doc.scrollHeight - doc.clientHeight;
+        const pct = total > 0 ? Math.min(100, (doc.scrollTop / total) * 100) : 0;
+        bar.style.width = pct + '%';
+        ticking = false;
+      });
+      ticking = true;
+    }
   };
   window.addEventListener('scroll', update, { passive: true });
   update();
@@ -556,46 +526,6 @@ function installBackToTop() {
   btn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     showToast({ type: 'info', title: 'Topo!', msg: 'Você voltou ao topo da página.', duration: 1400 });
-  });
-}
-
-function triggerPageTransition(url) {
-  if (!url || transitionInProgress) return;
-
-  transitionInProgress = true;
-  document.documentElement.classList.add('page-entering');
-
-  const overlay = document.createElement('div');
-  overlay.className = 'page-transition show wipe-in';
-  overlay.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(overlay);
-
-  const navigate = () => {
-    try { window.location.assign(url); }
-    catch (_) { window.location.href = url; }
-  };
-
-  const failSafe = setTimeout(navigate, 600);
-  overlay.addEventListener('animationend', (ev) => {
-    if (ev.animationName === 'pageWipeIn') {
-      clearTimeout(failSafe);
-      navigate();
-    }
-  }, { once: true });
-  setTimeout(navigate, 400);
-}
-
-function installSmoothLinkTransitions() {
-  document.addEventListener('click', (e) => {
-    const link = e.target.closest('a[href]');
-    if (!link) return;
-    const href = link.getAttribute('href');
-    if (!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
-    if (link.target === '_blank' || link.hasAttribute('download')) return;
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    if (!/\.(html|php)$/.test(href) && !href.endsWith('/')) return;
-    e.preventDefault();
-    triggerPageTransition(href);
   });
 }
 
@@ -675,4 +605,4 @@ function installFabButtons(user) {
   document.body.appendChild(container);
 }
 
-export { showToast, confirmDialog, showHotkeysHelp, emptyStateSVG, triggerPageTransition };
+export { showToast, confirmDialog, showHotkeysHelp, emptyStateSVG };

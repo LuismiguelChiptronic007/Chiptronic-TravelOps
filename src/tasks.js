@@ -193,21 +193,28 @@ taskRoutes.post('/:id/tasks', async (c) => {
   }
 
   const selectedResponsibleIds = responsible_ids.length ? responsible_ids : (responsible_id ? [Number(responsible_id)] : [trip.user_id]);
-  const validResponsibleIds = [];
+  const uniqueIds = [...new Set(selectedResponsibleIds)];
 
+  const validUserIds = new Set();
+  if (uniqueIds.length) {
+    const placeholders = uniqueIds.map(() => '?').join(',');
+    const { results: userRows } = await c.env.DB.prepare(`SELECT id FROM users WHERE id IN (${placeholders})`).bind(...uniqueIds).all();
+    for (const row of userRows || []) validUserIds.add(row.id);
+  }
+
+  const validMemberIds = new Set();
+  if (uniqueIds.length) {
+    const placeholders = uniqueIds.map(() => '?').join(',');
+    const { results: memberRows } = await c.env.DB.prepare(`SELECT user_id FROM trip_members WHERE trip_id = ? AND user_id IN (${placeholders})`).bind(id, ...uniqueIds).all();
+    for (const row of memberRows || []) validMemberIds.add(row.user_id);
+  }
+
+  const validResponsibleIds = [];
   for (const parsed of selectedResponsibleIds) {
-    const responsibleUser = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?')
-      .bind(parsed)
-      .first();
-    if (!responsibleUser) {
+    if (!validUserIds.has(parsed)) {
       return err('Responsável da tarefa inválido.');
     }
-    const member = await c.env.DB.prepare(
-      'SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ?'
-    )
-      .bind(id, parsed)
-      .first();
-    if (!member && parsed !== trip.user_id) {
+    if (parsed !== trip.user_id && !validMemberIds.has(parsed)) {
       return err('O responsável deve ser um integrante da viagem.');
     }
     validResponsibleIds.push(parsed);
@@ -304,14 +311,10 @@ taskRoutes.delete('/:id/tasks/:taskId', async (c) => {
     .bind(taskId)
     .all();
 
-  for (const photo of photos || []) {
-    if (hasFileStorage(c.env)) {
-      try {
-        await c.env.FILES.delete(photo.stored_key);
-      } catch {
-        /* ignore */
-      }
-    }
+  if (hasFileStorage(c.env)) {
+    await Promise.all(
+      (photos || []).map((p) => c.env.FILES.delete(p.stored_key).catch(() => {}))
+    );
   }
 
   await c.env.DB.prepare('DELETE FROM trip_task_photos WHERE task_id = ?').bind(taskId).run();
@@ -449,21 +452,28 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
   }
 
   const selectedResponsibleIds = responsible_ids.length ? responsible_ids : [task.responsible_id || trip.user_id];
-  const validResponsibleIds = [];
+  const uniqueIds = [...new Set(selectedResponsibleIds)];
 
+  const validUserIds = new Set();
+  if (uniqueIds.length) {
+    const placeholders = uniqueIds.map(() => '?').join(',');
+    const { results: userRows } = await c.env.DB.prepare(`SELECT id FROM users WHERE id IN (${placeholders})`).bind(...uniqueIds).all();
+    for (const row of userRows || []) validUserIds.add(row.id);
+  }
+
+  const validMemberIds = new Set();
+  if (uniqueIds.length) {
+    const placeholders = uniqueIds.map(() => '?').join(',');
+    const { results: memberRows } = await c.env.DB.prepare(`SELECT user_id FROM trip_members WHERE trip_id = ? AND user_id IN (${placeholders})`).bind(id, ...uniqueIds).all();
+    for (const row of memberRows || []) validMemberIds.add(row.user_id);
+  }
+
+  const validResponsibleIds = [];
   for (const parsed of selectedResponsibleIds) {
-    const responsibleUser = await c.env.DB.prepare('SELECT id FROM users WHERE id = ?')
-      .bind(parsed)
-      .first();
-    if (!responsibleUser) {
+    if (!validUserIds.has(parsed)) {
       return err('Responsável da tarefa inválido.');
     }
-    const member = await c.env.DB.prepare(
-      'SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ?'
-    )
-      .bind(id, parsed)
-      .first();
-    if (!member && parsed !== trip.user_id) {
+    if (parsed !== trip.user_id && !validMemberIds.has(parsed)) {
       return err('O responsável deve ser um integrante da viagem.');
     }
     validResponsibleIds.push(parsed);

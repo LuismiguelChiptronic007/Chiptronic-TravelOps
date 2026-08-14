@@ -8,7 +8,7 @@ import {
   isSectorLeader,
   daysBetween,
 } from './helpers.js';
-import { formatTrip, syncUserTripStatuses } from './trip_utils.js';
+import { formatTrip, syncMultipleUsersTripStatuses } from './trip_utils.js';
 
 export const sector = new Hono();
 sector.use('*', requireUser);
@@ -27,9 +27,7 @@ async function fetchTeamData(db, user) {
     .all();
 
   const memberIds = (members || []).map((m) => m.id);
-  for (const id of memberIds) {
-    await syncUserTripStatuses(db, id);
-  }
+  await syncMultipleUsersTripStatuses(db, memberIds);
 
   const tripsByUser = {};
   const checklistsByTrip = {};
@@ -50,21 +48,25 @@ async function fetchTeamData(db, user) {
       .all();
 
     const tripIds = (tripRows || []).map((t) => t.id);
+
+    const tripMembersByTrip = new Map();
+    if (tripIds.length) {
+      const tripPh = tripIds.map(() => '?').join(',');
+      const { results: allTripMembers } = await db
+        .prepare(`SELECT trip_id, user_id FROM trip_members WHERE trip_id IN (${tripPh})`)
+        .bind(...tripIds)
+        .all();
+      for (const row of allTripMembers || []) {
+        if (!tripMembersByTrip.has(row.trip_id)) tripMembersByTrip.set(row.trip_id, []);
+        tripMembersByTrip.get(row.trip_id).push(Number(row.user_id));
+      }
+    }
+
     for (const trip of tripRows || []) {
       const relatedUsers = new Set([Number(trip.user_id)]);
-
-      try {
-        const { results: tripMembers } = await db
-          .prepare('SELECT user_id FROM trip_members WHERE trip_id = ?')
-          .bind(trip.id)
-          .all();
-
-        for (const memberRow of tripMembers || []) {
-          const userId = Number(memberRow.user_id);
-          if (memberIds.includes(userId)) relatedUsers.add(userId);
-        }
-      } catch {
-        // ignore member-loader failures for individual trips
+      const tripMembers = tripMembersByTrip.get(trip.id) || [];
+      for (const userId of tripMembers) {
+        if (memberIds.includes(userId)) relatedUsers.add(userId);
       }
 
       tripUsersByTrip[trip.id] = [...relatedUsers].filter((id) => memberIds.includes(id));
