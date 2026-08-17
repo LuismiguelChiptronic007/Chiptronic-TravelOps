@@ -1184,6 +1184,47 @@ html[data-theme='dark'] .alert-info .alert-icon { background: #fff; color: #0f17
   visibility: hidden;
 }
 
+.collapsible-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  user-select: none;
+}
+.collapsible-header label {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.collapsible-content {
+  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease, visibility 0.3s ease;
+  max-height: 600px;
+  opacity: 1;
+  padding: 0 1rem 1rem;
+  visibility: visible;
+  overflow: hidden;
+}
+.collapsible-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding: 0 1rem;
+  visibility: hidden;
+}
+.textarea-expanded {
+  min-height: 220px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
 /* Spacing helpers */
 .mb-0 { margin-bottom: 0; }
 .mb-1 { margin-bottom: 0.5rem; }

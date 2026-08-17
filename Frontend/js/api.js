@@ -152,6 +152,8 @@ export const api = {
   deleteTask: (id, taskId) =>
     request(`/trips/${id}/tasks/${taskId}`, { method: 'DELETE' }),
 
+  getTask: (id, taskId) => request(`/trips/${id}/tasks/${taskId}`),
+
   updateTask: async (id, taskId, payload) => {
     const fd = new FormData();
     fd.append('work_type', payload.work_type || '');
@@ -161,7 +163,7 @@ export const api = {
     fd.append('summary', payload.summary || '');
     fd.append('task_date', payload.task_date || '');
     if (Array.isArray(payload.responsible_ids) && payload.responsible_ids.length) {
-      payload.responsible_ids.forEach((id) => fd.append('responsible_ids', String(id)));
+      payload.responsible_ids.forEach((rid) => fd.append('responsible_ids', String(rid)));
     } else if (payload.responsible_id) {
       fd.append('responsible_ids', String(payload.responsible_id));
     }
@@ -172,6 +174,9 @@ export const api = {
     fd.append('montadora', payload.montadora || '');
     fd.append('modelo', payload.modelo || '');
     fd.append('submodelo', payload.submodelo || '');
+    for (const file of payload.photos || []) {
+      fd.append('photos', file);
+    }
     const token = getToken();
     const res = await fetch(
       `${API_BASE}/trips/${id}/tasks/${taskId}`,

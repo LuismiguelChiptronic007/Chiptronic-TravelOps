@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Editar tarefa — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1>Editar tarefa</h1>
+          <p id="trip-subtitle">Carregando…</p>
+        </div>
+        <div class="form-actions mb-0">
+          <button type="button" class="btn btn-secondary" id="btn-toggle-fields">Expandir campos</button>
+          <button type="button" class="btn btn-secondary" id="btn-cancel">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-save">Salvar alterações</button>
+        </div>
+      </div>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+
+      <div class="panel">
+        <div class="panel-body">
+          <form id="task-edit-form" class="form-grid">
+            <div class="collapsible-section" id="section-main">
+              <div class="collapsible-header">
+                <span class="text-muted" style="font-size:0.85rem">Campos da tarefa</span>
+                <button type="button" class="panel-toggle collapsed" data-target="section-main" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+              </div>
+              <div class="collapsible-content collapsed">
+                <div class="form-grid two">
+                  <div>
+                    <label for="edit-work-type">Tipo de trabalho *</label>
+                    <select id="edit-work-type" required>
+                      <option value="">Selecione…</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="edit-task-date">Data da tarefa *</label>
+                    <input id="edit-task-date" type="date" required />
+                  </div>
+                </div>
+                <div>
+                  <label>Responsáveis pela tarefa</label>
+                  <div id="edit-responsible-list" class="responsible-list"></div>
+                </div>
+                <div id="edit-vehicle-fields" class="form-grid two hidden-fields">
+                  <div>
+                    <label for="edit-vehicle">Veículo</label>
+                    <input id="edit-vehicle" placeholder="Ex: Caminhão / Van / Carreta" />
+                  </div>
+                  <div>
+                    <label for="edit-plate">Placa</label>
+                    <input id="edit-plate" placeholder="Ex: ABC-1234" />
+                  </div>
+                </div>
+                <div id="edit-vehicle-detail-fields" class="form-grid three hidden-fields">
+                  <div>
+                    <label for="edit-montadora">Montadora</label>
+                    <input id="edit-montadora" placeholder="Ex: Chevrolet" />
+                  </div>
+                  <div>
+                    <label for="edit-modelo">Modelo</label>
+                    <input id="edit-modelo" placeholder="Ex: S10" />
+                  </div>
+                  <div>
+                    <label for="edit-submodelo">Submodelo</label>
+                    <input id="edit-submodelo" placeholder="Ex: LTZ 2.8" />
+                  </div>
+                </div>
+                <div>
+                  <label for="edit-location">Local do serviço *</label>
+                  <input id="edit-location" required placeholder="Ex: Cliente XYZ — unidade centro" />
+                </div>
+                <div class="form-grid two">
+                  <div>
+                    <label for="edit-start-time">Hora de início *</label>
+                    <input id="edit-start-time" type="time" required />
+                  </div>
+                  <div>
+                    <label for="edit-end-time">Hora de término *</label>
+                    <input id="edit-end-time" type="time" required />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label for="edit-summary">Resumo do que foi feito *</label>
+              <textarea id="edit-summary" required placeholder="Descreva a atividade realizada…" style="min-height: 300px; resize: vertical; line-height: 1.5;"></textarea>
+            </div>
+            <div>
+              <label for="edit-pending-items">Pendências neste trabalho</label>
+              <textarea id="edit-pending-items" placeholder="O que ficou pendente neste mesmo trabalho…" style="min-height: 300px; resize: vertical; line-height: 1.5;"></textarea>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script type="module" src="js/trip-task-edit.js"></script>
+</body>
+</html>

@@ -535,6 +535,154 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
     }
   }
 
+  if (contentType.includes('multipart/form-data')) {
+    const form = await c.req.formData();
+    const photoFiles = form.getAll('photos');
+    if (photoFiles.length > 0 && hasFileStorage(c.env)) {
+      for (const file of photoFiles) {
+        const mime = assertImageFile(file);
+        const original_name = file.name || 'foto.jpg';
+        const stored_key = fileKey(`tasks/${id}/${taskId}`, original_name);
+        await c.env.FILES.put(stored_key, file.stream(), {
+          httpMetadata: { contentType: mime },
+        });
+        await c.env.DB.prepare(
+          'INSERT INTO trip_task_photos (task_id, original_name, stored_key, mime_type) VALUES (?, ?, ?, ?)'
+        )
+          .bind(taskId, original_name, stored_key, mime)
+          .run();
+      }
+    }
+  }
+
   return json({ success: true, trip: await fetchTripFull(c.env.DB, id, userId) });
+});
+
+taskRoutes.get('/:id/tasks/:taskId', async (c) => {
+  const tripId = Number(c.req.param('id'));
+  const taskId = Number(c.req.param('taskId'));
+  const userId = c.get('userId');
+
+  const trip = await getAccessibleTrip(c, tripId);
+  if (!trip) return err('Viagem não encontrada.', 404);
+
+  const task = await c.env.DB.prepare('SELECT * FROM trip_tasks WHERE id = ? AND trip_id = ?')
+    .bind(taskId, tripId)
+    .first();
+
+  if (!task) return err('Tarefa não encontrada.', 404);
+
+  const { results: photos } = await c.env.DB.prepare(
+    'SELECT * FROM trip_task_photos WHERE task_id = ? ORDER BY id ASC'
+  )
+    .bind(taskId)
+    .all();
+
+  const { results: memberRows } = await c.env.DB.prepare(
+    `SELECT tm.*, u.position_title, u.email
+     FROM trip_members tm
+     LEFT JOIN users u ON u.id = tm.user_id
+     WHERE tm.trip_id = ?
+     ORDER BY tm.id ASC`
+  )
+    .bind(tripId)
+    .all();
+
+  let members = memberRows || [];
+  try {
+    const owner = await c.env.DB.prepare(
+      'SELECT id, full_name, sector, manager_name, position_title, employee_id FROM users WHERE id = ?'
+    )
+      .bind(trip.user_id)
+      .first();
+    if (owner) {
+      const exists = members.some((m) => Number(m.user_id || m.id) === Number(owner.id));
+      if (!exists) {
+        members = [
+          {
+            id: null,
+            trip_id: tripId,
+            user_id: owner.id,
+            full_name: owner.full_name,
+            sector: owner.sector || null,
+            manager_name: owner.manager_name || null,
+            position_title: owner.position_title || null,
+            employee_id: owner.employee_id || null,
+          },
+          ...members,
+        ];
+      }
+    }
+  } catch {}
+
+  const rawResponsibleIds = Array.isArray(task.responsible_ids)
+    ? task.responsible_ids
+    : String(task.responsible_ids || '')
+        .split(',')
+        .map((id) => Number(String(id).trim()))
+        .filter((id) => Number.isInteger(id) && id > 0);
+
+  const hasLegacy = !rawResponsibleIds.length && Number.isInteger(Number(task.responsible_id)) && Number(task.responsible_id) > 0;
+  const responsibleIds = hasLegacy ? [Number(task.responsible_id)] : rawResponsibleIds;
+
+  const responsibleUsers = new Map();
+  if (responsibleIds.length) {
+    const placeholders = responsibleIds.map(() => '?').join(',');
+    const { results: users } = await c.env.DB.prepare(
+      `SELECT id, full_name, employee_id, position_title FROM users WHERE id IN (${placeholders}) ORDER BY full_name ASC`
+    ).bind(...responsibleIds).all();
+    for (const u of users || []) responsibleUsers.set(u.id, u);
+  }
+
+  const responsibles = responsibleIds
+    .map((id) => responsibleUsers.get(id))
+    .filter(Boolean)
+    .map((u) => ({
+      id: u.id,
+      full_name: u.full_name,
+      employee_id: u.employee_id || null,
+      position_title: u.position_title || null,
+    }));
+
+  const primaryResponsible = responsibles[0] || null;
+
+  const formattedTask = {
+    id: task.id,
+    trip_id: task.trip_id,
+    work_type: task.work_type,
+    location: task.location,
+    start_time: task.start_time,
+    end_time: task.end_time,
+    summary: task.summary,
+    task_date: task.task_date,
+    responsible_id: primaryResponsible?.id || task.responsible_id || null,
+    responsible_ids: responsibleIds,
+    vehicle: task.vehicle || null,
+    plate: task.plate || null,
+    montadora: task.montadora || null,
+    modelo: task.modelo || null,
+    submodelo: task.submodelo || null,
+    responsible: primaryResponsible
+      ? {
+          id: primaryResponsible.id,
+          full_name: primaryResponsible.full_name,
+          employee_id: primaryResponsible.employee_id || null,
+          position_title: primaryResponsible.position_title || null,
+        }
+      : null,
+    responsibles,
+    pending_items: task.pending_items || '',
+    created_at: task.created_at,
+    updated_at: task.updated_at,
+    photos: (photos || []).map((p) => ({
+      id: p.id,
+      original_name: p.original_name,
+      url: `/api/files/${p.stored_key}`,
+      mime_type: p.mime_type,
+      created_at: p.created_at,
+    })),
+  };
+
+  return json({ success: true, task: formattedTask, members: members.map((m) => ({ ...m, user_id: m.user_id || m.id })) });
 });
 

@@ -3,7 +3,6 @@ import { escapeHtml } from './layout.js';
 
 let lastTaskDate = '';
 let selectedTripDate = '';
-let vehicleFiltersInstalled = false;
 
 function getTripDays(startDate, endDate) {
   const dates = [];
@@ -231,6 +230,14 @@ function populateTaskFilters(tasks) {
   if (currentSubmodelo) submodeloSelect.value = currentSubmodelo;
 }
 
+function getResponsibleLabel(task) {
+  if (Array.isArray(task.responsibles) && task.responsibles.length) {
+    return task.responsibles.map((r) => r.full_name || '—').join(', ');
+  }
+  if (task.responsible?.full_name) return task.responsible.full_name;
+  return '—';
+}
+
 function applyTaskFilters(tasks) {
   const responsible = (document.getElementById('filter-responsible')?.value || '').trim();
   const workType = (document.getElementById('filter-work-type')?.value || '').trim();
@@ -250,7 +257,7 @@ function applyTaskFilters(tasks) {
 
   return tasks.filter((task) => {
     const responsibleLabel = getResponsibleLabel(task);
-    if (responsible && responsibleLabel !== responsible) return false;
+    if (responsible && !responsibleLabel.split(', ').includes(responsible)) return false;
     if (workType && (task.work_type || '').trim() !== workType) return false;
     if (location && (task.location || '').trim() !== location) return false;
     if (montadora && (task.montadora || '').trim() !== montadora) return false;
@@ -279,14 +286,6 @@ function renderTasks(t) {
     if (!byDate.has(d)) byDate.set(d, []);
     byDate.get(d).push(task);
   }
-
-  const getResponsibleLabel = (task) => {
-    if (Array.isArray(task.responsibles) && task.responsibles.length) {
-      return task.responsibles.map((r) => r.full_name || '—').join(', ');
-    }
-    if (task.responsible?.full_name) return task.responsible.full_name;
-    return '—';
-  };
 
   const hasVehicleDetails = (task) => !!(task.montadora || task.modelo || task.submodelo || task.vehicle || task.plate);
 
@@ -613,11 +612,10 @@ function openTaskModal(task) {
   };
 
   editBtn.addEventListener('click', () => {
-    fillEditForm();
-    viewSection.classList.add('hidden-fields');
-    editSection.classList.remove('hidden-fields');
-    viewActions.classList.add('hidden-fields');
-    editActions.classList.remove('hidden-fields');
+    const tripId = window.__currentTrip?.id;
+    if (!tripId) return;
+    closeHandler();
+    location.href = `trip-task-edit.html?trip_id=${tripId}&task_id=${task.id}`;
   });
 
   cancelBtn.addEventListener('click', () => {
@@ -1031,14 +1029,13 @@ export function setupPanelToggles() {
 }
 
 function setupTaskFilters() {
-  if (vehicleFiltersInstalled) return;
-  vehicleFiltersInstalled = true;
+  const container = document.querySelector('.task-filters');
+  if (!container || container.dataset.taskFiltersInstalled) return;
+  container.dataset.taskFiltersInstalled = 'true';
 
-  ['filter-responsible', 'filter-work-type', 'filter-location', 'filter-montadora', 'filter-modelo', 'filter-submodelo'].forEach((id) => {
-    document.getElementById(id)?.addEventListener('change', () => {
-      const trip = window.__currentTrip;
-      if (trip) renderTasks(trip);
-    });
+  container.addEventListener('change', () => {
+    const trip = window.__currentTrip;
+    if (trip) renderTasks(trip);
   });
 }
 
