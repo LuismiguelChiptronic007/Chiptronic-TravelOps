@@ -1,5 +1,5 @@
 import { api, clearSession } from './api.js';
-import { mountShell } from './layout.js';
+import { escapeHtml, mountShell } from './layout.js';
 import { getStoredTheme, toggleTheme } from './theme.js';
 
 const LUNCH_START_KEY = 'cto_lunch_window_start';
@@ -71,10 +71,134 @@ async function saveLunchWindowConfig() {
   }
 }
 
+async function loadLeaderSettings() {
+  const leaderSection = document.getElementById('leader-settings');
+  if (!leaderSection) return;
+
+  try {
+    const userRes = await api.me();
+    const user = userRes?.user;
+    if (!user?.is_sector_leader) {
+      leaderSection.classList.add('hidden');
+      return;
+    }
+
+    leaderSection.classList.remove('hidden');
+    await loadLeaderProjects();
+    await loadLeaderWorkTypes();
+  } catch {
+    leaderSection.classList.add('hidden');
+  }
+}
+
+async function loadLeaderProjects() {
+  const list = document.getElementById('projects-list');
+  if (!list) return;
+
+  try {
+    const data = await api.leaderProjects.list();
+    const projects = data?.projects || [];
+    list.innerHTML = projects.length
+      ? projects
+          .map(
+            (p) => `
+          <div class="list-item">
+            <span>${escapeHtml(p.name)}</span>
+            <button type="button" class="btn btn-danger btn-sm" data-remove-project="${p.id}">Remover</button>
+          </div>
+        `
+          )
+          .join('')
+      : '<p class="text-muted">Nenhum projeto cadastrado.</p>';
+  } catch {
+    list.innerHTML = '<p class="text-muted">Erro ao carregar projetos.</p>';
+  }
+}
+
+async function loadLeaderWorkTypes() {
+  const list = document.getElementById('work-types-list');
+  if (!list) return;
+
+  try {
+    const data = await api.leaderWorkTypes.list();
+    const workTypes = data?.work_types || [];
+    list.innerHTML = workTypes.length
+      ? workTypes
+          .map(
+            (wt) => `
+          <div class="list-item">
+            <span>${escapeHtml(wt.name)}</span>
+            <button type="button" class="btn btn-danger btn-sm" data-remove-work-type="${wt.id}">Remover</button>
+          </div>
+        `
+          )
+          .join('')
+      : '<p class="text-muted">Nenhum tipo de trabalho personalizado cadastrado.</p>';
+  } catch {
+    list.innerHTML = '<p class="text-muted">Erro ao carregar tipos de trabalho.</p>';
+  }
+}
+
+function setupLeaderListeners() {
+  const addProjectBtn = document.getElementById('btn-add-project');
+  const projectInput = document.getElementById('new-project-name');
+  const projectsList = document.getElementById('projects-list');
+
+  addProjectBtn?.addEventListener('click', async () => {
+    const name = projectInput?.value?.trim();
+    if (!name) return;
+
+    try {
+      await api.leaderProjects.create(name);
+      projectInput.value = '';
+      await loadLeaderProjects();
+    } catch (err) {
+      alert(err.message || 'Erro ao adicionar projeto.');
+    }
+  });
+
+  projectsList?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-remove-project]');
+    if (!btn) return;
+    const id = btn.dataset.removeProject;
+    if (!confirm('Remover este projeto?')) return;
+    await api.leaderProjects.remove(id);
+    await loadLeaderProjects();
+  });
+
+  const addWorkTypeBtn = document.getElementById('btn-add-work-type');
+  const workTypeInput = document.getElementById('new-work-type-name');
+  const workTypesList = document.getElementById('work-types-list');
+
+  addWorkTypeBtn?.addEventListener('click', async () => {
+    const name = workTypeInput?.value?.trim();
+    if (!name) return;
+
+    try {
+      await api.leaderWorkTypes.create(name);
+      workTypeInput.value = '';
+      await loadLeaderWorkTypes();
+    } catch (err) {
+      alert(err.message || 'Erro ao adicionar tipo de trabalho.');
+    }
+  });
+
+  workTypesList?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-remove-work-type]');
+    if (!btn) return;
+    const id = btn.dataset.removeWorkType;
+    if (!confirm('Remover este tipo de trabalho?')) return;
+    await api.leaderWorkTypes.remove(id);
+    await loadLeaderWorkTypes();
+  });
+}
+
 async function load() {
   await mountShell({ active: '' });
   updateThemeBtn();
   await loadLunchWindowConfig();
+  await loadLeaderSettings();
+  setupLeaderListeners();
 }
 
 function updateThemeBtn() {

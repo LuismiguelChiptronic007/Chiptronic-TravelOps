@@ -27,9 +27,53 @@ function rangesOverlap(startA, endA, startB, endB) {
   return startA < endB && endA > startB;
 }
 
-taskRoutes.get('/work-types', (c) => json({ success: true, work_types: WORK_TYPES }));
+taskRoutes.get('/work-types', async (c) => {
+  const user = c.get('user');
+  const defaultTypes = WORK_TYPES;
+  let customTypes = [];
 
-async function getAccessibleTrip(c, tripId) {
+  if (user?.sector) {
+    try {
+      const { results } = await c.env.DB.prepare(
+        'SELECT name FROM leader_work_types WHERE sector = ? ORDER BY name ASC'
+      )
+        .bind(user.sector)
+        .all();
+      customTypes = (results || []).map((r) => r.name);
+    } catch {
+      // ignore if table doesn't exist yet
+    }
+  }
+
+  const combined = [...defaultTypes];
+  for (const type of customTypes) {
+    if (!combined.includes(type)) {
+      combined.push(type);
+    }
+  }
+
+  return json({ success: true, work_types: combined });
+});
+
+taskRoutes.get('/projects', async (c) => {
+  const user = c.get('user');
+  if (!user?.sector) {
+    return json({ success: true, projects: [] });
+  }
+
+  try {
+    const { results } = await c.env.DB.prepare(
+      'SELECT id, name FROM leader_projects WHERE sector = ? ORDER BY name ASC'
+    )
+      .bind(user.sector)
+      .all();
+    return json({ success: true, projects: results || [] });
+  } catch {
+    return json({ success: true, projects: [] });
+  }
+});
+
+export async function getAccessibleTrip(c, tripId) {
   const userId = c.get('userId');
   const viewer = c.get('user');
 
@@ -89,6 +133,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
   let montadora = '';
   let modelo = '';
   let submodelo = '';
+  let project_id = '';
   const photoFiles = [];
 
   if (contentType.includes('multipart/form-data')) {
@@ -108,6 +153,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
     montadora = String(form.get('montadora') || '').trim();
     modelo = String(form.get('modelo') || '').trim();
     submodelo = String(form.get('submodelo') || '').trim();
+    project_id = String(form.get('project_id') || '').trim();
 
     for (const entry of form.getAll('photos')) {
       if (entry instanceof File) {
@@ -136,6 +182,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
     montadora = String(body.montadora || '').trim();
     modelo = String(body.modelo || '').trim();
     submodelo = String(body.submodelo || '').trim();
+    project_id = String(body.project_id || '').trim();
   }
 
   const normalizedWorkType = work_type
@@ -226,8 +273,8 @@ taskRoutes.post('/:id/tasks', async (c) => {
   const result = await c.env.DB.prepare(
     `INSERT INTO trip_tasks (
        trip_id, work_type, location, start_time, end_time, summary, task_date, responsible_id,
-       responsible_ids, pending_items, vehicle, plate, montadora, modelo, submodelo
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       responsible_ids, pending_items, vehicle, plate, montadora, modelo, submodelo, project_id
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       id,
@@ -244,7 +291,8 @@ taskRoutes.post('/:id/tasks', async (c) => {
       plate || null,
       montadora || null,
       modelo || null,
-      submodelo || null
+      submodelo || null,
+      project_id ? Number(project_id) : null
     )
     .run();
 
@@ -351,6 +399,7 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
   let montadora = task.montadora;
   let modelo = task.modelo;
   let submodelo = task.submodelo;
+  let project_id = task.project_id;
 
   if (contentType.includes('multipart/form-data')) {
     const form = await c.req.formData();
@@ -371,6 +420,7 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
     montadora = String(form.get('montadora') || '').trim();
     modelo = String(form.get('modelo') || '').trim();
     submodelo = String(form.get('submodelo') || '').trim();
+    project_id = String(form.get('project_id') || '').trim() || project_id;
   } else {
     let body;
     try {
@@ -395,6 +445,7 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
     montadora = String(body.montadora || '').trim();
     modelo = String(body.modelo || '').trim();
     submodelo = String(body.submodelo || '').trim();
+    project_id = String(body.project_id || '').trim() || project_id;
   }
 
   const normalizedWorkType = work_type
@@ -487,7 +538,7 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
       `UPDATE trip_tasks SET
          work_type = ?, location = ?, start_time = ?, end_time = ?, summary = ?, task_date = ?, 
          responsible_id = ?, responsible_ids = ?, pending_items = ?, vehicle = ?, plate = ?, 
-         montadora = ?, modelo = ?, submodelo = ?
+         montadora = ?, modelo = ?, submodelo = ?, project_id = ?
        WHERE id = ?`
     )
       .bind(
@@ -505,6 +556,7 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
         montadora || null,
         modelo || null,
         submodelo || null,
+        project_id ? Number(project_id) : null,
         taskId
       )
       .run();
@@ -525,8 +577,8 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
           task_date,
           primaryResponsibleId,
           pending_items || null,
-          requiresVehicle ? null : vehicle || null,
-          requiresVehicle ? null : plate || null,
+          vehicle || null,
+          plate || null,
           taskId
         )
         .run();
@@ -566,7 +618,12 @@ taskRoutes.get('/:id/tasks/:taskId', async (c) => {
   const trip = await getAccessibleTrip(c, tripId);
   if (!trip) return err('Viagem não encontrada.', 404);
 
-  const task = await c.env.DB.prepare('SELECT * FROM trip_tasks WHERE id = ? AND trip_id = ?')
+  const task = await c.env.DB.prepare(
+    `SELECT tt.*, lp.name AS project_name
+     FROM trip_tasks tt
+     LEFT JOIN leader_projects lp ON lp.id = tt.project_id
+     WHERE tt.id = ? AND tt.trip_id = ?`
+  )
     .bind(taskId, tripId)
     .first();
 
@@ -662,6 +719,8 @@ taskRoutes.get('/:id/tasks/:taskId', async (c) => {
     montadora: task.montadora || null,
     modelo: task.modelo || null,
     submodelo: task.submodelo || null,
+    project_id: task.project_id || null,
+    project_name: task.project_name || null,
     responsible: primaryResponsible
       ? {
           id: primaryResponsible.id,

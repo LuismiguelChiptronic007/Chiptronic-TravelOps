@@ -115,6 +115,19 @@ export const api = {
   },
 
   workTypes: () => request('/trips/work-types'),
+  projects: () => request('/trips/projects'),
+
+  leaderProjects: {
+    list: () => request('/configuracoes/lider/projetos'),
+    create: (name) => request('/configuracoes/lider/projetos', { method: 'POST', json: { name } }),
+    remove: (id) => request(`/configuracoes/lider/projetos/${id}`, { method: 'DELETE' }),
+  },
+
+  leaderWorkTypes: {
+    list: () => request('/configuracoes/lider/tipos-trabalho'),
+    create: (name) => request('/configuracoes/lider/tipos-trabalho', { method: 'POST', json: { name } }),
+    remove: (id) => request(`/configuracoes/lider/tipos-trabalho/${id}`, { method: 'DELETE' }),
+  },
 
   addTask: async (id, payload) => {
     const fd = new FormData();

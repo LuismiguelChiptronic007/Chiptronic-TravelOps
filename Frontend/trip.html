@@ -121,23 +121,29 @@
                 <h3 id="task-form-title">Nova tarefa</h3>
                 <button type="button" class="panel-toggle" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
               </div>
-              <form id="task-form" class="checklist-box form-grid panel-content">
-                <div class="form-grid two">
-                  <div>
-                    <label for="work_type">Tipo de trabalho *</label>
-                    <select id="work_type" required>
-                      <option value="">Selecione…</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label for="task_date">Data da tarefa *</label>
-                    <input id="task_date" type="date" required />
-                  </div>
-                </div>
-                <div>
-                  <label>Responsáveis pela tarefa</label>
-                  <div id="responsible_id" class="responsible-list" aria-label="Responsáveis pela tarefa"></div>
-                </div>
+               <form id="task-form" class="checklist-box form-grid panel-content">
+                 <div class="form-grid two">
+                   <div>
+                     <label for="work_type">Tipo de trabalho *</label>
+                     <select id="work_type" required>
+                       <option value="">Selecione…</option>
+                     </select>
+                   </div>
+                   <div>
+                     <label for="task_date">Data da tarefa *</label>
+                     <input id="task_date" type="date" required />
+                   </div>
+                 </div>
+                 <div>
+                   <label for="project_id">Projeto</label>
+                   <select id="project_id">
+                     <option value="">Sem projeto</option>
+                   </select>
+                 </div>
+                 <div>
+                   <label>Responsáveis pela tarefa</label>
+                   <div id="responsible_id" class="responsible-list" aria-label="Responsáveis pela tarefa"></div>
+                 </div>
                 <div id="vehicle-fields" class="form-grid two hidden-fields">
                   <div>
                     <label for="vehicle">Veículo</label>

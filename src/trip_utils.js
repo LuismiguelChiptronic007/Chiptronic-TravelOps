@@ -107,6 +107,7 @@ function formatTask(task, photos = []) {
     montadora: task.montadora || null,
     modelo: task.modelo || null,
     submodelo: task.submodelo || null,
+    project_id: task.project_id || null,
     responsible: responsibleIds.length || task.responsible_id
       ? {
           id: responsibleIds[0] || task.responsible_id || null,
@@ -215,9 +216,11 @@ export async function fetchTripFull(db, tripId, userId) {
         const { results } = await db
           .prepare(
             `SELECT tt.*, u.id AS responsible_id_ref, u.full_name AS responsible_full_name,
-                    u.employee_id AS responsible_employee_id, u.position_title AS responsible_position_title
+                    u.employee_id AS responsible_employee_id, u.position_title AS responsible_position_title,
+                    lp.name AS project_name
              FROM trip_tasks tt
              LEFT JOIN users u ON u.id = tt.responsible_id
+             LEFT JOIN leader_projects lp ON lp.id = tt.project_id
              WHERE tt.trip_id = ?
              ORDER BY tt.task_date ASC, tt.start_time ASC, tt.id ASC`
           )

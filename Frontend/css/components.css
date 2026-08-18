@@ -760,6 +760,21 @@ html[data-theme='dark'] .alert-info .alert-icon { background: #fff; color: #0f17
   gap: 1rem;
   padding: 0.55rem 0;
 }
+.flex-end { margin-left: auto; }
+.list-group {
+  display: grid;
+  gap: 0.5rem;
+}
+.list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
 @media (max-width: 640px) {
   .user-profile-btn .meta { display: none; }
   .settings-row { flex-direction: column; align-items: flex-start; }

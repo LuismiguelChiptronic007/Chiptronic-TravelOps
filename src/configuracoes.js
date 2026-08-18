@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { requireUser } from './auth.js';
 import { err, json } from './helpers.js';
+import { configuracoesLider } from './configuracoes-lider.js';
 
 const DEFAULT_CONFIG = {
   janelaAlmocoInicio: '11:00',
@@ -78,3 +79,5 @@ configuracoes.post('/almoco', async (c) => {
     config: { janelaAlmocoInicio: inicio, janelaAlmocoFim: fim },
   });
 });
+
+configuracoes.route('/lider', configuracoesLider);

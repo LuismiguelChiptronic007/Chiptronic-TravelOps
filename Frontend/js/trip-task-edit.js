@@ -93,6 +93,21 @@ function fillForm() {
 
   fillResponsibleOptions();
   updateTaskTypeFields();
+  loadEditProjects();
+}
+
+async function loadEditProjects() {
+  const sel = document.getElementById('edit-project-id');
+  if (!sel) return;
+  try {
+    const data = await api.projects();
+    const projects = data?.projects || [];
+    sel.innerHTML = '<option value="">Sem projeto</option>' +
+      projects.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+    sel.value = task.project_id || '';
+  } catch {
+    sel.innerHTML = '<option value="">Sem projeto</option>';
+  }
 }
 
 function fillResponsibleOptions() {
@@ -225,6 +240,7 @@ async function saveTask() {
       montadora,
       modelo,
       submodelo,
+      project_id: document.getElementById('edit-project-id')?.value || null,
     };
 
     await api.updateTask(tripId, taskId, payload);

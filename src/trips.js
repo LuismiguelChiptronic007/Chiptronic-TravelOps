@@ -5,6 +5,7 @@ import { notifyUsers } from './notifications.js';
 import { fetchTripFull, formatTrip, saveTripMembers, syncUserTripStatuses } from './trip_utils.js';
 import { checklistRoutes } from './checklist.js';
 import { taskRoutes } from './tasks.js';
+import { getAccessibleTrip } from './tasks.js';
 
 export const trips = new Hono();
 trips.use('*', requireUser);
@@ -329,11 +330,14 @@ trips.put('/:id', async (c) => {
 trips.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'));
   const userId = c.get('userId');
+  const viewer = c.get('user');
 
-  const trip = await c.env.DB.prepare('SELECT * FROM trips WHERE id = ? AND user_id = ?')
-    .bind(id, userId)
-    .first();
+  const trip = await getAccessibleTrip(c, id);
   if (!trip) return err('Viagem não encontrada.', 404);
+
+  if (trip.status === 'completed' && !isAdmin(viewer)) {
+    return err('Viagem concluída não pode ser excluída.', 403);
+  }
 
   await c.env.DB.prepare('DELETE FROM trip_task_photos WHERE task_id IN (SELECT id FROM trip_tasks WHERE trip_id = ?)')
     .bind(id)

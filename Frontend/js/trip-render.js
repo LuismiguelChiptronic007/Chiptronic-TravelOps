@@ -287,10 +287,16 @@ function renderTasks(t) {
     byDate.get(d).push(task);
   }
 
-  const hasVehicleDetails = (task) => !!(task.montadora || task.modelo || task.submodelo || task.vehicle || task.plate);
+  const hasVehicleDetails = (task) => !!(task.montadora || task.modelo || task.submodelo || task.vehicle || task.plate || task.project_id);
 
   const vehicleDetailHtml = (task) => {
     const rows = [];
+    if (task.project_id) {
+      const projectName = task.project_name || `Projeto #${task.project_id}`;
+      rows.push(
+        `<span>Projeto: <strong>${escapeHtml(projectName)}</strong></span>`
+      );
+    }
     if (task.montadora || task.modelo || task.submodelo) {
       rows.push(
         `<span>Montadora/Modelo/Versão: <strong>${escapeHtml(task.montadora || '—')} · ${escapeHtml(task.modelo || '—')} · ${escapeHtml(task.submodelo || '—')}</strong></span>`
@@ -728,6 +734,29 @@ export function fillWorkTypes(types) {
   if (current) sel.value = current;
 }
 
+export function fillProjects(projects) {
+  const sel = document.getElementById('project_id');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Sem projeto</option>';
+  for (const p of projects || []) {
+    const opt = document.createElement('option');
+    opt.value = p.id || p.name;
+    opt.textContent = p.name;
+    sel.appendChild(opt);
+  }
+  if (current) sel.value = current;
+}
+
+async function loadProjects() {
+  try {
+    const data = await api.projects();
+    fillProjects(data?.projects || []);
+  } catch {
+    // ignore projects load failure
+  }
+}
+
 function renderTripDays(t) {
   const daysContainer = document.getElementById('trip-days');
   if (!daysContainer) return;
@@ -1066,6 +1095,8 @@ export function renderTrip(t) {
   updateTaskAvailability(t, selectedTripDate);
   renderCompletionProgress(t);
 
+  loadProjects();
+
   document.getElementById('task-form-title').textContent =
     selectedTripDate ? `Nova tarefa — ${formatDateBR(selectedTripDate)}` : 'Nova tarefa';
 
@@ -1106,5 +1137,6 @@ export function taskFormPayload() {
     montadora: document.getElementById('montadora')?.value.trim() || null,
     modelo: document.getElementById('modelo')?.value.trim() || null,
     submodelo: document.getElementById('submodelo')?.value.trim() || null,
+    project_id: document.getElementById('project_id')?.value || null,
   };
 }

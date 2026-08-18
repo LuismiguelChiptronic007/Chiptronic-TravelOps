@@ -56,6 +56,42 @@
           </div>
         </div>
       </div>
+
+      <div id="leader-settings" class="hidden">
+        <div class="panel">
+          <div class="panel-header"><h2>Projetos do setor</h2></div>
+          <div class="panel-body stack">
+            <p class="text-muted mb-0">Adicione projetos que aparecerão no formulário de tarefas para todo o seu setor.</p>
+            <div class="form-grid two">
+              <div>
+                <label for="new-project-name">Novo projeto</label>
+                <input id="new-project-name" placeholder="Ex: Expansão Filial Sul" />
+              </div>
+              <div class="flex-end">
+                <button type="button" class="btn btn-primary" id="btn-add-project">Adicionar projeto</button>
+              </div>
+            </div>
+            <div id="projects-list" class="list-group"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h2>Tipos de trabalho do setor</h2></div>
+          <div class="panel-body stack">
+            <p class="text-muted mb-0">Adicione tipos de trabalho personalizados que aparecerão no formulário de tarefas.</p>
+            <div class="form-grid two">
+              <div>
+                <label for="new-work-type-name">Novo tipo de trabalho</label>
+                <input id="new-work-type-name" placeholder="Ex: Manutenção preventiva" />
+              </div>
+              <div class="flex-end">
+                <button type="button" class="btn btn-primary" id="btn-add-work-type">Adicionar tipo</button>
+              </div>
+            </div>
+            <div id="work-types-list" class="list-group"></div>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
   <script src="js/config.js"></script>

@@ -168,13 +168,16 @@ document.getElementById('btn-delete-trip')?.addEventListener('click', async () =
 
   if (!confirmed) return;
 
-  hideAlert(alertEl);
-  try {
-    await api.deleteTrip(tripId);
-    location.href = 'index.html';
-  } catch (err) {
-    showAlert(alertEl, err.message);
-  }
+   hideAlert(alertEl);
+   try {
+     await api.deleteTrip(tripId);
+     showAlert(alertEl, 'Viagem excluída com sucesso.', 'success');
+     setTimeout(() => {
+       location.href = 'index.html';
+     }, 1200);
+   } catch (err) {
+     showAlert(alertEl, err.message);
+   }
 });
 
 init();
