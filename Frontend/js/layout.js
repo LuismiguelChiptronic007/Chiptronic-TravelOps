@@ -31,6 +31,7 @@ export async function mountShell({ active } = {}) {
   installGlobalShortcuts();
   installProgressBar();
   initScrollReveal();
+  installGlobalErrorHandler();
 
   let user = getStoredUser();
   try {
@@ -609,6 +610,52 @@ function installFabButtons(user) {
   }).reverse().join('');
 
   document.body.appendChild(container);
+}
+
+function installGlobalErrorHandler() {
+  const IGNORE_MESSAGES = [
+    'ResizeObserver loop',
+    'textContent assignment',
+    'chrome-extension',
+    'edge-extension',
+    'safari-extension',
+  ];
+
+  const normalizeMessage = (message) => {
+    if (!message) return '';
+    return message
+      .replace(/\\/g, '/')
+      .replace(/[\\"']/g, '')
+      .trim();
+  };
+
+  const shouldIgnore = (message) => {
+    const normalized = normalizeMessage(message);
+    return IGNORE_MESSAGES.some((m) => normalized.includes(m));
+  };
+
+  const showErrorToast = (message) => {
+    if (shouldIgnore(message)) return;
+    const normalized = normalizeMessage(message);
+    if (!normalized) return;
+    showToast({
+      type: 'error',
+      title: 'Erro',
+      msg: normalized,
+      duration: 8000,
+    });
+  };
+
+  window.addEventListener('error', (event) => {
+    if (event.target === window || event.target === document) {
+      showErrorToast(event.message);
+    }
+  }, true);
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const message = event.reason?.message || event.reason || 'Erro não tratado.';
+    showErrorToast(message);
+  });
 }
 
 export { showToast, confirmDialog, showHotkeysHelp, emptyStateSVG };

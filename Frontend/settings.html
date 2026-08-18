@@ -72,6 +72,31 @@
               </div>
             </div>
             <div id="projects-list" class="list-group"></div>
+            <div id="project-fields-modal" class="modal-overlay hidden">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h3>Campos do projeto</h3>
+                  <button type="button" class="modal-close" data-close="project-fields-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-grid two">
+                    <div>
+                      <label for="new-project-field-name">Nome do campo</label>
+                      <input id="new-project-field-name" placeholder="Ex: Número da NF" />
+                    </div>
+                    <div class="flex-end">
+                      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                        <input type="checkbox" id="new-project-field-required" />
+                        Obrigatório
+                      </label>
+                      <button type="button" class="btn btn-primary" id="btn-add-project-field">Adicionar campo</button>
+                    </div>
+                  </div>
+                  <div id="project-fields-list" class="list-group mt-2"></div>
+                  <button type="button" class="btn btn-danger mt-2" id="btn-clear-project-fields">Limpar todos os campos</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -89,6 +114,31 @@
               </div>
             </div>
             <div id="work-types-list" class="list-group"></div>
+            <div id="work-type-fields-modal" class="modal-overlay hidden">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h3>Campos do tipo de trabalho</h3>
+                  <button type="button" class="modal-close" data-close="work-type-fields-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-grid two">
+                    <div>
+                      <label for="new-work-type-field-name">Nome do campo</label>
+                      <input id="new-work-type-field-name" placeholder="Ex: Número da NF" />
+                    </div>
+                    <div class="flex-end">
+                      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                        <input type="checkbox" id="new-work-type-field-required" />
+                        Obrigatório
+                      </label>
+                      <button type="button" class="btn btn-primary" id="btn-add-work-type-field">Adicionar campo</button>
+                    </div>
+                  </div>
+                  <div id="work-type-fields-list" class="list-group mt-2"></div>
+                  <button type="button" class="btn btn-danger mt-2" id="btn-clear-work-type-fields">Limpar todos os campos</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

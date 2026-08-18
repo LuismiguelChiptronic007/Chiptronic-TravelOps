@@ -1221,8 +1221,8 @@ html[data-theme='dark'] .alert-info .alert-icon { background: #fff; color: #0f17
   cursor: pointer;
 }
 .collapsible-content {
-  transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease, visibility 0.3s ease;
-  max-height: 600px;
+  transition: max-height 0.35s ease, opacity 0.35s ease, padding 0.35s ease, visibility 0.35s ease;
+  max-height: 3000px;
   opacity: 1;
   padding: 0 1rem 1rem;
   visibility: visible;

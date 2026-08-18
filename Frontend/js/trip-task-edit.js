@@ -68,14 +68,14 @@ async function init() {
       return;
     }
 
-    fillForm();
+    await fillForm();
     setupListeners();
   } catch (err) {
     setAlert(err.message, 'error');
   }
 }
 
-function fillForm() {
+async function fillForm() {
   if (!task) return;
 
   document.getElementById('edit-work-type').value = task.work_type || '';
@@ -93,7 +93,8 @@ function fillForm() {
 
   fillResponsibleOptions();
   updateTaskTypeFields();
-  loadEditProjects();
+  await loadEditProjects();
+  await loadEditCustomFields();
 }
 
 async function loadEditProjects() {
@@ -107,6 +108,61 @@ async function loadEditProjects() {
     if (task.project_id) sel.value = String(task.project_id);
   } catch {
     sel.innerHTML = '<option value="">Sem projeto</option>';
+  }
+}
+
+async function loadEditCustomFields() {
+  const container = document.getElementById('edit-custom-fields-container');
+  if (!container) return;
+
+  const type = document.getElementById('edit-work-type').value;
+  const projectId = document.getElementById('edit-project-id').value;
+
+  container.innerHTML = '';
+
+  if (!type && !projectId) return;
+
+  try {
+    const [typeFields, projectFields] = await Promise.all([
+      type ? api.leaderWorkTypes.fields.list(type) : Promise.resolve({ fields: [] }),
+      projectId ? api.leaderProjects.fields.list(projectId) : Promise.resolve({ fields: [] }),
+    ]);
+
+    const fields = [
+      ...(typeFields.fields || []).map((f) => ({ ...f, source: 'type' })),
+      ...(projectFields.fields || []).map((f) => ({ ...f, source: 'project' })),
+    ];
+
+    console.log('Custom fields debug:', {
+      type,
+      projectId,
+      typeFields: typeFields.fields,
+      projectFields: projectFields.fields,
+      totalFields: fields.length,
+      taskCustomFields: task.custom_fields,
+      taskId: task.id
+    });
+
+    if (!fields.length) return;
+
+    const grid = document.createElement('div');
+    grid.className = 'form-grid two';
+
+    for (const field of fields) {
+      const fieldValue = task.custom_fields?.[field.field_name] || '';
+      console.log(`Field ${field.field_name}: value="${fieldValue}"`);
+
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = `
+        <label for="edit_custom_${field.field_name}">${escapeHtml(field.field_name)} ${field.is_required ? '*' : ''}</label>
+        <input id="edit_custom_${field.field_name}" name="custom_${field.field_name}" value="${escapeHtml(fieldValue)}" placeholder="Informe ${escapeHtml(field.field_name)}" />
+      `;
+      grid.appendChild(wrapper);
+    }
+
+    container.appendChild(grid);
+  } catch (error) {
+    console.error('Erro ao carregar campos customizados:', error);
   }
 }
 
@@ -165,9 +221,7 @@ function updateTaskTypeFields() {
     .toLowerCase();
 
   const requiresVehicleDetails = [
-    'dieseldiag ontime',
-    'controle de logs',
-    'logs de telemetria',
+    
   ].includes(normalizedType);
 
   if (requiresVehicleDetails) {
@@ -219,13 +273,18 @@ async function saveTask() {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
-  const requiresVehicle = ['dieseldiag ontime', 'controle de logs', 'logs de telemetria', 'analise de veiculos'].includes(normalizedType);
+  const requiresVehicle = [].includes(normalizedType);
   if (requiresVehicle && (!vehicle || !plate || !montadora || !modelo || !submodelo)) {
     setAlert('Para este tipo de trabalho, informe a montadora, o modelo, a versão e a placa.', 'error');
     return;
   }
 
   try {
+    const customFields = Object.fromEntries(
+      Array.from(document.querySelectorAll('#edit-custom-fields-container input'))
+        .map((input) => [input.dataset.fieldName, input.value.trim()])
+    );
+
     const payload = {
       work_type,
       task_date,
@@ -241,6 +300,7 @@ async function saveTask() {
       modelo,
       submodelo,
       project_id: document.getElementById('edit-project-id')?.value || null,
+      custom_fields: customFields,
     };
 
     await api.updateTask(tripId, taskId, payload);
@@ -251,7 +311,11 @@ async function saveTask() {
 }
 
 function setupListeners() {
-  document.getElementById('edit-work-type').addEventListener('change', updateTaskTypeFields);
+  document.getElementById('edit-work-type').addEventListener('change', () => {
+    updateTaskTypeFields();
+    loadEditCustomFields();
+  });
+  document.getElementById('edit-project-id').addEventListener('change', loadEditCustomFields);
   document.getElementById('btn-cancel').addEventListener('click', () => {
     if (confirm('Descartar alterações?')) {
       window.location.href = `trip.html?id=${tripId}`;

@@ -87,14 +87,11 @@ taskRoutes.get('/work-types', async (c) => {
     }
   }
 
-  const combined = [...defaultTypes];
-  for (const type of customTypes) {
-    if (!combined.includes(type)) {
-      combined.push(type);
-    }
+  if (customTypes.length) {
+    return json({ success: true, work_types: customTypes });
   }
 
-  return json({ success: true, work_types: combined });
+  return json({ success: true, work_types: defaultTypes });
 });
 
 taskRoutes.get('/projects', async (c) => {
@@ -178,6 +175,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
   let modelo = '';
   let submodelo = '';
   let project_id = '';
+  let customFields = {};
   const photoFiles = [];
 
   if (contentType.includes('multipart/form-data')) {
@@ -240,9 +238,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
   }
 
   const requiresVehicle = [
-    'dieseldiag ontime',
-    'controle de logs',
-    'logs de telemetria',
+   
   ].includes(normalizedWorkType);
   if (requiresVehicle && (!vehicle || !plate || !montadora || !modelo || !submodelo)) {
     return err('Para este tipo de trabalho, informe a montadora, o modelo, a versão e a placa.');
@@ -356,6 +352,8 @@ taskRoutes.post('/:id/tasks', async (c) => {
       .run();
   }
 
+  await saveCustomFields(c.env.DB, taskId, customFields);
+
   try {
     const { results: leaders } = await c.env.DB.prepare(
       `SELECT id FROM users WHERE sector = ? AND LOWER(REPLACE(REPLACE(position_title, 'í', 'i'), 'Í', 'I')) = 'lider'`
@@ -440,6 +438,7 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
   let modelo = task.modelo;
   let submodelo = task.submodelo;
   let project_id = task.project_id;
+  let customFields = {};
   const photoFiles = [];
 
   if (contentType.includes('multipart/form-data')) {
@@ -462,6 +461,7 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
     modelo = String(form.get('modelo') || '').trim();
     submodelo = String(form.get('submodelo') || '').trim();
     project_id = String(form.get('project_id') || '').trim() || project_id;
+    customFields = parseCustomFields(form);
 
     for (const entry of form.getAll('photos')) {
       if (entry instanceof File) {
@@ -493,6 +493,7 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
     modelo = String(body.modelo || '').trim();
     submodelo = String(body.submodelo || '').trim();
     project_id = String(body.project_id || '').trim() || project_id;
+    customFields = parseCustomFields(body);
   }
 
   const normalizedWorkType = work_type
@@ -510,9 +511,7 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
   }
 
   const requiresVehicle = [
-    'dieseldiag ontime',
-    'controle de logs',
-    'logs de telemetria',
+    
   ].includes(normalizedWorkType);
   if (requiresVehicle && (!vehicle || !plate || !montadora || !modelo || !submodelo)) {
     return err('Para este tipo de trabalho, informe a montadora, o modelo, a versão e a placa.');
@@ -652,6 +651,8 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
       .run();
   }
 
+  await saveCustomFields(c.env.DB, taskId, customFields);
+
   return json({ success: true, trip: await fetchTripFull(c.env.DB, id, userId) });
 });
 
@@ -679,6 +680,8 @@ taskRoutes.get('/:id/tasks/:taskId', async (c) => {
   )
     .bind(taskId)
     .all();
+
+  const customFields = await getCustomFields(c.env.DB, taskId);
 
   const { results: memberRows } = await c.env.DB.prepare(
     `SELECT tm.*, u.position_title, u.email
@@ -766,6 +769,7 @@ taskRoutes.get('/:id/tasks/:taskId', async (c) => {
     submodelo: task.submodelo || null,
     project_id: task.project_id || null,
     project_name: task.project_name || null,
+    custom_fields: await getCustomFields(c.env.DB, taskId),
     responsible: primaryResponsible
       ? {
           id: primaryResponsible.id,

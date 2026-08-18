@@ -7,11 +7,11 @@ configuracoesLider.use('*', requireUser);
 
 configuracoesLider.get('/projetos', async (c) => {
   const user = c.get('user');
-  if (!isSectorLeader(user)) {
-    return err('Apenas líderes de setor podem acessar esta funcionalidade.', 403);
+  const sector = user?.sector;
+  if (!sector) {
+    return json({ success: true, projects: [] });
   }
 
-  const sector = user.sector;
   const { results } = await c.env.DB.prepare(
     'SELECT id, name, created_at FROM leader_projects WHERE sector = ? ORDER BY name ASC'
   )
@@ -69,11 +69,11 @@ configuracoesLider.delete('/projetos/:id', async (c) => {
 
 configuracoesLider.get('/tipos-trabalho', async (c) => {
   const user = c.get('user');
-  if (!isSectorLeader(user)) {
-    return err('Apenas líderes de setor podem acessar esta funcionalidade.', 403);
+  const sector = user?.sector;
+  if (!sector) {
+    return json({ success: true, work_types: [] });
   }
 
-  const sector = user.sector;
   const { results } = await c.env.DB.prepare(
     'SELECT id, name, created_at FROM leader_work_types WHERE sector = ? ORDER BY name ASC'
   )
@@ -131,12 +131,12 @@ configuracoesLider.delete('/tipos-trabalho/:id', async (c) => {
 
 configuracoesLider.get('/tipos-trabalho/:name/campos', async (c) => {
   const user = c.get('user');
-  if (!isSectorLeader(user)) {
-    return err('Apenas líderes de setor podem acessar esta funcionalidade.', 403);
+  const sector = user?.sector;
+  if (!sector) {
+    return json({ success: true, fields: [] });
   }
 
   const name = String(c.req.param('name'));
-  const sector = user.sector;
   const { results } = await c.env.DB.prepare(
     `SELECT id, field_name, is_required, sort_order
      FROM leader_work_type_fields
@@ -206,12 +206,12 @@ configuracoesLider.delete('/tipos-trabalho/:name/campos/:fieldName', async (c) =
 
 configuracoesLider.get('/projetos/:id/campos', async (c) => {
   const user = c.get('user');
-  if (!isSectorLeader(user)) {
-    return err('Apenas líderes de setor podem acessar esta funcionalidade.', 403);
+  const sector = user?.sector;
+  if (!sector) {
+    return json({ success: true, fields: [] });
   }
 
   const projectId = Number(c.req.param('id'));
-  const sector = user.sector;
   const { results } = await c.env.DB.prepare(
     `SELECT id, field_name, is_required, sort_order
      FROM leader_project_fields

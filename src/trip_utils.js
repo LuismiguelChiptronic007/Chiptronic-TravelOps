@@ -109,6 +109,7 @@ function formatTask(task, photos = []) {
     submodelo: task.submodelo || null,
     project_id: task.project_id || null,
     project_name: task.project_name || null,
+    custom_fields: task.custom_fields || {},
     responsible: responsibleIds.length || task.responsible_id
       ? {
           id: responsibleIds[0] || task.responsible_id || null,
@@ -280,7 +281,7 @@ export async function fetchTripFull(db, tripId, userId) {
       for (const id of idsToLoad) allResponsibleIds.add(id);
     }
 
-    const [responsibleUsers, photos] = await Promise.all([
+    const [responsibleUsers, photos, customFieldsRows] = await Promise.all([
       allResponsibleIds.size
         ? db
             .prepare(`SELECT id, full_name, employee_id, position_title FROM users WHERE id IN (${[...allResponsibleIds].map(() => '?').join(',')}) ORDER BY full_name ASC`)
@@ -291,6 +292,10 @@ export async function fetchTripFull(db, tripId, userId) {
         .prepare(`SELECT * FROM trip_task_photos WHERE task_id IN (${allTaskIds.map(() => '?').join(',')}) ORDER BY id ASC`)
         .bind(...allTaskIds)
         .all(),
+      db
+        .prepare(`SELECT task_id, field_name, field_value FROM trip_task_custom_values WHERE task_id IN (${allTaskIds.map(() => '?').join(',')})`)
+        .bind(...allTaskIds)
+        .all(),
     ]);
 
     const responsibleMap = new Map((responsibleUsers.results || []).map((u) => [u.id, u]));
@@ -298,6 +303,12 @@ export async function fetchTripFull(db, tripId, userId) {
     for (const p of photos.results || []) {
       if (!photosByTask.has(p.task_id)) photosByTask.set(p.task_id, []);
       photosByTask.get(p.task_id).push(p);
+    }
+
+    const customFieldsByTask = new Map();
+    for (const row of customFieldsRows.results || []) {
+      if (!customFieldsByTask.has(row.task_id)) customFieldsByTask.set(row.task_id, {});
+      customFieldsByTask.get(row.task_id)[row.field_name] = row.field_value;
     }
 
     for (const task of taskRows) {
@@ -328,6 +339,7 @@ export async function fetchTripFull(db, tripId, userId) {
         responsible_employee_id: primaryResponsible?.employee_id || task.responsible_employee_id || null,
         responsible_position_title: primaryResponsible?.position_title || task.responsible_position_title || null,
         responsibles: responsibleList,
+        custom_fields: customFieldsByTask.get(task.id) || {},
       };
 
       tasks.push(formatTask(taskWithResponsibles, photosByTask.get(task.id) || []));

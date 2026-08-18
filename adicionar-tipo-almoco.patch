@@ -70,11 +70,7 @@ index a410b4a..ad76569 100644
 --- a/src/helpers.js
 +++ b/src/helpers.js
 @@ -170,6 +170,7 @@ export const WORK_TYPES = [
-   'Dieseldiag Ontime',
-   'Controle de Logs',
-   'LOGS de Telemetria',
-   'Analise de veiculos',
-+  'Almoço',
+ 
  ];
  
  export const STATUS_LABELS = {

@@ -121,12 +121,22 @@ export const api = {
     list: () => request('/configuracoes/lider/projetos'),
     create: (name) => request('/configuracoes/lider/projetos', { method: 'POST', json: { name } }),
     remove: (id) => request(`/configuracoes/lider/projetos/${id}`, { method: 'DELETE' }),
+    fields: {
+      list: (id) => request(`/configuracoes/lider/projetos/${id}/campos`),
+      add: (id, field) => request(`/configuracoes/lider/projetos/${id}/campos`, { method: 'POST', json: field }),
+      remove: (id, fieldName) => request(`/configuracoes/lider/projetos/${id}/campos/${encodeURIComponent(fieldName)}`, { method: 'DELETE' }),
+    },
   },
 
   leaderWorkTypes: {
     list: () => request('/configuracoes/lider/tipos-trabalho'),
     create: (name) => request('/configuracoes/lider/tipos-trabalho', { method: 'POST', json: { name } }),
     remove: (id) => request(`/configuracoes/lider/tipos-trabalho/${id}`, { method: 'DELETE' }),
+    fields: {
+      list: (name) => request(`/configuracoes/lider/tipos-trabalho/${encodeURIComponent(name)}/campos`),
+      add: (name, field) => request(`/configuracoes/lider/tipos-trabalho/${encodeURIComponent(name)}/campos`, { method: 'POST', json: field }),
+      remove: (name, fieldName) => request(`/configuracoes/lider/tipos-trabalho/${encodeURIComponent(name)}/campos/${encodeURIComponent(fieldName)}`, { method: 'DELETE' }),
+    },
   },
 
   addTask: async (id, payload) => {
@@ -150,6 +160,11 @@ export const api = {
     fd.append('modelo', payload.modelo || '');
     fd.append('submodelo', payload.submodelo || '');
     fd.append('project_id', payload.project_id || '');
+    if (payload.custom_fields) {
+      for (const [name, value] of Object.entries(payload.custom_fields)) {
+        fd.append(`custom_${name}`, value || '');
+      }
+    }
     for (const file of payload.photos || []) {
       fd.append('photos', file);
     }
@@ -189,6 +204,11 @@ export const api = {
     fd.append('modelo', payload.modelo || '');
     fd.append('submodelo', payload.submodelo || '');
     fd.append('project_id', payload.project_id || '');
+    if (payload.custom_fields) {
+      for (const [name, value] of Object.entries(payload.custom_fields)) {
+        fd.append(`custom_${name}`, value || '');
+      }
+    }
     for (const file of payload.photos || []) {
       fd.append('photos', file);
     }

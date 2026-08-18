@@ -44,9 +44,7 @@ function normalizeWorkType(type) {
 function requiresVehicleFields(type) {
   const normalized = normalizeWorkType(type);
   return [
-    'dieseldiag ontime',
-    'controle de logs',
-    'logs de telemetria',
+    
   ].includes(normalized);
 }
 
@@ -311,7 +309,7 @@ function renderTasks(t) {
     byDate.get(d).push(task);
   }
 
-  const hasVehicleDetails = (task) => !!(task.montadora || task.modelo || task.submodelo || task.vehicle || task.plate || task.project_id);
+  const hasVehicleDetails = (task) => !!(task.montadora || task.modelo || task.submodelo || task.vehicle || task.plate || task.project_id || Object.keys(task.custom_fields || {}).length);
 
   const vehicleDetailHtml = (task) => {
     const rows = [];
@@ -330,6 +328,14 @@ function renderTasks(t) {
       rows.push(
         `<span>Veículo/Placa: <strong>${escapeHtml(task.vehicle || '—')}${task.plate ? ` · ${escapeHtml(task.plate)}` : ''}</strong></span>`
       );
+    }
+    const customFields = task.custom_fields || {};
+    for (const [name, value] of Object.entries(customFields)) {
+      if (value) {
+        rows.push(
+          `<span>${escapeHtml(name)}: <strong>${escapeHtml(value)}</strong></span>`
+        );
+      }
     }
     return rows.length ? `<div class="task-card-body"><div class="task-detail-row">${rows.join('')}</div></div>` : '';
   };
@@ -384,6 +390,9 @@ function renderTasks(t) {
 }
 
 function openTaskModal(task) {
+  const existing = document.getElementById('task-modal');
+  if (existing) existing.remove();
+
   const getResponsibleLabel = (task) => {
     if (Array.isArray(task.responsibles) && task.responsibles.length) {
       return task.responsibles.map((r) => r.full_name || '—').join(', ');
@@ -403,6 +412,7 @@ function openTaskModal(task) {
     task.vehicle || task.plate
       ? `<div class="kv-item"><label>Veículo / Placa</label><div>${escapeHtml(task.vehicle || '—')}${task.plate ? ` · ${escapeHtml(task.plate)}` : ''}</div></div>`
       : '',
+    ...Object.entries(task.custom_fields || {}).map(([name, value]) => value ? `<div class="kv-item"><label>${escapeHtml(name)}</label><div>${escapeHtml(value)}</div></div>` : []),
   ].filter(Boolean).join('');
 
   const trip = window.__currentTrip || {};
@@ -633,9 +643,7 @@ function openTaskModal(task) {
       .toLowerCase();
 
     const requiresVehicleDetails = [
-      'dieseldiag ontime',
-      'controle de logs',
-      'logs de telemetria',
+     
     ].includes(normalizedType);
 
     if (requiresVehicleDetails) {
@@ -715,8 +723,17 @@ export function prepareTaskForm(t, { keepDate = false, clearDate = false } = {})
   const endInput = document.getElementById('end_time');
 
   if (typeSelect && !typeSelect.dataset.listenerAttached) {
-    typeSelect.addEventListener('change', updateTaskTypeFields);
+    typeSelect.addEventListener('change', () => {
+      updateTaskTypeFields();
+      loadCustomFieldsForForm();
+    });
     typeSelect.dataset.listenerAttached = '1';
+  }
+
+  const projectSelect = document.getElementById('project_id');
+  if (projectSelect && !projectSelect.dataset.listenerAttached) {
+    projectSelect.addEventListener('change', loadCustomFieldsForForm);
+    projectSelect.dataset.listenerAttached = '1';
   }
 
   if (startInput && !startInput.dataset.listenerAttached) {
@@ -747,6 +764,48 @@ export function prepareTaskForm(t, { keepDate = false, clearDate = false } = {})
 
   updateTaskTypeFields();
   lastTaskDate = dateInput?.value || '';
+}
+
+async function loadCustomFieldsForForm() {
+  const container = document.getElementById('custom-fields-container');
+  if (!container) return;
+
+  const type = document.getElementById('work_type').value;
+  const projectId = document.getElementById('project_id').value;
+
+  container.innerHTML = '';
+
+  if (!type && !projectId) return;
+
+  try {
+    const [typeFields, projectFields] = await Promise.all([
+      type ? api.leaderWorkTypes.fields.list(type) : Promise.resolve({ fields: [] }),
+      projectId ? api.leaderProjects.fields.list(projectId) : Promise.resolve({ fields: [] }),
+    ]);
+
+    const fields = [
+      ...(typeFields.fields || []).map((f) => ({ ...f, source: 'type' })),
+      ...(projectFields.fields || []).map((f) => ({ ...f, source: 'project' })),
+    ];
+
+    if (!fields.length) return;
+
+    const grid = document.createElement('div');
+    grid.className = 'form-grid two';
+
+    for (const field of fields) {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = `
+        <label for="custom_${field.field_name}">${escapeHtml(field.field_name)} ${field.is_required ? '*' : ''}</label>
+        <input id="custom_${field.field_name}" name="custom_${field.field_name}" data-field-name="${escapeHtml(field.field_name)}" data-field-required="${field.is_required ? '1' : '0'}" placeholder="Informe ${escapeHtml(field.field_name)}" />
+      `;
+      grid.appendChild(wrapper);
+    }
+
+    container.appendChild(grid);
+  } catch {
+    // ignore custom fields load failure
+  }
 }
 
 export function fillWorkTypes(types) {
@@ -1167,5 +1226,9 @@ export function taskFormPayload() {
     modelo: document.getElementById('modelo')?.value.trim() || null,
     submodelo: document.getElementById('submodelo')?.value.trim() || null,
     project_id: document.getElementById('project_id')?.value || null,
+    custom_fields: Object.fromEntries(
+      Array.from(document.querySelectorAll('#custom-fields-container input'))
+        .map((input) => [input.dataset.fieldName, input.value.trim()])
+    ),
   };
 }
