@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nova viagem — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1>Nova viagem</h1>
+          <p>Registre uma viagem corporativa</p>
+        </div>
+        <a href="index.html" class="btn btn-secondary">Voltar</a>
+      </div>
+
+      <div class="panel">
+        <div class="panel-body">
+          <div id="alert" class="alert alert-error hidden"></div>
+          <form id="trip-form" class="form-grid">
+            <div class="form-grid two">
+              <div>
+                <label for="origin">Origem</label>
+                <input id="origin" required placeholder="Ex: São Paulo - SP" />
+              </div>
+              <div>
+                <label for="destination">Destino</label>
+                <input id="destination" required placeholder="Ex: Curitiba - PR" />
+              </div>
+            </div>
+            <div class="form-grid two">
+              <div>
+                <label for="start_date">Data início</label>
+                <input id="start_date" type="date" required min="1900-01-01" max="2100-12-31" />
+              </div>
+              <div>
+                <label for="end_date">Data término</label>
+                <input id="end_date" type="date" required min="1900-01-01" max="2100-12-31" />
+              </div>
+            </div>
+            <div class="form-grid two">
+              <div>
+                <label for="sector">Setor responsável</label>
+                <select id="sector" required></select>
+              </div>
+              <div>
+                <label class="text-muted">&nbsp;</label>
+                <p class="field-hint">O status é calculado automaticamente pelas datas.</p>
+              </div>
+            </div>
+            <div>
+              <label for="reason">Motivo da viagem</label>
+              <textarea id="reason" required placeholder="Descreva o objetivo da viagem…"></textarea>
+            </div>
+
+            <div class="members-section">
+              <label>Integrantes da viagem</label>
+              <p class="field-hint mb-1">Marque os usuários que participarão desta viagem. As informações de setor e responsável aparecem automaticamente abaixo do nome.</p>
+              <div id="member-checkboxes" class="member-checkboxes-list">
+                <div class="empty-state">Carregando usuários…</div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" id="btn-submit">Criar viagem</button>
+              <a href="index.html" class="btn btn-secondary">Cancelar</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/trip-new.js"></script>
+</body>
+</html>
