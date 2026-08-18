@@ -72,8 +72,8 @@ async function request(path, options = {}) {
 
   if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/register')) {
     clearSession();
-    if (!location.pathname.endsWith('login.html') && !location.pathname.endsWith('register.html')) {
-      location.href = 'login.html';
+    if (!window.location.pathname.endsWith('login.html') && !window.location.pathname.endsWith('register.html')) {
+      window.location.href = 'login.html';
     }
   }
 
@@ -149,6 +149,7 @@ export const api = {
     fd.append('montadora', payload.montadora || '');
     fd.append('modelo', payload.modelo || '');
     fd.append('submodelo', payload.submodelo || '');
+    fd.append('project_id', payload.project_id || '');
     for (const file of payload.photos || []) {
       fd.append('photos', file);
     }
@@ -187,6 +188,7 @@ export const api = {
     fd.append('montadora', payload.montadora || '');
     fd.append('modelo', payload.modelo || '');
     fd.append('submodelo', payload.submodelo || '');
+    fd.append('project_id', payload.project_id || '');
     for (const file of payload.photos || []) {
       fd.append('photos', file);
     }
@@ -244,7 +246,7 @@ export const api = {
 
 export function requireAuthPage() {
   if (!getToken()) {
-    location.href = 'login.html';
+    window.location.href = 'login.html';
     return false;
   }
   return true;
@@ -252,7 +254,7 @@ export function requireAuthPage() {
 
 export function redirectIfAuth() {
   if (getToken()) {
-    location.href = 'index.html';
+    window.location.href = 'index.html';
     return true;
   }
   return false;

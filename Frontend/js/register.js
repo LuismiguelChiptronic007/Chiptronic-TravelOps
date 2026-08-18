@@ -126,7 +126,7 @@ form?.addEventListener('submit', async (e) => {
       password_confirm: form.password_confirm.value,
     });
     setSession(data.token, data.user);
-    location.href = 'index.html';
+    window.location.href = 'index.html';
   } catch (err) {
     const msg = err.message || 'Falha no cadastro';
     if (msg === 'Failed to fetch') {

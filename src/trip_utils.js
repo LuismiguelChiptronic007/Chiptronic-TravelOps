@@ -108,6 +108,7 @@ function formatTask(task, photos = []) {
     modelo: task.modelo || null,
     submodelo: task.submodelo || null,
     project_id: task.project_id || null,
+    project_name: task.project_name || null,
     responsible: responsibleIds.length || task.responsible_id
       ? {
           id: responsibleIds[0] || task.responsible_id || null,

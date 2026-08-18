@@ -327,7 +327,7 @@ async function load() {
 
   if (!user.is_sector_leader || !user.led_sector) {
     showToast({ type: 'warning', title: 'Acesso negado', msg: 'Você não tem permissão para acessar o dashboard do setor.', duration: 2800 });
-    triggerPageTransition('index.html');
+    window.location.href = 'index.html';
     return;
   }
 

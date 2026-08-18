@@ -109,26 +109,20 @@ async function init() {
   if (!user) return;
 
   try {
-    const res = await api.sectors();
-    for (const s of res.sectors || []) {
+    const [sectorsRes, usersRes] = await Promise.all([
+      api.sectors(),
+      api.usersForMembers(),
+    ]);
+
+    for (const s of sectorsRes.sectors || []) {
       const opt = document.createElement('option');
       opt.value = s;
       opt.textContent = s;
       if (s === user.sector) opt.selected = true;
       sectorSelect.appendChild(opt);
     }
-  } catch {
-    const opt = document.createElement('option');
-    opt.value = user.sector;
-    opt.textContent = user.sector;
-    opt.selected = true;
-    sectorSelect.appendChild(opt);
-  }
 
-  try {
-    const res = await api.usersForMembers();
-    availableUsers = res.users || [];
-    // Ensure the logged-in user is available to be added as a trip member
+    availableUsers = usersRes.users || [];
     if (user && !availableUsers.some((u) => Number(u.id) === Number(user.id))) {
       const me = {
         id: user.id,
@@ -140,35 +134,40 @@ async function init() {
       };
       availableUsers.unshift(me);
     }
-
-    if (isEditing) {
-      try {
-        const tripRes = await api.getTrip(editTripId);
-        currentTrip = tripRes.trip;
-        if (currentTrip) {
-          if (currentTrip.status === 'completed') {
-            location.href = `trip.html?id=${editTripId}`;
-            return;
-          }
-          document.getElementById('origin').value = currentTrip.origin || '';
-          document.getElementById('destination').value = currentTrip.destination || '';
-          document.getElementById('start_date').value = currentTrip.start_date || '';
-          document.getElementById('end_date').value = currentTrip.end_date || '';
-          document.getElementById('reason').value = currentTrip.reason || '';
-          if (sectorSelect && currentTrip.sector) sectorSelect.value = currentTrip.sector;
-          setSelectedMembersFromTrip(currentTrip.members || []);
-          renderMembers();
-        }
-      } catch (err) {
-        showAlert(alertEl, err.message || 'Não foi possível carregar a viagem para edição.');
-      }
-    }
-
-    fillMemberSelect();
-    setEditMode();
-  } catch (err) {
-    showAlert(alertEl, err.message || 'Não foi possível carregar integrantes.');
+  } catch {
+    const opt = document.createElement('option');
+    opt.value = user.sector;
+    opt.textContent = user.sector;
+    opt.selected = true;
+    sectorSelect.appendChild(opt);
+    availableUsers = [];
   }
+
+  if (isEditing) {
+    try {
+      const tripRes = await api.getTrip(editTripId);
+      currentTrip = tripRes.trip;
+      if (currentTrip) {
+        if (currentTrip.status === 'completed') {
+          window.location.href = `trip.html?id=${editTripId}`;
+          return;
+        }
+        document.getElementById('origin').value = currentTrip.origin || '';
+        document.getElementById('destination').value = currentTrip.destination || '';
+        document.getElementById('start_date').value = currentTrip.start_date || '';
+        document.getElementById('end_date').value = currentTrip.end_date || '';
+        document.getElementById('reason').value = currentTrip.reason || '';
+        if (sectorSelect && currentTrip.sector) sectorSelect.value = currentTrip.sector;
+        setSelectedMembersFromTrip(currentTrip.members || []);
+        renderMembers();
+      }
+    } catch (err) {
+      showAlert(alertEl, err.message || 'Não foi possível carregar a viagem para edição.');
+    }
+  }
+
+  fillMemberSelect();
+  setEditMode();
 }
 
 const startDateInput = document.getElementById('start_date');
@@ -230,7 +229,7 @@ form?.addEventListener('submit', async (e) => {
     const res = isEditing
       ? await api.updateTrip(editTripId, payload)
       : await api.createTrip(payload);
-    location.href = `trip.html?id=${res.trip.id}`;
+    window.location.href = `trip.html?id=${res.trip.id}`;
   } catch (err) {
     showAlert(alertEl, err.message);
     btn.disabled = false;

@@ -128,3 +128,153 @@ configuracoesLider.delete('/tipos-trabalho/:id', async (c) => {
 
   return json({ success: true });
 });
+
+configuracoesLider.get('/tipos-trabalho/:name/campos', async (c) => {
+  const user = c.get('user');
+  if (!isSectorLeader(user)) {
+    return err('Apenas líderes de setor podem acessar esta funcionalidade.', 403);
+  }
+
+  const name = String(c.req.param('name'));
+  const sector = user.sector;
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, field_name, is_required, sort_order
+     FROM leader_work_type_fields
+     WHERE sector = ? AND work_type_name = ?
+     ORDER BY sort_order ASC, field_name ASC`
+  )
+    .bind(sector, name)
+    .all();
+
+  return json({ success: true, fields: results || [] });
+});
+
+configuracoesLider.post('/tipos-trabalho/:name/campos', async (c) => {
+  const user = c.get('user');
+  if (!isSectorLeader(user)) {
+    return err('Apenas líderes de setor podem adicionar campos.', 403);
+  }
+
+  const name = String(c.req.param('name'));
+  const sector = user.sector;
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return err('JSON inválido.', 400);
+  }
+
+  const fieldName = String(body.field_name || '').trim();
+  if (!fieldName) {
+    return err('Informe o nome do campo.', 400);
+  }
+
+  const isRequired = body.is_required ? 1 : 0;
+  const sortOrder = Number(body.sort_order || 0);
+
+  await c.env.DB.prepare(
+    `INSERT INTO leader_work_type_fields (sector, work_type_name, field_name, is_required, sort_order)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(sector, work_type_name, field_name) DO UPDATE SET
+       is_required = excluded.is_required,
+       sort_order = excluded.sort_order`
+  )
+    .bind(sector, name, fieldName, isRequired, sortOrder)
+    .run();
+
+  return json({ success: true });
+});
+
+configuracoesLider.delete('/tipos-trabalho/:name/campos/:fieldName', async (c) => {
+  const user = c.get('user');
+  if (!isSectorLeader(user)) {
+    return err('Apenas líderes de setor podem remover campos.', 403);
+  }
+
+  const name = String(c.req.param('name'));
+  const fieldName = String(c.req.param('fieldName'));
+  const sector = user.sector;
+
+  await c.env.DB.prepare(
+    'DELETE FROM leader_work_type_fields WHERE sector = ? AND work_type_name = ? AND field_name = ?'
+  )
+    .bind(sector, name, fieldName)
+    .run();
+
+  return json({ success: true });
+});
+
+configuracoesLider.get('/projetos/:id/campos', async (c) => {
+  const user = c.get('user');
+  if (!isSectorLeader(user)) {
+    return err('Apenas líderes de setor podem acessar esta funcionalidade.', 403);
+  }
+
+  const projectId = Number(c.req.param('id'));
+  const sector = user.sector;
+  const { results } = await c.env.DB.prepare(
+    `SELECT id, field_name, is_required, sort_order
+     FROM leader_project_fields
+     WHERE sector = ? AND project_id = ?
+     ORDER BY sort_order ASC, field_name ASC`
+  )
+    .bind(sector, projectId)
+    .all();
+
+  return json({ success: true, fields: results || [] });
+});
+
+configuracoesLider.post('/projetos/:id/campos', async (c) => {
+  const user = c.get('user');
+  if (!isSectorLeader(user)) {
+    return err('Apenas líderes de setor podem adicionar campos.', 403);
+  }
+
+  const projectId = Number(c.req.param('id'));
+  const sector = user.sector;
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return err('JSON inválido.', 400);
+  }
+
+  const fieldName = String(body.field_name || '').trim();
+  if (!fieldName) {
+    return err('Informe o nome do campo.', 400);
+  }
+
+  const isRequired = body.is_required ? 1 : 0;
+  const sortOrder = Number(body.sort_order || 0);
+
+  await c.env.DB.prepare(
+    `INSERT INTO leader_project_fields (sector, project_id, field_name, is_required, sort_order)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(sector, project_id, field_name) DO UPDATE SET
+       is_required = excluded.is_required,
+       sort_order = excluded.sort_order`
+  )
+    .bind(sector, projectId, fieldName, isRequired, sortOrder)
+    .run();
+
+  return json({ success: true });
+});
+
+configuracoesLider.delete('/projetos/:id/campos/:fieldName', async (c) => {
+  const user = c.get('user');
+  if (!isSectorLeader(user)) {
+    return err('Apenas líderes de setor podem remover campos.', 403);
+  }
+
+  const projectId = Number(c.req.param('id'));
+  const fieldName = String(c.req.param('fieldName'));
+  const sector = user.sector;
+
+  await c.env.DB.prepare(
+    'DELETE FROM leader_project_fields WHERE sector = ? AND project_id = ? AND field_name = ?'
+  )
+    .bind(sector, projectId, fieldName)
+    .run();
+
+  return json({ success: true });
+});

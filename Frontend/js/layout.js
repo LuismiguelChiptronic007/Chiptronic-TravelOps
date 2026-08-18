@@ -39,7 +39,7 @@ export async function mountShell({ active } = {}) {
     updateStoredUser(user);
   } catch {
     clearSession();
-    location.href = 'login.html';
+    window.location.href = 'login.html';
     return null;
   }
 
@@ -312,7 +312,7 @@ function bindShellEvents(user) {
     });
     if (!ok) return;
     clearSession();
-    location.href = 'login.html';
+    window.location.href = 'login.html';
   });
 
   document.getElementById('btn-notifications')?.addEventListener('click', (e) => {
@@ -454,7 +454,7 @@ async function loadNotifications() {
         closeNotifications();
         if (link) {
           const normalized = link.startsWith('/') ? link.slice(1) : link;
-          location.href = normalized;
+          window.location.href = normalized;
         }
       });
     });
@@ -534,8 +534,14 @@ function initScrollReveal() {
   const autoTargets = document.querySelectorAll(
     '.stat-card, .panel, .card, .table-wrap, .page-header, .team-member-card, .checklist-box, .mini-stat, .task-day-group, .ranking-row, .member-chip, .list-item'
   );
+  const viewportHeight = window.innerHeight;
   autoTargets.forEach((el, i) => {
-    const delay = Math.min(i * 40, 320);
+    const rect = el.getBoundingClientRect();
+    if (rect.top < viewportHeight && rect.bottom > 0) {
+      el.classList.add('visible');
+      return;
+    }
+    const delay = Math.min(i * 20, 100);
     el.classList.add('reveal');
     el.style.transitionDelay = delay + 'ms';
   });

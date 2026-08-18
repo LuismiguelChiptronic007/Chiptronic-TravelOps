@@ -35,7 +35,7 @@ const alertEl = document.getElementById('alert');
 
 async function init() {
   if (!tripId) {
-    location.href = 'index.html';
+    window.location.href = 'index.html';
     return;
   }
   const user = await mountShell({ active: 'dashboard' });
@@ -153,7 +153,7 @@ document.getElementById('btn-edit-trip')?.addEventListener('click', () => {
     document.getElementById('task-form-wrap')?.scrollIntoView({ behavior: 'smooth' });
     return;
   }
-  location.href = `trip-new.html?id=${tripId}`;
+  window.location.href = `trip-new.html?id=${tripId}`;
 });
 
 document.getElementById('btn-delete-trip')?.addEventListener('click', async () => {
@@ -170,11 +170,11 @@ document.getElementById('btn-delete-trip')?.addEventListener('click', async () =
 
    hideAlert(alertEl);
    try {
-     await api.deleteTrip(tripId);
-     showAlert(alertEl, 'Viagem excluída com sucesso.', 'success');
-     setTimeout(() => {
-       location.href = 'index.html';
-     }, 1200);
+    await api.deleteTrip(tripId);
+    showAlert(alertEl, 'Viagem excluída com sucesso.', 'success');
+    setTimeout(() => {
+      window.location.href = 'index.html';
+    }, 1200);
    } catch (err) {
      showAlert(alertEl, err.message);
    }

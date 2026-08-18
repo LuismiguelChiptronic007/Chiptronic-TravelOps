@@ -196,17 +196,41 @@ function populateTaskFilters(tasks) {
 
   if (!responsibleSelect || !workTypeSelect || !locationSelect || !montadoraSelect || !modeloSelect || !submodeloSelect) return;
 
-  const responsibles = [...new Set((tasks || []).flatMap((t) => {
-    if (Array.isArray(t.responsibles)) return t.responsibles.map((r) => r.full_name).filter(Boolean);
-    if (t.responsible?.full_name) return [t.responsible.full_name];
-    return [];
-  }))].sort();
+  const sets = {
+    responsibles: new Set(),
+    workTypes: new Set(),
+    locations: new Set(),
+    montadoras: new Set(),
+    modelos: new Set(),
+    submodelos: new Set(),
+  };
 
-  const workTypes = [...new Set((tasks || []).map((t) => (t.work_type || '').trim()).filter(Boolean))].sort();
-  const locations = [...new Set((tasks || []).map((t) => (t.location || '').trim()).filter(Boolean))].sort();
-  const montadoras = [...new Set((tasks || []).map((t) => (t.montadora || '').trim()).filter(Boolean))].sort();
-  const modelos = [...new Set((tasks || []).map((t) => (t.modelo || '').trim()).filter(Boolean))].sort();
-  const submodelos = [...new Set((tasks || []).map((t) => (t.submodelo || '').trim()).filter(Boolean))].sort();
+  for (const t of tasks || []) {
+    if (Array.isArray(t.responsibles)) {
+      for (const r of t.responsibles) {
+        if (r.full_name) sets.responsibles.add(r.full_name);
+      }
+    } else if (t.responsible?.full_name) {
+      sets.responsibles.add(t.responsible.full_name);
+    }
+    const wt = (t.work_type || '').trim();
+    if (wt) sets.workTypes.add(wt);
+    const loc = (t.location || '').trim();
+    if (loc) sets.locations.add(loc);
+    const mon = (t.montadora || '').trim();
+    if (mon) sets.montadoras.add(mon);
+    const mod = (t.modelo || '').trim();
+    if (mod) sets.modelos.add(mod);
+    const sub = (t.submodelo || '').trim();
+    if (sub) sets.submodelos.add(sub);
+  }
+
+  const responsibles = [...sets.responsibles].sort();
+  const workTypes = [...sets.workTypes].sort();
+  const locations = [...sets.locations].sort();
+  const montadoras = [...sets.montadoras].sort();
+  const modelos = [...sets.modelos].sort();
+  const submodelos = [...sets.submodelos].sort();
 
   const currentResponsible = responsibleSelect.value;
   const currentWorkType = workTypeSelect.value;
@@ -339,18 +363,23 @@ function renderTasks(t) {
     })
     .join('');
 
-  document.querySelectorAll('.task-card').forEach((card) => {
-    card.addEventListener('click', () => {
-      const taskId = card.dataset.taskId;
-      const task = tasks.find((t) => t.id === Number(taskId));
+  board.addEventListener('click', (e) => {
+    const card = e.target.closest('.task-card');
+    if (!card) return;
+    const taskId = Number(card.dataset.taskId);
+    const task = tasks.find((t) => t.id === taskId);
+    if (task) openTaskModal(task);
+  });
+
+  board.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      const card = e.target.closest('.task-card');
+      if (!card) return;
+      e.preventDefault();
+      const taskId = Number(card.dataset.taskId);
+      const task = tasks.find((t) => t.id === taskId);
       if (task) openTaskModal(task);
-    });
-    card.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        card.click();
-      }
-    });
+    }
   });
 }
 
@@ -621,7 +650,7 @@ function openTaskModal(task) {
     const tripId = window.__currentTrip?.id;
     if (!tripId) return;
     closeHandler();
-    location.href = `trip-task-edit.html?trip_id=${tripId}&task_id=${task.id}`;
+    window.location.href = `trip-task-edit.html?trip_id=${tripId}&task_id=${task.id}`;
   });
 
   cancelBtn.addEventListener('click', () => {

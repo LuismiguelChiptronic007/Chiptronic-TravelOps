@@ -21,7 +21,7 @@ function setAlert(message, type = 'error') {
 
 async function init() {
   if (!taskId || !tripId) {
-    location.href = 'index.html';
+    window.location.href = 'index.html';
     return;
   }
 
@@ -104,7 +104,7 @@ async function loadEditProjects() {
     const projects = data?.projects || [];
     sel.innerHTML = '<option value="">Sem projeto</option>' +
       projects.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
-    sel.value = task.project_id || '';
+    if (task.project_id) sel.value = String(task.project_id);
   } catch {
     sel.innerHTML = '<option value="">Sem projeto</option>';
   }
@@ -244,7 +244,7 @@ async function saveTask() {
     };
 
     await api.updateTask(tripId, taskId, payload);
-    location.href = `trip.html?id=${tripId}`;
+    window.location.href = `trip.html?id=${tripId}`;
   } catch (err) {
     setAlert(err.message, 'error');
   }
@@ -254,7 +254,7 @@ function setupListeners() {
   document.getElementById('edit-work-type').addEventListener('change', updateTaskTypeFields);
   document.getElementById('btn-cancel').addEventListener('click', () => {
     if (confirm('Descartar alterações?')) {
-      location.href = `trip.html?id=${tripId}`;
+      window.location.href = `trip.html?id=${tripId}`;
     }
   });
   document.getElementById('btn-save').addEventListener('click', saveTask);

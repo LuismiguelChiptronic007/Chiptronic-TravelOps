@@ -219,7 +219,7 @@ document.getElementById('btn-save-lunch-window')?.addEventListener('click', () =
 
 document.getElementById('btn-logout-settings')?.addEventListener('click', () => {
   clearSession();
-  location.href = 'login.html';
+  window.location.href = 'login.html';
 });
 
 load();

@@ -34,7 +34,7 @@ resetForm?.addEventListener('submit', async (e) => {
     });
     showAlert(alertEl, res.message || 'Senha redefinida.', 'success');
     setTimeout(() => {
-      location.href = 'login.html';
+      window.location.href = 'login.html';
     }, 1200);
   } catch (err) {
     showAlert(alertEl, err.message);

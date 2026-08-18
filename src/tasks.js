@@ -23,6 +23,48 @@ function parseResponsibleIds(value) {
   return ids;
 }
 
+function parseCustomFields(formOrBody) {
+  const fields = {};
+  if (formOrBody instanceof FormData) {
+    for (const [key, value] of formOrBody.entries()) {
+      if (key.startsWith('custom_')) {
+        fields[key.slice(7)] = String(value || '').trim();
+      }
+    }
+  } else if (typeof formOrBody === 'object' && formOrBody !== null) {
+    for (const [key, value] of Object.entries(formOrBody)) {
+      if (key.startsWith('custom_')) {
+        fields[key.slice(7)] = String(value || '').trim();
+      }
+    }
+  }
+  return fields;
+}
+
+async function saveCustomFields(db, taskId, fields) {
+  if (!Object.keys(fields).length) return;
+  const placeholders = Object.keys(fields)
+    .map(() => '(?, ?, ?)')
+    .join(', ');
+  const flatBinds = Object.entries(fields).flatMap(([name, value]) => [taskId, name, value || null]);
+  await db
+    .prepare(`INSERT INTO trip_task_custom_values (task_id, field_name, field_value) VALUES ${placeholders} ON CONFLICT(task_id, field_name) DO UPDATE SET field_value = excluded.field_value`)
+    .bind(...flatBinds)
+    .run();
+}
+
+async function getCustomFields(db, taskId) {
+  const { results } = await db
+    .prepare('SELECT field_name, field_value FROM trip_task_custom_values WHERE task_id = ?')
+    .bind(taskId)
+    .all();
+  const fields = {};
+  for (const row of results || []) {
+    fields[row.field_name] = row.field_value;
+  }
+  return fields;
+}
+
 function rangesOverlap(startA, endA, startB, endB) {
   return startA < endB && endA > startB;
 }
@@ -84,29 +126,31 @@ export async function getAccessibleTrip(c, tripId) {
 
   if (trip.user_id === userId) return trip;
 
-  const member = await c.env.DB.prepare(
-    'SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ? LIMIT 1'
-  )
-    .bind(tripId, userId)
-    .first();
+  const [member, ledSector, owner] = await Promise.all([
+    c.env.DB.prepare(
+      'SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ? LIMIT 1'
+    )
+      .bind(tripId, userId)
+      .first(),
+    viewer?.sector
+      ? c.env.DB.prepare(
+          `SELECT id FROM users WHERE sector = ?
+           AND LOWER(REPLACE(REPLACE(position_title, 'í', 'i'), 'Í', 'I')) = 'lider'
+           AND id = ? LIMIT 1`
+        )
+          .bind(viewer.sector, userId)
+          .first()
+      : Promise.resolve(null),
+    c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(trip.user_id).first(),
+  ]);
+
   if (member) return trip;
 
   const isAdminUser = viewer?.role === 'admin' || viewer?.role === 'admin_master';
   if (isAdminUser) return trip;
 
-  const ledSector = viewer?.sector
-    ? await c.env.DB.prepare(
-        `SELECT id FROM users WHERE sector = ?
-         AND LOWER(REPLACE(REPLACE(position_title, 'í', 'i'), 'Í', 'I')) = 'lider'
-         AND id = ? LIMIT 1`
-      )
-        .bind(viewer.sector, userId)
-        .first()
-    : null;
-
   if (ledSector) return trip;
 
-  const owner = await c.env.DB.prepare('SELECT * FROM users WHERE id = ?').bind(trip.user_id).first();
   if (owner && owner.manager_id === userId) return trip;
 
   return null;
@@ -154,12 +198,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
     modelo = String(form.get('modelo') || '').trim();
     submodelo = String(form.get('submodelo') || '').trim();
     project_id = String(form.get('project_id') || '').trim();
-
-    for (const entry of form.getAll('photos')) {
-      if (entry instanceof File) {
-        photoFiles.push(entry);
-      }
-    }
+    customFields = parseCustomFields(form);
   } else {
     let body;
     try {
@@ -183,6 +222,7 @@ taskRoutes.post('/:id/tasks', async (c) => {
     modelo = String(body.modelo || '').trim();
     submodelo = String(body.submodelo || '').trim();
     project_id = String(body.project_id || '').trim();
+    customFields = parseCustomFields(body);
   }
 
   const normalizedWorkType = work_type
@@ -400,6 +440,7 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
   let modelo = task.modelo;
   let submodelo = task.submodelo;
   let project_id = task.project_id;
+  const photoFiles = [];
 
   if (contentType.includes('multipart/form-data')) {
     const form = await c.req.formData();
@@ -421,6 +462,12 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
     modelo = String(form.get('modelo') || '').trim();
     submodelo = String(form.get('submodelo') || '').trim();
     project_id = String(form.get('project_id') || '').trim() || project_id;
+
+    for (const entry of form.getAll('photos')) {
+      if (entry instanceof File) {
+        photoFiles.push(entry);
+      }
+    }
   } else {
     let body;
     try {
@@ -587,24 +634,22 @@ taskRoutes.put('/:id/tasks/:taskId', async (c) => {
     }
   }
 
-  if (contentType.includes('multipart/form-data')) {
-    const form = await c.req.formData();
-    const photoFiles = form.getAll('photos');
-    if (photoFiles.length > 0 && hasFileStorage(c.env)) {
-      for (const file of photoFiles) {
-        const mime = assertImageFile(file);
-        const original_name = file.name || 'foto.jpg';
-        const stored_key = fileKey(`tasks/${id}/${taskId}`, original_name);
-        await c.env.FILES.put(stored_key, file.stream(), {
-          httpMetadata: { contentType: mime },
-        });
-        await c.env.DB.prepare(
-          'INSERT INTO trip_task_photos (task_id, original_name, stored_key, mime_type) VALUES (?, ?, ?, ?)'
-        )
-          .bind(taskId, original_name, stored_key, mime)
-          .run();
-      }
-    }
+  if (photoFiles.length > 0 && !hasFileStorage(c.env)) {
+    return err('Upload de fotos indisponível: R2 não configurado.', 503);
+  }
+
+  for (const file of photoFiles) {
+    const mime = assertImageFile(file);
+    const original_name = file.name || 'foto.jpg';
+    const stored_key = fileKey(`tasks/${id}/${taskId}`, original_name);
+    await c.env.FILES.put(stored_key, file.stream(), {
+      httpMetadata: { contentType: mime },
+    });
+    await c.env.DB.prepare(
+      'INSERT INTO trip_task_photos (task_id, original_name, stored_key, mime_type) VALUES (?, ?, ?, ?)'
+    )
+      .bind(taskId, original_name, stored_key, mime)
+      .run();
   }
 
   return json({ success: true, trip: await fetchTripFull(c.env.DB, id, userId) });

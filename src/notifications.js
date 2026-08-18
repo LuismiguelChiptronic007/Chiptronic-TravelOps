@@ -19,15 +19,13 @@ function formatNotification(row) {
 
 export async function notifyUsers(db, userIds, { type = 'info', title, message, link = null }) {
   const ids = [...new Set((userIds || []).filter((id) => id > 0))];
-  for (const userId of ids) {
-    await db
-      .prepare(
-        `INSERT INTO notifications (user_id, type, title, message, link)
-         VALUES (?, ?, ?, ?, ?)`
-      )
-      .bind(userId, type, title, message, link)
-      .run();
-  }
+  if (!ids.length) return;
+  const placeholders = ids.map(() => '(?, ?, ?, ?, ?)').join(', ');
+  const flatBinds = ids.flatMap((id) => [id, type, title, message, link]);
+  await db
+    .prepare(`INSERT INTO notifications (user_id, type, title, message, link) VALUES ${placeholders}`)
+    .bind(...flatBinds)
+    .run();
 }
 
 export async function notifyAdmins(db, payload) {
