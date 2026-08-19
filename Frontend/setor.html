@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard Setor — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1 id="sector-title">Dashboard Setor</h1>
+          <p id="sector-subtitle">Visão gerencial da equipe, viagens e tarefas realizadas</p>
+        </div>
+      </div>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+
+      <div id="sector-alerts" class="sector-alerts hidden-fields">
+        <div class="alert-card alert-card-warn" id="alert-pending-card">
+          <div class="alert-card-icon">📋</div>
+          <div class="alert-card-body">
+            <h3 id="alert-pending-title">Relatórios aguardando preenchimento</h3>
+            <p id="alert-pending-text" class="text-muted"></p>
+          </div>
+          <a class="btn btn-secondary btn-sm" href="viagens.html?status=awaiting_report">Ver todos</a>
+        </div>
+        <div class="alert-card alert-card-danger" id="alert-overdue-card">
+          <div class="alert-card-icon">⚠️</div>
+          <div class="alert-card-body">
+            <h3 id="alert-overdue-title">Relatórios em atraso</h3>
+            <p id="alert-overdue-text" class="text-muted"></p>
+          </div>
+          <a class="btn btn-danger btn-sm" href="viagens.html?status=awaiting_report">Ver atrasadas</a>
+        </div>
+      </div>
+
+      <div class="cards cards-4" id="summary-cards">
+        <div class="stat-card"><div class="label">Integrantes</div><div class="value" id="s-members">—</div></div>
+        <div class="stat-card"><div class="label">Viagens da equipe</div><div class="value" id="s-trips">—</div></div>
+        <div class="stat-card"><div class="label">Tarefas realizadas</div><div class="value" id="s-tasks">—</div></div>
+        <div class="stat-card" id="s-pending-card"><div class="label">Relatórios pendentes</div><div class="value" id="s-pending">—</div></div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="panel">
+          <div class="panel-header"><h2>Quem viajou mais</h2></div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-ranking"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h2>Viagens por mês (equipe)</h2></div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-monthly"></canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h2>Tarefas por tipo</h2></div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-worktypes"></canvas>
+            <p id="worktypes-empty" class="empty-state hidden">Nenhuma tarefa registrada pela equipe.</p>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h2>Ranking da equipe</h2></div>
+          <div class="panel-body" id="ranking-list">
+            <p class="empty-state">Carregando…</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top: 1rem;">
+        <div class="panel-header"><h2>Filtros</h2></div>
+        <div class="panel-body">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items:end;">
+            <div>
+              <label for="filter-member">Integrante</label>
+              <select id="filter-member">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-work-type">Tipo do serviço</label>
+              <select id="filter-work-type">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-date">Data</label>
+              <input id="filter-date" type="date" />
+            </div>
+            <div>
+              <label for="filter-destination">Destino</label>
+              <input id="filter-destination" type="text" placeholder="Filtrar destino" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="team-root">
+        <p class="empty-state">Carregando equipe…</p>
+      </div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/setor.js"></script>
+</body>
+</html>

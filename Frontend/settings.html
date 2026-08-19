@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Configuração — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1>Configuração</h1>
+          <p>Preferências da sua conta</p>
+        </div>
+      </div>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+
+      <div class="panel">
+        <div class="panel-header"><h2>Aparência</h2></div>
+        <div class="panel-body stack">
+          <div class="settings-row">
+            <div>
+              <strong>Tema da interface</strong>
+              <p class="text-muted mb-0">Alterne entre modo claro e escuro</p>
+            </div>
+            <button type="button" class="btn btn-secondary" id="btn-theme-toggle">Alternar tema</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><h2>Conta</h2></div>
+        <div class="panel-body stack">
+          <div class="settings-row">
+            <div>
+              <strong>Editar perfil</strong>
+              <p class="text-muted mb-0">Nome, cargo, setor e foto</p>
+            </div>
+            <a href="profile.html" class="btn btn-primary">Abrir perfil</a>
+          </div>
+          <div class="settings-row">
+            <div>
+              <strong>Sair da conta</strong>
+              <p class="text-muted mb-0">Encerrar sessão neste dispositivo</p>
+            </div>
+            <button type="button" class="btn btn-secondary" id="btn-logout-settings">Sair</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="leader-settings" class="hidden">
+        <div class="panel">
+          <div class="panel-header"><h2>Projetos do setor</h2></div>
+          <div class="panel-body stack">
+            <p class="text-muted mb-0">Adicione projetos que aparecerão no formulário de tarefas para todo o seu setor.</p>
+            <div class="form-grid two">
+              <div>
+                <label for="new-project-name">Novo projeto</label>
+                <input id="new-project-name" placeholder="Ex: Expansão Filial Sul" />
+              </div>
+              <div class="flex-end">
+                <button type="button" class="btn btn-primary" id="btn-add-project">Adicionar projeto</button>
+              </div>
+            </div>
+            <div id="projects-list" class="list-group"></div>
+            <div id="project-fields-modal" class="modal-overlay hidden">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h3>Campos do projeto</h3>
+                  <button type="button" class="modal-close" data-close="project-fields-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-grid two">
+                    <div>
+                      <label for="new-project-field-name">Nome do campo</label>
+                      <input id="new-project-field-name" placeholder="Ex: Número da NF" />
+                    </div>
+                    <div class="flex-end">
+                      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                        <input type="checkbox" id="new-project-field-required" />
+                        Obrigatório
+                      </label>
+                      <button type="button" class="btn btn-primary" id="btn-add-project-field">Adicionar campo</button>
+                    </div>
+                  </div>
+                  <div id="project-fields-list" class="list-group mt-2"></div>
+                  <button type="button" class="btn btn-danger mt-2" id="btn-clear-project-fields">Limpar todos os campos</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h2>Tipos de trabalho do setor</h2></div>
+          <div class="panel-body stack">
+            <p class="text-muted mb-0">Adicione tipos de trabalho personalizados que aparecerão no formulário de tarefas.</p>
+            <div class="form-grid two">
+              <div>
+                <label for="new-work-type-name">Novo tipo de trabalho</label>
+                <input id="new-work-type-name" placeholder="Ex: Manutenção preventiva" />
+              </div>
+              <div class="flex-end">
+                <button type="button" class="btn btn-primary" id="btn-add-work-type">Adicionar tipo</button>
+              </div>
+            </div>
+            <div id="work-types-list" class="list-group"></div>
+            <div id="work-type-fields-modal" class="modal-overlay hidden">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h3>Campos do tipo de trabalho</h3>
+                  <button type="button" class="modal-close" data-close="work-type-fields-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="form-grid two">
+                    <div>
+                      <label for="new-work-type-field-name">Nome do campo</label>
+                      <input id="new-work-type-field-name" placeholder="Ex: Número da NF" />
+                    </div>
+                    <div class="flex-end">
+                      <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                        <input type="checkbox" id="new-work-type-field-required" />
+                        Obrigatório
+                      </label>
+                      <button type="button" class="btn btn-primary" id="btn-add-work-type-field">Adicionar campo</button>
+                    </div>
+                  </div>
+                  <div id="work-type-fields-list" class="list-group mt-2"></div>
+                  <button type="button" class="btn btn-danger mt-2" id="btn-clear-work-type-fields">Limpar todos os campos</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/settings.js"></script>
+</body>
+</html>
