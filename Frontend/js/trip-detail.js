@@ -42,17 +42,16 @@ async function init() {
   if (!user) return;
 
   try {
-    const [typesRes, res] = await Promise.all([
-      api.workTypes(),
-      api.getTrip(tripId),
-    ]);
+    const res = await api.getTrip(tripId);
+    const trip = res.trip;
+    const typesRes = await api.workTypes({ trip_id: tripId, sector: trip.sector });
     fillWorkTypes(typesRes.work_types || []);
-    renderTrip(res.trip);
+    renderTrip(trip);
     setupPanelToggles();
 
     const editBtn = document.getElementById('btn-edit-trip');
     if (editBtn) {
-      editBtn.textContent = res.trip.status === 'completed' ? 'Editar checklist' : 'Editar viagem';
+      editBtn.textContent = trip.status === 'completed' ? 'Editar checklist' : 'Editar viagem';
     }
   } catch (err) {
     showAlert(alertEl, err.message);

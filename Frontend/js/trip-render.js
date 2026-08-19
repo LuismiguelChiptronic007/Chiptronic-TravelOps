@@ -836,9 +836,9 @@ export function fillProjects(projects) {
   if (current) sel.value = current;
 }
 
-async function loadProjects() {
+async function loadProjects(opts = {}) {
   try {
-    const data = await api.projects();
+    const data = await api.projects(opts);
     fillProjects(data?.projects || []);
   } catch {
     // ignore projects load failure
@@ -1183,7 +1183,7 @@ export function renderTrip(t) {
   updateTaskAvailability(t, selectedTripDate);
   renderCompletionProgress(t);
 
-  loadProjects();
+  loadProjects({ trip_id: t.id, sector: t.sector });
 
   document.getElementById('task-form-title').textContent =
     selectedTripDate ? `Nova tarefa — ${formatDateBR(selectedTripDate)}` : 'Nova tarefa';

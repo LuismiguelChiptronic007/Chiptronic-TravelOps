@@ -114,8 +114,18 @@ export const api = {
     return request(`/trips/users-for-members${qs}`);
   },
 
-  workTypes: () => request('/trips/work-types'),
-  projects: () => request('/trips/projects'),
+  workTypes: (opts = {}) => {
+    const qs = [];
+    if (opts.sector) qs.push(`sector=${encodeURIComponent(opts.sector)}`);
+    if (opts.trip_id) qs.push(`trip_id=${encodeURIComponent(opts.trip_id)}`);
+    return request(`/trips/work-types${qs.length ? `?${qs.join('&')}` : ''}`);
+  },
+  projects: (opts = {}) => {
+    const qs = [];
+    if (opts.sector) qs.push(`sector=${encodeURIComponent(opts.sector)}`);
+    if (opts.trip_id) qs.push(`trip_id=${encodeURIComponent(opts.trip_id)}`);
+    return request(`/trips/projects${qs.length ? `?${qs.join('&')}` : ''}`);
+  },
 
   leaderProjects: {
     list: () => request('/configuracoes/lider/projetos'),

@@ -55,7 +55,7 @@ async function init() {
 
     members = allMembers.filter((m) => m.full_name);
 
-    const workTypesRes = await api.workTypes();
+    const workTypesRes = await api.workTypes({ trip_id: tripId });
     const workTypeSelect = document.getElementById('edit-work-type');
     workTypeSelect.innerHTML = '<option value="">Selecione…</option>' +
       (workTypesRes.work_types || []).map((w) => `<option value="${escapeHtml(w)}">${escapeHtml(w)}</option>`).join('');
@@ -101,7 +101,7 @@ async function loadEditProjects() {
   const sel = document.getElementById('edit-project-id');
   if (!sel) return;
   try {
-    const data = await api.projects();
+    const data = await api.projects({ trip_id: tripId });
     const projects = data?.projects || [];
     sel.innerHTML = '<option value="">Sem projeto</option>' +
       projects.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { assertImageFile, err, fileKey, hasFileStorage, json, WORK_TYPES } from './helpers.js';
+import { assertImageFile, err, fileKey, hasFileStorage, json, WORK_TYPES, getLedSector } from './helpers.js';
 import { fetchTripFull } from './trip_utils.js';
 import { notifyUsers } from './notifications.js';
 
@@ -74,16 +74,44 @@ taskRoutes.get('/work-types', async (c) => {
   const defaultTypes = WORK_TYPES;
   let customTypes = [];
 
-  if (user?.sector) {
+  const explicitSector = String(c.req.query('sector') || '').trim();
+  const tripIdParam = Number(c.req.query('trip_id') || 0);
+
+  let targetSectors = [];
+
+  if (explicitSector) {
+    targetSectors.push(explicitSector);
+  } else if (tripIdParam > 0) {
     try {
+      const trip = await c.env.DB.prepare('SELECT sector FROM trips WHERE id = ?')
+        .bind(tripIdParam)
+        .first();
+      if (trip?.sector) {
+        targetSectors.push(trip.sector);
+      }
+    } catch {
+      // ignore trip lookup failure
+    }
+  }
+
+  if (!targetSectors.length) {
+    const userSector = user?.sector;
+    const ledSector = getLedSector(user);
+    if (ledSector) targetSectors.push(ledSector);
+    if (userSector && userSector !== ledSector) targetSectors.push(userSector);
+  }
+
+  if (targetSectors.length) {
+    try {
+      const placeholders = targetSectors.map(() => '?').join(',');
       const { results } = await c.env.DB.prepare(
-        'SELECT name FROM leader_work_types WHERE sector = ? ORDER BY name ASC'
+        `SELECT DISTINCT name FROM leader_work_types WHERE sector IN (${placeholders}) ORDER BY name ASC`
       )
-        .bind(user.sector)
+        .bind(...targetSectors)
         .all();
       customTypes = (results || []).map((r) => r.name);
     } catch {
-      // ignore if table doesn't exist yet
+      // ignore if table doesn't exist yet or query fails
     }
   }
 
@@ -93,15 +121,44 @@ taskRoutes.get('/work-types', async (c) => {
 
 taskRoutes.get('/projects', async (c) => {
   const user = c.get('user');
-  if (!user?.sector) {
+
+  const explicitSector = String(c.req.query('sector') || '').trim();
+  const tripIdParam = Number(c.req.query('trip_id') || 0);
+
+  let targetSectors = [];
+
+  if (explicitSector) {
+    targetSectors.push(explicitSector);
+  } else if (tripIdParam > 0) {
+    try {
+      const trip = await c.env.DB.prepare('SELECT sector FROM trips WHERE id = ?')
+        .bind(tripIdParam)
+        .first();
+      if (trip?.sector) {
+        targetSectors.push(trip.sector);
+      }
+    } catch {
+      // ignore trip lookup failure
+    }
+  }
+
+  if (!targetSectors.length) {
+    const userSector = user?.sector;
+    const ledSector = getLedSector(user);
+    if (ledSector) targetSectors.push(ledSector);
+    if (userSector && userSector !== ledSector) targetSectors.push(userSector);
+  }
+
+  if (!targetSectors.length) {
     return json({ success: true, projects: [] });
   }
 
   try {
+    const placeholders = targetSectors.map(() => '?').join(',');
     const { results } = await c.env.DB.prepare(
-      'SELECT id, name FROM leader_projects WHERE sector = ? ORDER BY name ASC'
+      `SELECT DISTINCT id, name FROM leader_projects WHERE sector IN (${placeholders}) ORDER BY name ASC`
     )
-      .bind(user.sector)
+      .bind(...targetSectors)
       .all();
     return json({ success: true, projects: results || [] });
   } catch {

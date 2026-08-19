@@ -1,13 +1,13 @@
 import { Hono } from 'hono';
 import { requireUser } from './auth.js';
-import { err, json, isSectorLeader } from './helpers.js';
+import { err, json, isSectorLeader, getLedSector } from './helpers.js';
 
 export const configuracoesLider = new Hono();
 configuracoesLider.use('*', requireUser);
 
 configuracoesLider.get('/projetos', async (c) => {
   const user = c.get('user');
-  const sector = user?.sector;
+  const sector = getLedSector(user) || user?.sector;
   if (!sector) {
     return json({ success: true, projects: [] });
   }
@@ -39,7 +39,10 @@ configuracoesLider.post('/projetos', async (c) => {
     return err('Informe o nome do projeto.', 400);
   }
 
-  const sector = user.sector;
+  const sector = getLedSector(user) || user.sector;
+  if (!sector) {
+    return err('Setor não identificado para o líder.', 400);
+  }
   const result = await c.env.DB.prepare(
     'INSERT INTO leader_projects (sector, name, created_by) VALUES (?, ?, ?)'
   )
@@ -56,7 +59,7 @@ configuracoesLider.delete('/projetos/:id', async (c) => {
   }
 
   const id = Number(c.req.param('id'));
-  const sector = user.sector;
+  const sector = getLedSector(user) || user.sector;
 
   await c.env.DB.prepare(
     'DELETE FROM leader_projects WHERE id = ? AND sector = ?'
@@ -69,7 +72,7 @@ configuracoesLider.delete('/projetos/:id', async (c) => {
 
 configuracoesLider.get('/tipos-trabalho', async (c) => {
   const user = c.get('user');
-  const sector = user?.sector;
+  const sector = getLedSector(user) || user?.sector;
   if (!sector) {
     return json({ success: true, work_types: [] });
   }
@@ -101,7 +104,10 @@ configuracoesLider.post('/tipos-trabalho', async (c) => {
     return err('Informe o nome do tipo de trabalho.', 400);
   }
 
-  const sector = user.sector;
+  const sector = getLedSector(user) || user.sector;
+  if (!sector) {
+    return err('Setor não identificado para o líder.', 400);
+  }
   const result = await c.env.DB.prepare(
     'INSERT INTO leader_work_types (sector, name, created_by) VALUES (?, ?, ?)'
   )
@@ -118,7 +124,7 @@ configuracoesLider.delete('/tipos-trabalho/:id', async (c) => {
   }
 
   const id = Number(c.req.param('id'));
-  const sector = user.sector;
+  const sector = getLedSector(user) || user.sector;
 
   await c.env.DB.prepare(
     'DELETE FROM leader_work_types WHERE id = ? AND sector = ?'
@@ -131,7 +137,7 @@ configuracoesLider.delete('/tipos-trabalho/:id', async (c) => {
 
 configuracoesLider.get('/tipos-trabalho/:name/campos', async (c) => {
   const user = c.get('user');
-  const sector = user?.sector;
+  const sector = getLedSector(user) || user?.sector;
   if (!sector) {
     return json({ success: true, fields: [] });
   }
@@ -156,7 +162,10 @@ configuracoesLider.post('/tipos-trabalho/:name/campos', async (c) => {
   }
 
   const name = String(c.req.param('name'));
-  const sector = user.sector;
+  const sector = getLedSector(user) || user.sector;
+  if (!sector) {
+    return err('Setor não identificado para o líder.', 400);
+  }
   let body;
   try {
     body = await c.req.json();
@@ -193,7 +202,7 @@ configuracoesLider.delete('/tipos-trabalho/:name/campos/:fieldName', async (c) =
 
   const name = String(c.req.param('name'));
   const fieldName = String(c.req.param('fieldName'));
-  const sector = user.sector;
+  const sector = getLedSector(user) || user.sector;
 
   await c.env.DB.prepare(
     'DELETE FROM leader_work_type_fields WHERE sector = ? AND work_type_name = ? AND field_name = ?'
@@ -206,7 +215,7 @@ configuracoesLider.delete('/tipos-trabalho/:name/campos/:fieldName', async (c) =
 
 configuracoesLider.get('/projetos/:id/campos', async (c) => {
   const user = c.get('user');
-  const sector = user?.sector;
+  const sector = getLedSector(user) || user?.sector;
   if (!sector) {
     return json({ success: true, fields: [] });
   }
@@ -231,7 +240,10 @@ configuracoesLider.post('/projetos/:id/campos', async (c) => {
   }
 
   const projectId = Number(c.req.param('id'));
-  const sector = user.sector;
+  const sector = getLedSector(user) || user.sector;
+  if (!sector) {
+    return err('Setor não identificado para o líder.', 400);
+  }
   let body;
   try {
     body = await c.req.json();
@@ -268,7 +280,7 @@ configuracoesLider.delete('/projetos/:id/campos/:fieldName', async (c) => {
 
   const projectId = Number(c.req.param('id'));
   const fieldName = String(c.req.param('fieldName'));
-  const sector = user.sector;
+  const sector = getLedSector(user) || user.sector;
 
   await c.env.DB.prepare(
     'DELETE FROM leader_project_fields WHERE sector = ? AND project_id = ? AND field_name = ?'
