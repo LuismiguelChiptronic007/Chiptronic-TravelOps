@@ -38,9 +38,15 @@
         <div class="panel">
           <div class="panel-header">
             <h2>Dados gerais</h2>
+<<<<<<< HEAD
             <button type="button" class="panel-toggle collapsed" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
           </div>
           <div class="panel-body panel-content collapsed">
+=======
+            <button type="button" class="panel-toggle" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+          </div>
+          <div class="panel-body panel-content">
+>>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054
             <div class="detail-grid">
               <div class="kv" id="trip-kv"></div>
               <div>
@@ -61,9 +67,15 @@
               <h2>Checklist de encerramento</h2>
               <span class="text-muted" style="font-size:0.85rem">Registre as tarefas realizadas</span>
             </div>
+<<<<<<< HEAD
             <button type="button" class="panel-toggle collapsed" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
           </div>
           <div class="panel-body panel-content collapsed">
+=======
+            <button type="button" class="panel-toggle" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+          </div>
+          <div class="panel-body panel-content">
+>>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054
             <div class="task-filters">
               <div>
                 <label for="filter-responsible">Responsável</label>
@@ -116,6 +128,7 @@
               <p id="progress-hint" class="completion-progress-hint text-muted"></p>
             </div>
 
+<<<<<<< HEAD
           </div>
         </div>
 
@@ -209,6 +222,90 @@
                 <button type="button" class="btn btn-success" id="btn-complete">Finalizar viagem</button>
               </div>
             </form>
+=======
+            <div id="task-form-wrap" class="task-form-wrap mt-2">
+              <div class="panel-subheader">
+                <h3 id="task-form-title">Nova tarefa</h3>
+                <button type="button" class="panel-toggle" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+              </div>
+               <form id="task-form" class="checklist-box form-grid panel-content">
+                 <div class="form-grid two">
+                   <div>
+                     <label for="work_type">Tipo de trabalho *</label>
+                     <select id="work_type" required>
+                       <option value="">Selecione…</option>
+                     </select>
+                   </div>
+                   <div>
+                     <label for="task_date">Data da tarefa *</label>
+                     <input id="task_date" type="date" required />
+                   </div>
+                 </div>
+                 <div>
+                   <label for="project_id">Projeto</label>
+                   <select id="project_id">
+                     <option value="">Sem projeto</option>
+                   </select>
+                 </div>
+                 <div>
+                   <label>Responsáveis pela tarefa</label>
+                   <div id="responsible_id" class="responsible-list" aria-label="Responsáveis pela tarefa"></div>
+                 </div>
+                <div id="vehicle-fields" class="form-grid two hidden-fields">
+                  <div>
+                    <label for="vehicle">Veículo</label>
+                    <input id="vehicle" placeholder="Ex: Caminhão / Van / Carreta" />
+                  </div>
+                  <div>
+                    <label for="plate">Placa</label>
+                    <input id="plate" placeholder="Ex: ABC-1234" />
+                  </div>
+                </div>
+                <div id="vehicle-detail-fields" class="form-grid three hidden-fields">
+                  <div>
+                    <label for="montadora">Montadora</label>
+                    <input id="montadora" placeholder="Ex: Chevrolet" />
+                  </div>
+                  <div>
+                    <label for="modelo">Modelo</label>
+                    <input id="modelo" placeholder="Ex: S10" />
+                  </div>
+                  <div>
+                    <label for="submodelo">Submodelo</label>
+                    <input id="submodelo" placeholder="Ex: LTZ 2.8" />
+                  </div>
+                 </div>
+                 <div id="custom-fields-container"></div>
+                 <div id="location-field">
+                  <label for="location">Local do serviço *</label>
+                  <input id="location" required placeholder="Ex: Cliente XYZ — unidade centro" />
+                </div>
+                <div class="form-grid two">
+                  <div>
+                    <label for="start_time">Hora de início *</label>
+                    <input id="start_time" type="time" required />
+                  </div>
+                  <div>
+                    <label for="end_time">Hora de término *</label>
+                    <input id="end_time" type="time" required />
+                  </div>
+                </div>
+                <div id="task-time-availability" class="hidden-fields" style="font-size:0.7rem; color:#4b5563; line-height:1.2; margin-top:-6px;"></div>
+                <div id="summary-field">
+                  <label for="summary">Resumo do que foi feito *</label>
+                  <textarea id="summary" required placeholder="Descreva a atividade realizada…"></textarea>
+                </div>
+                <div>
+                  <label for="pending_items">Pendências neste trabalho</label>
+                  <textarea id="pending_items" placeholder="O que ficou pendente neste mesmo trabalho…"></textarea>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn-primary" id="btn-save-task">Salvar tarefa</button>
+                  <button type="button" class="btn btn-success" id="btn-complete">Finalizar viagem</button>
+                </div>
+              </form>
+            </div>
+>>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054
           </div>
         </div>
       </div>
@@ -217,4 +314,8 @@
   <script src="js/config.js"></script>
   <script type="module" src="js/trip-detail.js"></script>
 </body>
+<<<<<<< HEAD
 </html>
+=======
+</html>
+>>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054

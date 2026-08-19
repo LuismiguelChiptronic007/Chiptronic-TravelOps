@@ -1282,6 +1282,7 @@ function renderCompletionProgress(t) {
 
 export function setupPanelToggles() {
   setupTaskFilters();
+<<<<<<< HEAD
   setupCollapsibleSections();
   document.querySelectorAll(".panel-toggle").forEach((button) => {
     // Toggles nested inside a `.collapsible-header` (e.g. the "Campos da
@@ -1289,6 +1290,9 @@ export function setupPanelToggles() {
     // setupCollapsibleSections(), not by this generic panel logic.
     if (button.closest(".collapsible-header")) return;
 
+=======
+  document.querySelectorAll(".panel-toggle").forEach((button) => {
+>>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054
     button.addEventListener("click", (e) => {
       e.preventDefault();
       const isForm = button.closest("#task-form-wrap");
@@ -1310,9 +1314,12 @@ export function setupPanelToggles() {
   });
 
   try {
+<<<<<<< HEAD
     // "Dados gerais" and "Checklist de encerramento" now come minimized by
     // default (see markup). We only need to override that default when the
     // user has explicitly expanded the panel in a previous visit.
+=======
+>>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054
     document.querySelectorAll(".panel").forEach((panel) => {
       const h2 = panel.querySelector("h2");
       if (!h2) return;
@@ -1320,6 +1327,7 @@ export function setupPanelToggles() {
       const state = localStorage.getItem(key);
       const toggle = panel.querySelector(".panel-toggle");
       const content = panel.querySelector(".panel-content");
+<<<<<<< HEAD
       if (!toggle || !content) return;
       if (state === "collapsed") {
         toggle.classList.add("collapsed");
@@ -1327,6 +1335,11 @@ export function setupPanelToggles() {
       } else if (state === "expanded") {
         toggle.classList.remove("collapsed");
         content.classList.remove("collapsed");
+=======
+      if (state === "collapsed" && toggle && content) {
+        toggle.classList.add("collapsed");
+        content.classList.add("collapsed");
+>>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054
       }
     });
 
@@ -1342,6 +1355,7 @@ export function setupPanelToggles() {
   } catch (e) {}
 }
 
+<<<<<<< HEAD
 function setupCollapsibleSections() {
   document.querySelectorAll(".collapsible-section").forEach((section) => {
     if (section.dataset.collapsibleInstalled) return;
@@ -1361,6 +1375,8 @@ function setupCollapsibleSections() {
   });
 }
 
+=======
+>>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054
 function setupTaskFilters() {
   const container = document.querySelector(".task-filters");
   if (!container || container.dataset.taskFiltersInstalled) return;
@@ -1453,4 +1469,8 @@ export function taskFormPayload() {
       ).map((input) => [input.dataset.fieldName, input.value.trim()]),
     ),
   };
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054
