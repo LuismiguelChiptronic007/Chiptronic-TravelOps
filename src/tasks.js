@@ -12,6 +12,7 @@ import {
 
 import { fetchTripFull } from "./trip_utils.js";
 import { notifyUsers } from "./notifications.js";
+import { logActivity } from "./activity.js";
 
 export const taskRoutes = new Hono();
 
@@ -483,6 +484,14 @@ taskRoutes.post("/:id/tasks", async (c) => {
     console.error("Falha ao notificar líder da setor:", e);
   }
 
+  await logActivity(c.env.DB, {
+    tripId: id,
+    userId,
+    action: 'task_created',
+    summary: `Registrou uma tarefa em ${task_date}.`,
+    details: { work_type, location, task_date, summary },
+  });
+
   return json(
     { success: true, trip: await fetchTripFull(c.env.DB, id, userId) },
     201,
@@ -526,6 +535,14 @@ taskRoutes.delete("/:id/tasks/:taskId", async (c) => {
   await c.env.DB.prepare("DELETE FROM trip_tasks WHERE id = ?")
     .bind(taskId)
     .run();
+
+  await logActivity(c.env.DB, {
+    tripId: id,
+    userId,
+    action: 'task_deleted',
+    summary: `Excluiu a tarefa de ${task.task_date}.`,
+    details: { task_id: taskId, work_type: task.work_type },
+  });
 
   return json({
     success: true,

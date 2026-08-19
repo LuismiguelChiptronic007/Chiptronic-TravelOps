@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { checklistIsComplete, err, json, hasTaskEveryTripDay } from './helpers.js';
 import { fetchTripFull } from './trip_utils.js';
+import { logActivity } from './activity.js';
 
 export const checklistRoutes = new Hono();
 
@@ -78,6 +79,13 @@ checklistRoutes.post('/:id/complete', async (c) => {
   )
     .bind(id)
     .run();
+
+  await logActivity(c.env.DB, {
+    tripId: id,
+    userId,
+    action: 'trip_completed',
+    summary: 'Finalizou a viagem e entregou o relatório.',
+  });
 
   return json({ success: true, trip: await fetchTripFull(c.env.DB, id, userId) });
 });

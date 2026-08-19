@@ -19,6 +19,7 @@ import {
 
 let currentUser = null;
 let notifPollTimer = null;
+let presencePollTimer = null;
 let shellInstalled = false;
 let uxInstalled = false;
 let shellEventsInstalled = false;
@@ -50,9 +51,12 @@ export async function mountShell({ active } = {}) {
   renderDrawer(user);
   bindShellEvents(user);
   refreshNotificationBadge();
+  api.presenceHeartbeat().catch(() => {});
 
   if (notifPollTimer) clearInterval(notifPollTimer);
   notifPollTimer = setInterval(refreshNotificationBadge, 60000);
+  if (presencePollTimer) clearInterval(presencePollTimer);
+  presencePollTimer = setInterval(() => api.presenceHeartbeat().catch(() => {}), 60000);
 
   return user;
 }

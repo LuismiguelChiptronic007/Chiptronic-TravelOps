@@ -100,6 +100,24 @@ function renderFilteredTeam(team = [], filters = sectorFilters) {
   window.__sectorTeam = filteredTeam;
 }
 
+async function loadActivities() {
+  const memberSelect = document.getElementById('activity-member');
+  const team = window.__sectorTeam || [];
+  if (memberSelect && memberSelect.options.length === 1) {
+    memberSelect.innerHTML += team.map((member) => `<option value="${member.user?.id || ''}">${escapeHtml(member.user?.full_name || '')}</option>`).join('');
+  }
+  const params = {};
+  if (memberSelect?.value) params.user_id = memberSelect.value;
+  if (document.getElementById('activity-from')?.value) params.from = document.getElementById('activity-from').value;
+  if (document.getElementById('activity-to')?.value) params.to = document.getElementById('activity-to').value;
+  const [activityData, presenceData] = await Promise.all([api.activities(params), api.presenceUsers()]);
+  const rows = document.getElementById('activity-list');
+  if (rows) rows.innerHTML = (activityData.activities || []).map((item) => `<tr><td>${escapeHtml(new Date(`${item.created_at.replace(' ', 'T')}Z`).toLocaleString('pt-BR'))}</td><td>${escapeHtml(item.user_name)}</td><td>${escapeHtml(item.action)}</td><td>${escapeHtml(item.summary)}</td><td>${escapeHtml(item.destination || '—')}</td></tr>`).join('') || '<tr><td colspan="5" class="empty-state">Nenhuma atividade encontrada.</td></tr>';
+  const online = (presenceData.users || []).filter((item) => item.is_online);
+  const presence = document.getElementById('presence-list');
+  if (presence) presence.textContent = online.length ? `Online agora: ${online.map((item) => item.full_name).join(', ')}` : 'Nenhum integrante online agora.';
+}
+
 function destroyChart(key) {
   try {
     if (charts[key]) charts[key].destroy();
@@ -444,6 +462,8 @@ async function load() {
 
     renderFilteredTeam(team, sectorFilters);
     window.__sectorTeam = team;
+    await loadActivities();
+    document.getElementById('activity-refresh')?.addEventListener('click', () => loadActivities().catch((error) => showAlert(alertEl, error.message)));
   } catch (err) {
     showAlert(alertEl, err.message);
     teamRoot.innerHTML = '';

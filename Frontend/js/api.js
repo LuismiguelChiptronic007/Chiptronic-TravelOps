@@ -20,8 +20,7 @@ const API_BASE = (() => {
   ) {
     if (
       location.port === "8787" ||
-      location.port === "8788" ||
-      location.port === ""
+      location.port === "8788"
     ) {
       return `${location.origin}/api`;
     }
@@ -129,6 +128,13 @@ export const api = {
     request(`/trips/${id}`, { method: "PUT", json: body }),
   deleteTrip: (id) => request(`/trips/${id}`, { method: "DELETE" }),
   completeTrip: (id) => request(`/trips/${id}/complete`, { method: "POST" }),
+  tripActivity: (id) => request(`/activity/trips/${id}`),
+  activities: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return request(`/activity${qs ? `?${qs}` : ""}`);
+  },
+  presenceHeartbeat: () => request('/presence/heartbeat', { method: 'POST' }),
+  presenceUsers: () => request('/presence/users'),
 
   usersForMembers: (q = "") => {
     const qs = q ? `?q=${encodeURIComponent(q)}` : "";

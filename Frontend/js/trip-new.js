@@ -8,9 +8,7 @@ const form = document.getElementById("trip-form");
 const alertEl = document.getElementById("alert");
 const btn = document.getElementById("btn-submit");
 const sectorSelect = document.getElementById("sector");
-const memberSelect = document.getElementById("member-select");
-const membersList = document.getElementById("members-list");
-const memberPreview = document.getElementById("member-preview");
+const membersCheckboxes = document.getElementById("members-checkboxes");
 const pageTitle = document.querySelector(".page-header h1");
 const pageSubtitle = document.querySelector(".page-header p");
 
@@ -50,65 +48,29 @@ function setSelectedMembersFromTrip(members = []) {
   }
 }
 
-function renderMembers() {
-  if (!membersList) return;
-  if (!selectedMembers.size) {
-    membersList.innerHTML =
-      '<div class="empty-state">Nenhum integrante adicionado</div>';
+function renderMemberCheckboxes() {
+  if (!membersCheckboxes) return;
+  if (!availableUsers.length) {
+    membersCheckboxes.innerHTML =
+      '<div class="empty-state">Nenhum integrante disponível</div>';
     return;
   }
-  membersList.innerHTML = [...selectedMembers.values()]
+  membersCheckboxes.innerHTML = availableUsers
     .map(
       (u) => `
-    <div class="member-chip" data-id="${u.id}">
-      <div class="info">
+    <label class="member-checkbox">
+      <input type="checkbox" value="${u.id}" ${selectedMembers.has(Number(u.id)) ? "checked" : ""}>
+      <span class="member-checkbox-info">
         <strong>${escapeHtml(u.full_name)}</strong>
         <small>
           Setor: ${escapeHtml(u.sector || "—")}
           · Responsável: ${escapeHtml(u.manager_name || "Não informado")}
           ${u.position_title ? ` · ${escapeHtml(u.position_title)}` : ""}
         </small>
-      </div>
-      <button type="button" class="btn btn-danger btn-sm" data-remove-member="${u.id}">Remover</button>
-    </div>`,
+      </span>
+    </label>`,
     )
     .join("");
-}
-
-function fillMemberSelect() {
-  if (!memberSelect) return;
-  const current = memberSelect.value;
-  memberSelect.innerHTML = '<option value="">Selecione um integrante…</option>';
-  for (const u of availableUsers) {
-    if (selectedMembers.has(u.id)) continue;
-    const opt = document.createElement("option");
-    opt.value = String(u.id);
-    opt.textContent = `${u.full_name} — ${u.sector}`;
-    opt.dataset.sector = u.sector || "";
-    opt.dataset.manager = u.manager_name || "";
-    opt.dataset.position = u.position_title || "";
-    memberSelect.appendChild(opt);
-  }
-  if ([...memberSelect.options].some((o) => o.value === current)) {
-    memberSelect.value = current;
-  }
-  updatePreview();
-}
-
-function updatePreview() {
-  if (!memberSelect || !memberPreview) return;
-  const id = Number(memberSelect.value);
-  const u = availableUsers.find((x) => x.id === id);
-  if (!u) {
-    memberPreview.classList.add("hidden");
-    return;
-  }
-  document.getElementById("preview-sector").textContent = u.sector || "—";
-  document.getElementById("preview-manager").textContent =
-    u.manager_name || "Não informado";
-  document.getElementById("preview-position").textContent =
-    u.position_title || "—";
-  memberPreview.classList.remove("hidden");
 }
 
 async function init() {
@@ -169,7 +131,7 @@ async function init() {
         if (sectorSelect && currentTrip.sector)
           sectorSelect.value = currentTrip.sector;
         setSelectedMembersFromTrip(currentTrip.members || []);
-        renderMembers();
+        renderMemberCheckboxes();
       }
     } catch (err) {
       showAlert(
@@ -179,7 +141,7 @@ async function init() {
     }
   }
 
-  fillMemberSelect();
+  renderMemberCheckboxes();
   setEditMode();
 }
 
@@ -199,28 +161,14 @@ function syncTripDates() {
 startDateInput?.addEventListener("change", syncTripDates);
 endDateInput?.addEventListener("change", syncTripDates);
 
-memberSelect?.addEventListener("change", updatePreview);
-
-document.getElementById("btn-add-member")?.addEventListener("click", () => {
-  const id = Number(memberSelect.value);
-  if (!id) {
-    showAlert(alertEl, "Selecione um integrante cadastrado.");
-    return;
-  }
-  const u = availableUsers.find((x) => x.id === id);
-  if (!u) return;
-  selectedMembers.set(u.id, u);
-  hideAlert(alertEl);
-  fillMemberSelect();
-  renderMembers();
-});
-
-membersList?.addEventListener("click", (e) => {
-  const id = Number(e.target.getAttribute("data-remove-member"));
-  if (!id) return;
-  selectedMembers.delete(id);
-  fillMemberSelect();
-  renderMembers();
+membersCheckboxes?.addEventListener("change", (e) => {
+  const checkbox = e.target.closest('input[type="checkbox"]');
+  if (!checkbox) return;
+  const id = Number(checkbox.value);
+  const user = availableUsers.find((item) => Number(item.id) === id);
+  if (!user) return;
+  if (checkbox.checked) selectedMembers.set(id, user);
+  else selectedMembers.delete(id);
 });
 
 form?.addEventListener("submit", async (e) => {

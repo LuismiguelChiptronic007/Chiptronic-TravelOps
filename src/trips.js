@@ -6,6 +6,7 @@ import { fetchTripFull, formatTrip, saveTripMembers, syncUserTripStatuses } from
 import { checklistRoutes } from './checklist.js';
 import { taskRoutes } from './tasks.js';
 import { getAccessibleTrip } from './tasks.js';
+import { logActivity } from './activity.js';
 
 export const trips = new Hono();
 trips.use('*', requireUser);
@@ -208,6 +209,13 @@ trips.post('/', async (c) => {
     .run();
 
   const tripId = result.meta.last_row_id;
+  await logActivity(c.env.DB, {
+    tripId,
+    userId: user.id,
+    action: 'trip_created',
+    summary: `Criou a viagem para ${destination}.`,
+    details: { destination, start_date, end_date, sector },
+  });
   await c.env.DB.prepare('INSERT INTO trip_checklists (trip_id) VALUES (?)').bind(tripId).run();
 
   // Always include the trip creator as a trip member so they can be
@@ -307,11 +315,25 @@ trips.put('/:id', async (c) => {
   if (end_date < start_date) return err('Data de término inválida.');
 
   const status = computeStatus({ start_date, end_date, status: trip.status });
+  const changes = {};
+  for (const [field, value] of Object.entries({ origin, destination, start_date, end_date, reason, sector, status })) {
+    if (String(trip[field] ?? '') !== String(value ?? '')) changes[field] = { from: trip[field] ?? null, to: value };
+  }
   await c.env.DB.prepare(
     `UPDATE trips SET origin=?, destination=?, start_date=?, end_date=?, reason=?, sector=?, status=?, updated_at=datetime('now') WHERE id=?`
   )
     .bind(origin, destination, start_date, end_date, reason, sector, status, id)
     .run();
+
+  if (Object.keys(changes).length) {
+    await logActivity(c.env.DB, {
+      tripId: id,
+      userId,
+      action: 'trip_updated',
+      summary: `Atualizou ${Object.keys(changes).length} ${Object.keys(changes).length === 1 ? 'campo' : 'campos'} da viagem.`,
+      details: changes,
+    });
+  }
 
   if (Array.isArray(body.member_ids)) {
     try {
@@ -338,6 +360,13 @@ trips.delete('/:id', async (c) => {
   if (trip.status === 'completed' && !isAdmin(viewer)) {
     return err('Viagem concluída não pode ser excluída.', 403);
   }
+
+  await logActivity(c.env.DB, {
+    tripId: id,
+    userId,
+    action: 'trip_deleted',
+    summary: `Excluiu a viagem para ${trip.destination}.`,
+  });
 
   await c.env.DB.prepare('DELETE FROM trip_task_photos WHERE task_id IN (SELECT id FROM trip_tasks WHERE trip_id = ?)')
     .bind(id)

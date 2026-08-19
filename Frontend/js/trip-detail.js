@@ -65,6 +65,10 @@ async function init() {
   } catch (err) {
     showAlert(alertEl, err.message);
   }
+
+  document.getElementById('btn-trip-history')?.addEventListener('click', () => {
+    window.location.href = `trip-history.html?id=${tripId}`;
+  });
 }
 
 document.getElementById("task-form")?.addEventListener("submit", async (e) => {

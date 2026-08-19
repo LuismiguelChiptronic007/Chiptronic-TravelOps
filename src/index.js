@@ -8,6 +8,8 @@ import { profile } from './profile.js';
 import { notifications } from './notifications.js';
 import { sector } from './sector.js';
 import { configuracoes } from './configuracoes.js';
+import { activity } from './activity.js';
+import { presence } from './presence.js';
 import { err, json } from './helpers.js';
 
 const app = new Hono();
@@ -37,6 +39,8 @@ app.route('/api/profile', profile);
 app.route('/api/notifications', notifications);
 app.route('/api/sector', sector);
 app.route('/api/configuracoes', configuracoes);
+app.route('/api/activity', activity);
+app.route('/api/presence', presence);
 app.route('/api', files);
 
 app.notFound((c) => {

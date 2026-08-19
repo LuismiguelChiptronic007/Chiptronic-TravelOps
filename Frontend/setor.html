@@ -107,6 +107,20 @@
         </div>
       </div>
 
+      <div class="panel" style="margin-top: 1rem;">
+        <div class="panel-header"><h2>Atividades da equipe</h2></div>
+        <div class="panel-body">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; align-items:end;">
+            <div><label for="activity-member">Pessoa</label><select id="activity-member"><option value="">Todos</option></select></div>
+            <div><label for="activity-from">De</label><input id="activity-from" type="date" /></div>
+            <div><label for="activity-to">Até</label><input id="activity-to" type="date" /></div>
+            <div><label>&nbsp;</label><button type="button" class="btn btn-secondary" id="activity-refresh">Filtrar</button></div>
+          </div>
+          <div id="presence-list" class="text-muted" style="margin-top:1rem"></div>
+          <div class="table-wrap" style="margin-top:1rem"><table class="data"><thead><tr><th>Quando</th><th>Pessoa</th><th>Ação</th><th>Resumo</th><th>Viagem</th></tr></thead><tbody id="activity-list"><tr><td colspan="5" class="empty-state">Carregando…</td></tr></tbody></table></div>
+        </div>
+      </div>
+
       <div id="team-root">
         <p class="empty-state">Carregando equipe…</p>
       </div>

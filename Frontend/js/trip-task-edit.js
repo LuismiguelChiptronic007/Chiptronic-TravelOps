@@ -1,5 +1,6 @@
 import { api, showAlert, hideAlert } from "./api.js";
 import { escapeHtml, mountShell } from "./layout.js";
+import { confirmDialog } from "./ui.js";
 
 const params = new URLSearchParams(location.search);
 const taskId = Number(params.get("task_id"));
@@ -360,8 +361,16 @@ function setupListeners() {
   document
     .getElementById("edit-project-id")
     .addEventListener("change", loadEditCustomFields);
-  document.getElementById("btn-cancel").addEventListener("click", () => {
-    if (confirm("Descartar alterações?")) {
+  document.getElementById("btn-cancel").addEventListener("click", async () => {
+    const confirmed = await confirmDialog({
+      title: "Cancelar edição",
+      message: "Deseja descartar as alterações feitas nesta tarefa?",
+      confirmLabel: "Descartar alterações",
+      cancelLabel: "Continuar editando",
+      tone: "danger",
+      confirmTone: "danger",
+    });
+    if (confirmed) {
       window.location.href = `trip.html?id=${tripId}`;
     }
   });

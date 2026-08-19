@@ -1,7 +1,15 @@
 const THEME_KEY = 'cto_theme';
 
+function getSystemTheme() {
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return 'light';
+}
+
 export function getStoredTheme() {
-  return localStorage.getItem(THEME_KEY) || 'light';
+  const stored = localStorage.getItem(THEME_KEY);
+  return stored || getSystemTheme();
 }
 
 export function applyTheme(theme) {
@@ -15,5 +23,13 @@ export function toggleTheme() {
   return next;
 }
 
-// Aplica imediatamente para evitar flash
 applyTheme(getStoredTheme());
+
+if (typeof window !== 'undefined' && window.matchMedia) {
+  const mql = window.matchMedia('(prefers-color-scheme: dark)');
+  mql.addEventListener?.('change', (e) => {
+    if (!localStorage.getItem(THEME_KEY)) {
+      applyTheme(e.matches ? 'dark' : 'light');
+    }
+  });
+}
