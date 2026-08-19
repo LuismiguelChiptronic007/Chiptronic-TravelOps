@@ -1,31 +1,31 @@
-import { api, showAlert, hideAlert } from './api.js';
-import { escapeHtml, mountShell } from './layout.js';
+import { api, showAlert, hideAlert } from "./api.js";
+import { escapeHtml, mountShell } from "./layout.js";
 
 const params = new URLSearchParams(location.search);
-const taskId = Number(params.get('task_id'));
-const tripId = Number(params.get('trip_id'));
+const taskId = Number(params.get("task_id"));
+const tripId = Number(params.get("trip_id"));
 
-const form = document.getElementById('task-edit-form');
-const alertEl = document.getElementById('alert');
-const subtitle = document.getElementById('trip-subtitle');
+const form = document.getElementById("task-edit-form");
+const alertEl = document.getElementById("alert");
+const subtitle = document.getElementById("trip-subtitle");
 
 let currentTrip = null;
 let task = null;
 let members = [];
 
-function setAlert(message, type = 'error') {
+function setAlert(message, type = "error") {
   alertEl.textContent = message;
   alertEl.className = `alert alert-${type}`;
-  alertEl.classList.remove('hidden');
+  alertEl.classList.remove("hidden");
 }
 
 async function init() {
   if (!taskId || !tripId) {
-    window.location.href = 'index.html';
+    window.location.href = "index.html";
     return;
   }
 
-  const user = await mountShell({ active: 'dashboard' });
+  const user = await mountShell({ active: "dashboard" });
   if (!user) return;
 
   try {
@@ -41,7 +41,7 @@ async function init() {
     const allMembers = [
       {
         user_id: currentTrip.user_id,
-        full_name: currentTrip.members?.[0]?.full_name || 'Você',
+        full_name: currentTrip.members?.[0]?.full_name || "Você",
         employee_id: currentTrip.members?.[0]?.employee_id || null,
         position_title: currentTrip.members?.[0]?.position_title || null,
       },
@@ -56,40 +56,46 @@ async function init() {
     members = allMembers.filter((m) => m.full_name);
 
     const workTypesRes = await api.workTypes({ trip_id: tripId });
-    const workTypeSelect = document.getElementById('edit-work-type');
-    workTypeSelect.innerHTML = '<option value="">Selecione…</option>' +
-      (workTypesRes.work_types || []).map((w) => `<option value="${escapeHtml(w)}">${escapeHtml(w)}</option>`).join('');
+    const workTypeSelect = document.getElementById("edit-work-type");
+    workTypeSelect.innerHTML =
+      '<option value="">Selecione…</option>' +
+      (workTypesRes.work_types || [])
+        .map(
+          (w) => `<option value="${escapeHtml(w)}">${escapeHtml(w)}</option>`,
+        )
+        .join("");
 
     const taskRes = await api.getTask(tripId, taskId);
     task = taskRes.task;
 
     if (!task) {
-      setAlert('Tarefa não encontrada.', 'error');
+      setAlert("Tarefa não encontrada.", "error");
       return;
     }
 
     await fillForm();
     setupListeners();
   } catch (err) {
-    setAlert(err.message, 'error');
+    setAlert(err.message, "error");
   }
 }
 
 async function fillForm() {
   if (!task) return;
 
-  document.getElementById('edit-work-type').value = task.work_type || '';
-  document.getElementById('edit-task-date').value = task.task_date || '';
-  document.getElementById('edit-location').value = task.location || '';
-  document.getElementById('edit-start-time').value = task.start_time || '';
-  document.getElementById('edit-end-time').value = task.end_time || '';
-  document.getElementById('edit-summary').value = task.summary || '';
-  document.getElementById('edit-pending-items').value = task.pending_items || '';
-  document.getElementById('edit-vehicle').value = task.vehicle || '';
-  document.getElementById('edit-plate').value = task.plate || '';
-  document.getElementById('edit-montadora').value = task.montadora || '';
-  document.getElementById('edit-modelo').value = task.modelo || '';
-  document.getElementById('edit-submodelo').value = task.submodelo || '';
+  document.getElementById("edit-work-type").value = task.work_type || "";
+  document.getElementById("edit-task-date").value = task.task_date || "";
+  document.getElementById("edit-location").value = task.location || "";
+  document.getElementById("edit-start-time").value = task.start_time || "";
+  document.getElementById("edit-end-time").value = task.end_time || "";
+  document.getElementById("edit-summary").value = task.summary || "";
+  document.getElementById("edit-pending-items").value =
+    task.pending_items || "";
+  document.getElementById("edit-vehicle").value = task.vehicle || "";
+  document.getElementById("edit-plate").value = task.plate || "";
+  document.getElementById("edit-montadora").value = task.montadora || "";
+  document.getElementById("edit-modelo").value = task.modelo || "";
+  document.getElementById("edit-submodelo").value = task.submodelo || "";
 
   fillResponsibleOptions();
   updateTaskTypeFields();
@@ -98,13 +104,16 @@ async function fillForm() {
 }
 
 async function loadEditProjects() {
-  const sel = document.getElementById('edit-project-id');
+  const sel = document.getElementById("edit-project-id");
   if (!sel) return;
   try {
     const data = await api.projects({ trip_id: tripId });
     const projects = data?.projects || [];
-    sel.innerHTML = '<option value="">Sem projeto</option>' +
-      projects.map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+    sel.innerHTML =
+      '<option value="">Sem projeto</option>' +
+      projects
+        .map((p) => `<option value="${p.id}">${escapeHtml(p.name)}</option>`)
+        .join("");
     if (task.project_id) sel.value = String(task.project_id);
   } catch {
     sel.innerHTML = '<option value="">Sem projeto</option>';
@@ -112,49 +121,48 @@ async function loadEditProjects() {
 }
 
 async function loadEditCustomFields() {
-  const container = document.getElementById('edit-custom-fields-container');
+  const container = document.getElementById("edit-custom-fields-container");
   if (!container) return;
 
-  const type = document.getElementById('edit-work-type').value;
-  const projectId = document.getElementById('edit-project-id').value;
+  const type = document.getElementById("edit-work-type").value;
+  const projectId = document.getElementById("edit-project-id").value;
 
-  container.innerHTML = '';
+  container.innerHTML = "";
 
   if (!type && !projectId) return;
 
   try {
     const [typeFields, projectFields] = await Promise.all([
-      type ? api.leaderWorkTypes.fields.list(type) : Promise.resolve({ fields: [] }),
-      projectId ? api.leaderProjects.fields.list(projectId) : Promise.resolve({ fields: [] }),
+      type
+        ? api.leaderWorkTypes.fields.list(type, {
+            sector: currentTrip?.sector,
+            trip_id: tripId,
+          })
+        : Promise.resolve({ fields: [] }),
+      projectId
+        ? api.leaderProjects.fields.list(projectId, {
+            sector: currentTrip?.sector,
+            trip_id: tripId,
+          })
+        : Promise.resolve({ fields: [] }),
     ]);
 
     const fields = [
-      ...(typeFields.fields || []).map((f) => ({ ...f, source: 'type' })),
-      ...(projectFields.fields || []).map((f) => ({ ...f, source: 'project' })),
+      ...(typeFields.fields || []).map((f) => ({ ...f, source: "type" })),
+      ...(projectFields.fields || []).map((f) => ({ ...f, source: "project" })),
     ];
-
-    console.log('Custom fields debug:', {
-      type,
-      projectId,
-      typeFields: typeFields.fields,
-      projectFields: projectFields.fields,
-      totalFields: fields.length,
-      taskCustomFields: task.custom_fields,
-      taskId: task.id
-    });
 
     if (!fields.length) return;
 
-    const grid = document.createElement('div');
-    grid.className = 'form-grid two';
+    const grid = document.createElement("div");
+    grid.className = "form-grid two";
 
     for (const field of fields) {
-      const fieldValue = task.custom_fields?.[field.field_name] || '';
-      console.log(`Field ${field.field_name}: value="${fieldValue}"`);
+      const fieldValue = task.custom_fields?.[field.field_name] || "";
 
-      const wrapper = document.createElement('div');
+      const wrapper = document.createElement("div");
       wrapper.innerHTML = `
-        <label for="edit_custom_${field.field_name}">${escapeHtml(field.field_name)} ${field.is_required ? '*' : ''}</label>
+        <label for="edit_custom_${field.field_name}">${escapeHtml(field.field_name)} ${field.is_required ? "*" : ""}</label>
         <input id="edit_custom_${field.field_name}" name="custom_${field.field_name}" data-field-name="${escapeHtml(field.field_name)}" value="${escapeHtml(fieldValue)}" placeholder="Informe ${escapeHtml(field.field_name)}" />
       `;
       grid.appendChild(wrapper);
@@ -162,43 +170,45 @@ async function loadEditCustomFields() {
 
     container.appendChild(grid);
   } catch (error) {
-    console.error('Erro ao carregar campos customizados:', error);
+    console.error("Erro ao carregar campos customizados:", error);
   }
 }
 
 function fillResponsibleOptions() {
-  const list = document.getElementById('edit-responsible-list');
-  list.innerHTML = '';
+  const list = document.getElementById("edit-responsible-list");
+  list.innerHTML = "";
 
   if (!members.length) {
-    const empty = document.createElement('div');
-    empty.className = 'responsible-empty';
-    empty.textContent = 'Nenhum integrante cadastrado na viagem';
+    const empty = document.createElement("div");
+    empty.className = "responsible-empty";
+    empty.textContent = "Nenhum integrante cadastrado na viagem";
     list.appendChild(empty);
     return;
   }
 
   for (const member of members) {
-    const memberId = String(member.user_id || '');
+    const memberId = String(member.user_id || "");
     if (!memberId) continue;
 
-    const option = document.createElement('label');
-    option.className = 'responsible-option';
+    const option = document.createElement("label");
+    option.className = "responsible-option";
 
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.name = 'responsible_id';
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.name = "responsible_id";
     checkbox.value = memberId;
 
     if (Array.isArray(task.responsibles) && task.responsibles.length) {
-      checkbox.checked = task.responsibles.some((r) => String(r.id) === memberId);
+      checkbox.checked = task.responsibles.some(
+        (r) => String(r.id) === memberId,
+      );
     } else {
-      checkbox.checked = String(task.responsible_id || '') === memberId;
+      checkbox.checked = String(task.responsible_id || "") === memberId;
     }
 
-    const text = document.createElement('span');
-    const isCreator = memberId === String(currentTrip.user_id || '');
-    text.textContent = `${member.full_name}${member.employee_id ? ` — ${member.employee_id}` : ''}${isCreator ? ' (Criador)' : ''}`;
+    const text = document.createElement("span");
+    const isCreator = memberId === String(currentTrip.user_id || "");
+    text.textContent = `${member.full_name}${member.employee_id ? ` — ${member.employee_id}` : ""}${isCreator ? " (Criador)" : ""}`;
 
     option.appendChild(checkbox);
     option.appendChild(text);
@@ -207,83 +217,111 @@ function fillResponsibleOptions() {
 }
 
 function updateTaskTypeFields() {
-  const type = document.getElementById('edit-work-type').value;
-  const vehicleFields = document.getElementById('edit-vehicle-fields');
-  const vehicleDetailFields = document.getElementById('edit-vehicle-detail-fields');
+  const type = document.getElementById("edit-work-type").value;
+  const vehicleFields = document.getElementById("edit-vehicle-fields");
+  const vehicleDetailFields = document.getElementById(
+    "edit-vehicle-detail-fields",
+  );
 
-  vehicleFields.classList.add('hidden-fields');
-  vehicleDetailFields.classList.add('hidden-fields');
+  vehicleFields.classList.add("hidden-fields");
+  vehicleDetailFields.classList.add("hidden-fields");
 
-  const normalizedType = String(type || '')
+  const normalizedType = String(type || "")
     .trim()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-  const requiresVehicleDetails = [
-    
-  ].includes(normalizedType);
+  const requiresVehicleDetails = [].includes(normalizedType);
 
   if (requiresVehicleDetails) {
-    vehicleFields.classList.remove('hidden-fields');
-    vehicleDetailFields.classList.remove('hidden-fields');
-    if (vehicleFields) vehicleFields.classList.add('required-fields');
-    if (vehicleDetailFields) vehicleDetailFields.classList.add('required-fields');
-  } else if (normalizedType === 'analise de veiculos') {
-    vehicleFields.classList.remove('hidden-fields');
-    if (vehicleFields) vehicleFields.classList.add('required-fields');
+    vehicleFields.classList.remove("hidden-fields");
+    vehicleDetailFields.classList.remove("hidden-fields");
+    if (vehicleFields) vehicleFields.classList.add("required-fields");
+    if (vehicleDetailFields)
+      vehicleDetailFields.classList.add("required-fields");
+  } else if (normalizedType === "analise de veiculos") {
+    vehicleFields.classList.remove("hidden-fields");
+    if (vehicleFields) vehicleFields.classList.add("required-fields");
   }
 }
 
 function getSelectedResponsibles() {
-  const checkboxes = document.querySelectorAll('#edit-responsible-list input[type="checkbox"]:checked');
-  return Array.from(checkboxes).map((cb) => Number(cb.value)).filter(Number.isInteger);
+  const checkboxes = document.querySelectorAll(
+    '#edit-responsible-list input[type="checkbox"]:checked',
+  );
+  return Array.from(checkboxes)
+    .map((cb) => Number(cb.value))
+    .filter(Number.isInteger);
 }
 
 async function saveTask() {
   hideAlert(alertEl);
 
-  const work_type = document.getElementById('edit-work-type').value;
-  const task_date = document.getElementById('edit-task-date').value;
-  const location = document.getElementById('edit-location').value.trim();
-  const start_time = document.getElementById('edit-start-time').value;
-  const end_time = document.getElementById('edit-end-time').value;
-  const summary = document.getElementById('edit-summary').value.trim();
-  const pending_items = document.getElementById('edit-pending-items').value.trim();
-  const vehicle = document.getElementById('edit-vehicle').value.trim();
-  const plate = document.getElementById('edit-plate').value.trim();
-  const montadora = document.getElementById('edit-montadora').value.trim();
-  const modelo = document.getElementById('edit-modelo').value.trim();
-  const submodelo = document.getElementById('edit-submodelo').value.trim();
+  const work_type = document.getElementById("edit-work-type").value;
+  const task_date = document.getElementById("edit-task-date").value;
+  const location = document.getElementById("edit-location").value.trim();
+  const start_time = document.getElementById("edit-start-time").value;
+  const end_time = document.getElementById("edit-end-time").value;
+  const summary = document.getElementById("edit-summary").value.trim();
+  const pending_items = document
+    .getElementById("edit-pending-items")
+    .value.trim();
+  const vehicle = document.getElementById("edit-vehicle").value.trim();
+  const plate = document.getElementById("edit-plate").value.trim();
+  const montadora = document.getElementById("edit-montadora").value.trim();
+  const modelo = document.getElementById("edit-modelo").value.trim();
+  const submodelo = document.getElementById("edit-submodelo").value.trim();
   const responsible_ids = getSelectedResponsibles();
 
-  if (!work_type || !task_date || !location || !start_time || !end_time || !summary) {
-    setAlert('Preencha todos os campos obrigatórios.', 'error');
+  if (
+    !work_type ||
+    !task_date ||
+    !location ||
+    !start_time ||
+    !end_time ||
+    !summary
+  ) {
+    setAlert("Preencha todos os campos obrigatórios.", "error");
     return;
   }
 
   if (end_time < start_time) {
-    setAlert('Hora de término deve ser igual ou posterior à hora de início.', 'error');
+    setAlert(
+      "Hora de término deve ser igual ou posterior à hora de início.",
+      "error",
+    );
     return;
   }
 
-  const normalizedType = String(work_type || '')
+  const normalizedType = String(work_type || "")
     .trim()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
   const requiresVehicle = [].includes(normalizedType);
-  if (requiresVehicle && (!vehicle || !plate || !montadora || !modelo || !submodelo)) {
-    setAlert('Para este tipo de trabalho, informe a montadora, o modelo, a versão e a placa.', 'error');
+  if (
+    requiresVehicle &&
+    (!vehicle || !plate || !montadora || !modelo || !submodelo)
+  ) {
+    setAlert(
+      "Para este tipo de trabalho, informe a montadora, o modelo, a versão e a placa.",
+      "error",
+    );
     return;
   }
 
   try {
-    const customFieldsEntries = Array.from(document.querySelectorAll('#edit-custom-fields-container input'))
+    const customFieldsEntries = Array.from(
+      document.querySelectorAll("#edit-custom-fields-container input"),
+    )
       .map((input) => {
-        const name = input.dataset.fieldName
-          || (input.name && input.name.startsWith('custom_') ? input.name.slice(7) : '');
+        const name =
+          input.dataset.fieldName ||
+          (input.name && input.name.startsWith("custom_")
+            ? input.name.slice(7)
+            : "");
         return [name, input.value.trim()];
       })
       .filter(([name]) => name);
@@ -303,77 +341,79 @@ async function saveTask() {
       montadora,
       modelo,
       submodelo,
-      project_id: document.getElementById('edit-project-id')?.value || null,
+      project_id: document.getElementById("edit-project-id")?.value || null,
       custom_fields: customFields,
     };
 
     await api.updateTask(tripId, taskId, payload);
     window.location.href = `trip.html?id=${tripId}`;
   } catch (err) {
-    setAlert(err.message, 'error');
+    setAlert(err.message, "error");
   }
 }
 
 function setupListeners() {
-  document.getElementById('edit-work-type').addEventListener('change', () => {
+  document.getElementById("edit-work-type").addEventListener("change", () => {
     updateTaskTypeFields();
     loadEditCustomFields();
   });
-  document.getElementById('edit-project-id').addEventListener('change', loadEditCustomFields);
-  document.getElementById('btn-cancel').addEventListener('click', () => {
-    if (confirm('Descartar alterações?')) {
+  document
+    .getElementById("edit-project-id")
+    .addEventListener("change", loadEditCustomFields);
+  document.getElementById("btn-cancel").addEventListener("click", () => {
+    if (confirm("Descartar alterações?")) {
       window.location.href = `trip.html?id=${tripId}`;
     }
   });
-  document.getElementById('btn-save').addEventListener('click', saveTask);
+  document.getElementById("btn-save").addEventListener("click", saveTask);
   setupCollapsibleSections();
   setupToggleButton();
 }
 
 function setupToggleButton() {
-  const toggleBtn = document.getElementById('btn-toggle-fields');
-  const section = document.getElementById('section-main');
+  const toggleBtn = document.getElementById("btn-toggle-fields");
+  const section = document.getElementById("section-main");
   if (!toggleBtn || !section) return;
 
-  const content = section.querySelector('.collapsible-content');
-  const sectionToggle = section.querySelector('.panel-toggle');
+  const content = section.querySelector(".collapsible-content");
+  const sectionToggle = section.querySelector(".panel-toggle");
   if (!content || !sectionToggle) return;
 
-  toggleBtn.addEventListener('click', () => {
-    const willCollapse = !content.classList.contains('collapsed');
+  toggleBtn.addEventListener("click", () => {
+    const willCollapse = !content.classList.contains("collapsed");
     if (willCollapse) {
-      content.classList.add('collapsed');
-      sectionToggle.classList.add('collapsed');
-      toggleBtn.textContent = 'Expandir campos';
+      content.classList.add("collapsed");
+      sectionToggle.classList.add("collapsed");
+      toggleBtn.textContent = "Expandir campos";
     } else {
-      content.classList.remove('collapsed');
-      sectionToggle.classList.remove('collapsed');
-      toggleBtn.textContent = 'Minimizar campos';
+      content.classList.remove("collapsed");
+      sectionToggle.classList.remove("collapsed");
+      toggleBtn.textContent = "Minimizar campos";
     }
   });
 }
 
 function setupCollapsibleSections() {
-  const mainSection = document.getElementById('section-main');
+  const mainSection = document.getElementById("section-main");
   if (!mainSection) return;
 
-  const header = mainSection.querySelector('.collapsible-header');
-  const content = mainSection.querySelector('.collapsible-content');
-  const sectionToggle = mainSection.querySelector('.panel-toggle');
-  const globalToggle = document.getElementById('btn-toggle-fields');
+  const header = mainSection.querySelector(".collapsible-header");
+  const content = mainSection.querySelector(".collapsible-content");
+  const sectionToggle = mainSection.querySelector(".panel-toggle");
+  const globalToggle = document.getElementById("btn-toggle-fields");
   if (!header || !content || !sectionToggle || !globalToggle) return;
 
-  header.addEventListener('click', (e) => {
-    if (e.target.closest('button')) return;
-    const willCollapse = !content.classList.contains('collapsed');
+  header.addEventListener("click", (e) => {
+    if (e.target.closest("button")) return;
+    const willCollapse = !content.classList.contains("collapsed");
     if (willCollapse) {
-      content.classList.add('collapsed');
-      sectionToggle.classList.add('collapsed');
-      globalToggle.textContent = 'Expandir campos';
+      content.classList.add("collapsed");
+      sectionToggle.classList.add("collapsed");
+      globalToggle.textContent = "Expandir campos";
     } else {
-      content.classList.remove('collapsed');
-      sectionToggle.classList.remove('collapsed');
-      globalToggle.textContent = 'Minimizar campos';
+      content.classList.remove("collapsed");
+      sectionToggle.classList.remove("collapsed");
+      globalToggle.textContent = "Minimizar campos";
     }
   });
 }
