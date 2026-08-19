@@ -1622,14 +1622,14 @@ html[data-theme="dark"] .alert-info .alert-icon {
 }
 
 .task-form-wrap {
-<<<<<<< HEAD
+
   /* Now rendered as its own top-level panel (see trip.html), so no divider
      border/margin is needed here anymore. */
-=======
+
   border-top: 1px solid var(--border);
   padding-top: 1.25rem;
   margin-top: 0.75rem;
->>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054
+
 }
 
 .panel-subheader {
@@ -2125,8 +2125,8 @@ html[data-theme="dark"] .alert-card-danger .alert-card-icon {
 .search-box .search-icon {
   color: var(--muted);
   font-size: 1rem;
-<<<<<<< HEAD
+
 }
-=======
-}
->>>>>>> b67ae77f5a52a94526d0fc01ec051e83d3ae2054
+
+
+
