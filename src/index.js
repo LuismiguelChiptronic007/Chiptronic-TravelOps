@@ -74,7 +74,24 @@ export default {
     }
 
     if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
+      const response = await env.ASSETS.fetch(request);
+      const contentType = response.headers.get('content-type') || '';
+      const headers = new Headers(response.headers);
+      if (contentType.includes('text/html')) {
+        headers.set('Cache-Control', 'no-cache, must-revalidate');
+      } else if (
+        contentType.includes('text/css') ||
+        contentType.includes('javascript') ||
+        contentType.startsWith('image/') ||
+        contentType.includes('font/')
+      ) {
+        headers.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+      }
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
     }
 
     return new Response('Frontend não configurado (ASSETS).', { status: 500 });

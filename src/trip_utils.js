@@ -32,7 +32,12 @@ export async function syncUserTripStatuses(db, userId) {
       ELSE 'planned'
     END,
     updated_at = datetime('now')
-    WHERE user_id = ? AND status != 'completed'`)
+    WHERE user_id = ? AND status != 'completed'
+      AND status != CASE
+        WHEN end_date < date('now') THEN 'awaiting_report'
+        WHEN start_date <= date('now') AND end_date >= date('now') THEN 'in_progress'
+        ELSE 'planned'
+      END`)
     .bind(userId)
     .run();
 }

@@ -205,7 +205,7 @@ html[data-theme="dark"] .auth-page::after {
   bottom: 0;
   left: .95rem;
   width: 1px;
-  background: var(--border-color, #d1d5db);
+  background: var(--border);
 }
 
 .activity-entry-marker {
@@ -213,9 +213,10 @@ html[data-theme="dark"] .auth-page::after {
   place-items: center;
   width: 2rem;
   height: 2rem;
-  border: 1px solid var(--border-color, #d1d5db);
+  border: 1px solid var(--border);
   border-radius: 50%;
-  background: var(--panel-bg, #fff);
+  background: var(--surface);
+  color: var(--text);
   font-weight: 700;
   position: relative;
   z-index: 1;
@@ -224,6 +225,7 @@ html[data-theme="dark"] .auth-page::after {
 .activity-entry-content h3 {
   margin: .15rem 0 .25rem;
   font-size: 1rem;
+  color: var(--text);
 }
 
 .activity-entry-content p {
@@ -236,7 +238,9 @@ html[data-theme="dark"] .auth-page::after {
   margin: .75rem 0 0;
   padding: .75rem;
   border-radius: 6px;
-  background: var(--surface-muted, #f3f4f6);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text);
   font-size: .8rem;
 }
 
