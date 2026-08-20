@@ -144,6 +144,7 @@ function ensureShellElements() {
         <nav class="drawer-nav">
           <a href="profile.html" class="drawer-link">✏️ Editar perfil</a>
           <a href="settings.html" class="drawer-link">⚙️ Configuração</a>
+          <a href="admin.html" class="drawer-link drawer-admin-link hidden" id="drawer-admin">🛡️ Painel de admin</a>
           <button type="button" class="drawer-link drawer-btn" id="drawer-theme">🌓 Tema</button>
           <button type="button" class="drawer-link drawer-btn danger" id="drawer-logout">Sair</button>
         </nav>
@@ -217,7 +218,8 @@ function renderTopbar(user, active) {
     'new-trip':  ['Viagens', 'Nova'],
     setor:       ['Setor', user.led_sector || 'Painel'],
     profile:     ['Conta', 'Meu perfil'],
-    settings:    ['Configurações', 'Sistema']
+    settings:    ['Configurações', 'Sistema'],
+    admin:       ['Administração', 'Painel de controle']
   };
   const parts = titles[resolvedActive] || ['Viagens', 'Detalhes'];
 
@@ -252,6 +254,7 @@ function renderDrawer(user) {
   const metaEl = document.getElementById('drawer-meta');
   const avatarEl = document.getElementById('drawer-avatar');
   const themeBtn = document.getElementById('drawer-theme');
+  const adminLink = document.getElementById('drawer-admin');
 
   if (nameEl) nameEl.textContent = user.full_name;
   if (metaEl) {
@@ -272,6 +275,7 @@ function renderDrawer(user) {
   if (themeBtn) {
     themeBtn.textContent = getStoredTheme() === 'dark' ? '☀️ Tema claro' : '🌙 Tema escuro';
   }
+  if (adminLink) adminLink.classList.toggle('hidden', !user.is_admin);
 }
 
 function bindShellEvents(user) {

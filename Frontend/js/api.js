@@ -353,6 +353,13 @@ export const api = {
   },
   sectorDashboard: () => request("/sector/dashboard"),
   sectorAccess: () => request("/sector/access"),
+
+  adminUsers: () => request('/admin/users'),
+  updateAdminRole: (id, role) => request(`/admin/users/${id}/role`, {
+    method: 'PUT',
+    json: { role },
+  }),
+  deleteAdminUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
 };
 
 export function requireAuthPage() {
