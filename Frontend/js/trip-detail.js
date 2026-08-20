@@ -98,7 +98,6 @@ document.getElementById("task-form")?.addEventListener("submit", async (e) => {
     setupPanelToggles();
     prepareTaskForm(res.trip, { keepDate: true });
     showAlert(alertEl, "Tarefa salva com sucesso.", "success");
-    alertEl?.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (err) {
     showAlert(alertEl, err.message);
     alertEl?.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -1,6 +1,7 @@
 import { api, clearSession } from './api.js';
 import { escapeHtml, mountShell } from './layout.js';
 import { getStoredTheme, toggleTheme } from './theme.js';
+import { confirmDialog } from './ui.js';
 
 const LUNCH_START_KEY = 'cto_lunch_window_start';
 const LUNCH_END_KEY = 'cto_lunch_window_end';
@@ -150,7 +151,7 @@ function setupLeaderListeners() {
   const projectInput = document.getElementById('new-project-name');
   const projectsList = document.getElementById('projects-list');
 
-  addProjectBtn?.addEventListener('click', async () => {
+  const addProject = async () => {
     const name = projectInput?.value?.trim();
     if (!name) return;
 
@@ -161,13 +162,27 @@ function setupLeaderListeners() {
     } catch (err) {
       alert(err.message || 'Erro ao adicionar projeto.');
     }
+  };
+
+  addProjectBtn?.addEventListener('click', addProject);
+  projectInput?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    addProject();
   });
 
   projectsList?.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-remove-project]');
     if (btn) {
       const id = btn.dataset.removeProject;
-      if (!confirm('Remover este projeto?')) return;
+      const confirmed = await confirmDialog({
+        title: 'Remover projeto',
+        message: 'Remover este projeto?',
+        confirmLabel: 'Remover',
+        confirmTone: 'danger',
+        tone: 'danger',
+      });
+      if (!confirmed) return;
       await api.leaderProjects.remove(id);
       await loadLeaderProjects();
       return;
@@ -184,7 +199,7 @@ function setupLeaderListeners() {
   const workTypeInput = document.getElementById('new-work-type-name');
   const workTypesList = document.getElementById('work-types-list');
 
-  addWorkTypeBtn?.addEventListener('click', async () => {
+  const addWorkType = async () => {
     const name = workTypeInput?.value?.trim();
     if (!name) return;
 
@@ -195,13 +210,27 @@ function setupLeaderListeners() {
     } catch (err) {
       alert(err.message || 'Erro ao adicionar tipo de trabalho.');
     }
+  };
+
+  addWorkTypeBtn?.addEventListener('click', addWorkType);
+  workTypeInput?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    addWorkType();
   });
 
   workTypesList?.addEventListener('click', async (e) => {
     const btn = e.target.closest('[data-remove-work-type]');
     if (btn) {
       const id = btn.dataset.removeWorkType;
-      if (!confirm('Remover este tipo de trabalho?')) return;
+      const confirmed = await confirmDialog({
+        title: 'Remover tipo de trabalho',
+        message: 'Remover este tipo de trabalho?',
+        confirmLabel: 'Remover',
+        confirmTone: 'danger',
+        tone: 'danger',
+      });
+      if (!confirmed) return;
       await api.leaderWorkTypes.remove(id);
       await loadLeaderWorkTypes();
       return;
@@ -256,7 +285,14 @@ function setupLeaderListeners() {
     const btn = e.target.closest('[data-remove-project-field]');
     if (!btn) return;
     const fieldName = decodeURIComponent(btn.dataset.removeProjectField);
-    if (!confirm(`Remover campo "${fieldName}"?`)) return;
+    const confirmed = await confirmDialog({
+      title: 'Remover campo',
+      message: `Remover campo "${fieldName}"?`,
+      confirmLabel: 'Remover',
+      confirmTone: 'danger',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     if (!currentProjectFieldsId) return;
     await api.leaderProjects.fields.remove(currentProjectFieldsId, fieldName);
     await loadProjectFields(currentProjectFieldsId);
@@ -266,7 +302,14 @@ function setupLeaderListeners() {
     const btn = e.target.closest('[data-remove-work-type-field]');
     if (!btn) return;
     const fieldName = decodeURIComponent(btn.dataset.removeWorkTypeField);
-    if (!confirm(`Remover campo "${fieldName}"?`)) return;
+    const confirmed = await confirmDialog({
+      title: 'Remover campo',
+      message: `Remover campo "${fieldName}"?`,
+      confirmLabel: 'Remover',
+      confirmTone: 'danger',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     if (!currentWorkTypeFieldsName) return;
     await api.leaderWorkTypes.fields.remove(currentWorkTypeFieldsName, fieldName);
     await loadWorkTypeFields(currentWorkTypeFieldsName);
@@ -274,7 +317,14 @@ function setupLeaderListeners() {
 
   document.getElementById('btn-clear-project-fields')?.addEventListener('click', async () => {
     if (!currentProjectFieldsId) return;
-    if (!confirm('Remover TODOS os campos customizados deste projeto?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Remover campos do projeto',
+      message: 'Remover TODOS os campos customizados deste projeto?',
+      confirmLabel: 'Remover todos',
+      confirmTone: 'danger',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       const data = await api.leaderProjects.fields.list(currentProjectFieldsId);
       for (const field of (data?.fields || [])) {
@@ -288,7 +338,14 @@ function setupLeaderListeners() {
 
   document.getElementById('btn-clear-work-type-fields')?.addEventListener('click', async () => {
     if (!currentWorkTypeFieldsName) return;
-    if (!confirm('Remover TODOS os campos customizados deste tipo de trabalho?')) return;
+    const confirmed = await confirmDialog({
+      title: 'Remover campos do tipo de trabalho',
+      message: 'Remover TODOS os campos customizados deste tipo de trabalho?',
+      confirmLabel: 'Remover todos',
+      confirmTone: 'danger',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     try {
       const data = await api.leaderWorkTypes.fields.list(currentWorkTypeFieldsName);
       for (const field of (data?.fields || [])) {

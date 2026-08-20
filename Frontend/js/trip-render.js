@@ -1283,6 +1283,8 @@ function renderCompletionProgress(t) {
 export function setupPanelToggles() {
   setupTaskFilters();
   document.querySelectorAll(".panel-toggle").forEach((button) => {
+    if (button.dataset.panelToggleBound === "true") return;
+    button.dataset.panelToggleBound = "true";
     button.addEventListener("click", (e) => {
       e.preventDefault();
       const isForm = button.closest("#task-form-wrap");

@@ -605,6 +605,7 @@ html[data-theme="dark"] .btn-primary {
   font-weight: 500;
   line-height: 1.45;
   animation: fadeInUp 0.3s var(--ease) both;
+  pointer-events: none;
 }
 .alert .alert-icon {
   flex-shrink: 0;
