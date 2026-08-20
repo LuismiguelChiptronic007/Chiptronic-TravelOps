@@ -26,6 +26,8 @@ export const ADMIN_MASTER_EMAILS = [
   'luismiguel.oliveira@chiptronic.com',
 ];
 
+export const DEFAULT_AVATAR_URL = 'assets/icone.png?v=2';
+
 /** Admin master → setor liderado (bootstrap legado) */
 export const SECTOR_LEADERS = {
   APLICAÇÃO: ADMIN_MASTER_EMAIL,
@@ -111,8 +113,6 @@ export async function syncLeaderRole(db, user) {
     role = 'admin_master';
   } else if (isLeaderPosition(user.position_title) && role !== 'admin_master') {
     role = 'admin';
-  } else if (!isLeaderPosition(user.position_title) && role === 'admin' && !isAdminMasterEmail(user.email)) {
-    role = 'user';
   }
 
   if (role !== user.role) {
@@ -219,7 +219,7 @@ export function publicUser(row) {
     ? String(row.avatar_data).trim()
     : row?.avatar_key
       ? `/api/files/${row.avatar_key}`
-      : null;
+      : DEFAULT_AVATAR_URL;
 
   return {
     id: row.id,

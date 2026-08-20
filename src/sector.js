@@ -217,6 +217,7 @@ sector.get('/dashboard', async (c) => {
       return {
         user_id: m.user.id,
         full_name: m.user.full_name,
+        avatar_url: publicUser(m.user).avatar_url,
         trip_count: m.stats.total_trips,
         task_count: m.stats.total_tasks,
         days_away: m.stats.total_days_away,

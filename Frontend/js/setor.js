@@ -283,7 +283,7 @@ function renderMemberCard(member, filters = sectorFilters, preFiltered) {
     <div class="panel team-member-card is-collapsed" data-member-card data-expanded="false">
       <div class="panel-header">
         <div class="team-member-head">
-          <div class="avatar">${escapeHtml(u.full_name.split(' ').map((p) => p[0]).slice(0, 2).join(''))}</div>
+          <div class="avatar"><img src="${escapeHtml(u.avatar_url || 'assets/default-avatar.svg')}" alt=""></div>
           <div class="team-member-info">
             <h2 style="margin:0">${escapeHtml(u.full_name)}</h2>
             <p class="text-muted mb-0">${escapeHtml(u.position_title)} · Mat. ${escapeHtml(u.employee_id)}</p>

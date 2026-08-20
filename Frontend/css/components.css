@@ -2225,5 +2225,9 @@ html[data-theme="dark"] .alert-card-danger .alert-card-icon {
 
 }
 
-
-
+/* ===== Utilitário: Destaque de bordas (emphasizeBorders / clearBorderEmphasis em ui.js) ===== */
+.border-emphasis {
+  outline: var(--border-emphasis-width, 2px) solid var(--border-emphasis-color, var(--border-strong));
+  outline-offset: 1px;
+  transition: outline-color 0.15s var(--ease, ease);
+}

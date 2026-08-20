@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { requireUser } from './auth.js';
-import { err, isAdmin, isAdminMaster, json, publicUser } from './helpers.js';
+import { err, getLedSector, isAdmin, isAdminMaster, json, publicUser } from './helpers.js';
 
 export const admin = new Hono();
 admin.use('*', requireUser);
@@ -8,6 +8,16 @@ admin.use('*', requireUser);
 function requireAdmin(c) {
   const user = c.get('user');
   return isAdmin(user) ? user : null;
+}
+
+function canRemoveUser(viewer, target) {
+  if (isAdminMaster(viewer)) return true;
+  return Boolean(getLedSector(viewer) && viewer.sector === target.sector);
+}
+
+function canManageRole(viewer, target) {
+  if (isAdminMaster(viewer)) return true;
+  return Boolean(getLedSector(viewer) && viewer.sector === target.sector);
 }
 
 admin.get('/users', async (c) => {
@@ -34,7 +44,6 @@ admin.get('/users', async (c) => {
 admin.put('/users/:id/role', async (c) => {
   const viewer = requireAdmin(c);
   if (!viewer) return err('Acesso negado.', 403);
-  if (!isAdminMaster(viewer)) return err('Apenas o Admin Master pode alterar níveis.', 403);
 
   const userId = Number(c.req.param('id'));
   let body;
@@ -47,9 +56,10 @@ admin.put('/users/:id/role', async (c) => {
   if (!Number.isInteger(userId) || userId <= 0) return err('Usuário inválido.');
   if (!['user', 'admin'].includes(role)) return err('Nível inválido.');
 
-  const target = await c.env.DB.prepare('SELECT id, role FROM users WHERE id = ?').bind(userId).first();
+  const target = await c.env.DB.prepare('SELECT id, role, sector FROM users WHERE id = ?').bind(userId).first();
   if (!target) return err('Usuário não encontrado.', 404);
   if (target.role === 'admin_master') return err('O Admin Master não pode ser rebaixado.', 403);
+  if (!canManageRole(viewer, target)) return err('Você só pode alterar usuários do seu setor.', 403);
 
   await c.env.DB.prepare("UPDATE users SET role = ?, updated_at = datetime('now') WHERE id = ?")
     .bind(role, userId)
@@ -60,15 +70,15 @@ admin.put('/users/:id/role', async (c) => {
 admin.delete('/users/:id', async (c) => {
   const viewer = requireAdmin(c);
   if (!viewer) return err('Acesso negado.', 403);
-  if (!isAdminMaster(viewer)) return err('Apenas o Admin Master pode excluir usuários.', 403);
 
   const userId = Number(c.req.param('id'));
   if (!Number.isInteger(userId) || userId <= 0) return err('Usuário inválido.');
   if (userId === viewer.id) return err('Você não pode excluir o próprio usuário.', 403);
 
-  const target = await c.env.DB.prepare('SELECT id, role FROM users WHERE id = ?').bind(userId).first();
+  const target = await c.env.DB.prepare('SELECT id, role, sector FROM users WHERE id = ?').bind(userId).first();
   if (!target) return err('Usuário não encontrado.', 404);
   if (target.role === 'admin_master') return err('O Admin Master não pode ser excluído.', 403);
+  if (!canRemoveUser(viewer, target)) return err('Você só pode remover usuários do seu setor.', 403);
 
   await c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(userId).run();
   return json({ success: true });

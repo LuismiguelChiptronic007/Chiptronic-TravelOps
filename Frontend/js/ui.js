@@ -561,3 +561,55 @@ export function highlightElement(el, duration = 1800) {
   el.classList.add('highlight-row');
   setTimeout(() => el.classList.remove('highlight-row'), duration);
 }
+
+/**
+ * Resolve a target (selector string, single element or list) into an array of elements.
+ */
+function resolveTargets(target) {
+  if (!target) return [];
+  if (typeof target === 'string') return Array.from(document.querySelectorAll(target));
+  if (target instanceof Element) return [target];
+  if (target instanceof NodeList || Array.isArray(target)) return Array.from(target);
+  return [];
+}
+
+/**
+ * Destaca as bordas de um ou mais elementos, útil para melhorar a visibilidade
+ * no tema claro ou para chamar atenção a um elemento específico (erro, foco, etc).
+ *
+ * @param {string|Element|NodeList|Element[]} target - Seletor CSS, elemento único ou lista de elementos.
+ * @param {Object} [options]
+ * @param {string} [options.color] - Cor da borda (aceita variáveis CSS, ex: 'var(--danger)').
+ * @param {number} [options.duration] - Duração em ms antes de remover automaticamente. 0 = permanente até chamada manual.
+ * @param {string} [options.width] - Espessura da borda (ex: '2px').
+ * @returns {Element[]} Os elementos afetados.
+ */
+export function emphasizeBorders(target, options = {}) {
+  const { color, duration = 0, width } = options;
+  const elements = resolveTargets(target);
+
+  elements.forEach((el) => {
+    el.classList.add('border-emphasis');
+    if (color) el.style.setProperty('--border-emphasis-color', color);
+    if (width) el.style.setProperty('--border-emphasis-width', width);
+  });
+
+  if (duration > 0) {
+    setTimeout(() => clearBorderEmphasis(elements), duration);
+  }
+
+  return elements;
+}
+
+/**
+ * Remove o destaque de borda aplicado por emphasizeBorders.
+ * @param {string|Element|NodeList|Element[]} target - Seletor CSS, elemento único ou lista de elementos.
+ */
+export function clearBorderEmphasis(target) {
+  const elements = resolveTargets(target);
+  elements.forEach((el) => {
+    el.classList.remove('border-emphasis');
+    el.style.removeProperty('--border-emphasis-color');
+    el.style.removeProperty('--border-emphasis-width');
+  });
+}

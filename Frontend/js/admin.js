@@ -1,5 +1,6 @@
 import { api, formatDateBR, formatSectorName } from './api.js';
 import { escapeHtml, mountShell, showToast } from './layout.js';
+import { confirmDialog } from './ui.js';
 
 const body = document.getElementById('users-body');
 const alertEl = document.getElementById('admin-alert');
@@ -24,12 +25,17 @@ function roleLabel(user) {
 }
 
 function actionButtons(user) {
-  if (user.is_admin_master || !viewer.is_admin_master) return '<span class="admin-muted">Sem ações</span>';
-  const nextRole = user.is_admin ? 'user' : 'admin';
-  const label = user.is_admin ? 'Remover admin' : 'Tornar admin';
-  return `
-    <button type="button" class="admin-action role-action" data-id="${user.id}" data-role="${nextRole}">${label}</button>
-    <button type="button" class="admin-action delete-action" data-id="${user.id}" aria-label="Excluir usuário">▣ Excluir</button>`;
+  const canManageSector = viewer.is_admin_master || (viewer.is_sector_leader && viewer.sector === user.sector);
+  const canManageRole = viewer.is_admin_master || (viewer.is_sector_leader && viewer.sector === user.sector);
+  const roleAction = canManageRole && !user.is_admin_master && user.id !== viewer.id
+    ? `<button type="button" class="admin-action role-action" data-id="${user.id}" data-role="${user.is_admin ? 'user' : 'admin'}">${user.is_admin ? 'Remover admin' : 'Tornar admin'}</button>`
+    : '';
+  const deleteAction = canManageSector && !user.is_admin_master && user.id !== viewer.id
+    ? `<button type="button" class="admin-action delete-action" data-id="${user.id}" aria-label="Remover acesso do usuário">Remover acesso</button>`
+    : '';
+  return roleAction || deleteAction
+    ? `${roleAction}${deleteAction}`
+    : '<span class="admin-muted">Sem ações</span>';
 }
 
 function renderUsers() {
@@ -70,12 +76,22 @@ body.addEventListener('click', async (event) => {
   const user = users.find((item) => String(item.id) === button.dataset.id);
   if (!user) return;
 
-  if (deleteButton && !window.confirm(`Excluir o usuário ${user.full_name}?`)) return;
+  if (deleteButton) {
+    const confirmed = await confirmDialog({
+      title: 'Remover acesso?',
+      message: `Remover o acesso de ${user.full_name} ao sistema?`,
+      confirmLabel: 'Remover acesso',
+      cancelLabel: 'Cancelar',
+      tone: 'danger',
+      confirmTone: 'danger',
+    });
+    if (!confirmed) return;
+  }
   button.disabled = true;
   try {
     if (roleButton) await api.updateAdminRole(user.id, button.dataset.role);
     else await api.deleteAdminUser(user.id);
-    showToast({ type: 'success', title: 'Painel atualizado', msg: roleButton ? 'Nível do usuário atualizado.' : 'Usuário excluído.', duration: 2600 });
+    showToast({ type: 'success', title: 'Painel atualizado', msg: roleButton ? 'Nível do usuário atualizado.' : 'Acesso do usuário removido.', duration: 2600 });
     await loadUsers();
   } catch (error) {
     showError(error.message || 'Não foi possível concluir a ação.');
