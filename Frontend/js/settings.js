@@ -147,6 +147,13 @@ async function loadLeaderSettings() {
 }
 
 function setupLeaderListeners() {
+  ['project-fields-modal', 'work-type-fields-modal'].forEach((modalId) => {
+    const modal = document.getElementById(modalId);
+    if (modal && modal.parentElement !== document.body) {
+      document.body.appendChild(modal);
+    }
+  });
+
   const addProjectBtn = document.getElementById('btn-add-project');
   const projectInput = document.getElementById('new-project-name');
   const projectsList = document.getElementById('projects-list');

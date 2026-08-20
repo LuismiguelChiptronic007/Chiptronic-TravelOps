@@ -285,7 +285,7 @@ function renderMemberCard(member, filters = sectorFilters, preFiltered) {
         <div class="team-member-head">
           <div class="avatar"><img src="${escapeHtml(u.avatar_url || 'assets/default-avatar.svg')}" alt=""></div>
           <div class="team-member-info">
-            <h2 style="margin:0">${escapeHtml(u.full_name)}</h2>
+            <h2 class="team-member-name">${escapeHtml(u.full_name)}</h2>
             <p class="text-muted mb-0">${escapeHtml(u.position_title)} · Mat. ${escapeHtml(u.employee_id)}</p>
           </div>
           <div class="team-member-actions">
