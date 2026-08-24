@@ -1,4 +1,4 @@
-const CACHE_NAME = 'travelops-shell-v3';
+const CACHE_NAME = 'travelops-shell-v4';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -52,7 +52,16 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+
+  // APIs and authentication must always be handled by the network.
+  if (
+    event.request.method !== 'GET' ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname === '/api' ||
+    url.pathname.startsWith('/auth') ||
+    url.pathname.includes('/login')
+  ) return;
 
   const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
   if (event.request.mode === 'navigate' || acceptsHtml) {
