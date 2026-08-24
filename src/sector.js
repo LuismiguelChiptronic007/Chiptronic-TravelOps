@@ -89,7 +89,7 @@ async function fetchTeamData(db, user) {
 
       const { results: taskRows } = await db
         .prepare(
-          `SELECT tt.*, t.user_id, t.destination, t.status AS trip_status,
+          `SELECT tt.*, t.user_id, t.destination, t.priority, t.status AS trip_status,
                   u.full_name AS responsible_full_name
            FROM trip_tasks tt
            INNER JOIN trips t ON t.id = tt.trip_id
@@ -116,6 +116,7 @@ async function fetchTeamData(db, user) {
             summary: task.summary,
             destination: task.destination,
             trip_status: task.trip_status,
+            priority: task.priority || 'normal',
             responsible_full_name: task.responsible_full_name || null,
           });
         }
@@ -149,6 +150,7 @@ async function fetchTeamData(db, user) {
         destination: t.destination,
         period: `${t.start_date} — ${t.end_date}`,
         status: t.status,
+        priority: t.priority || 'normal',
         status_label: t.status_label,
         is_overdue: t.is_overdue,
         activities_summary: cl?.activities_summary || '',

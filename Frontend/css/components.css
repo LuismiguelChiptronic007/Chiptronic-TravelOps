@@ -190,6 +190,63 @@ html[data-theme="dark"] .auth-page::after {
   display: none !important;
 }
 
+.equipment-checklist {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+}
+
+.equipment-checklist .section-heading {
+  display: flex;
+  justify-content: space-between;
+}
+
+.equipment-items {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.equipment-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.75rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.equipment-item span {
+  overflow-wrap: anywhere;
+}
+
+.equipment-item .icon-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.equipment-add-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.65rem;
+}
+
+@media (max-width: 560px) {
+  .equipment-add-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .activity-entry {
   display: grid;
   grid-template-columns: 2rem minmax(0, 1fr);

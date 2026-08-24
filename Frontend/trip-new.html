@@ -7,6 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
     <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
     <meta name="theme-color" content="#0a0a0a" />
+    <link rel="manifest" href="manifest.json" />
     <link rel="stylesheet" href="css/styles.css" />
     <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/tables.css" />
@@ -74,12 +75,15 @@
                   <select id="sector" required></select>
                 </div>
                 <div>
-                  <label class="text-muted">&nbsp;</label>
-                  <p class="field-hint">
-                    O status é calculado automaticamente pelas datas.
-                  </p>
+                  <label for="priority">Prioridade</label>
+                  <select id="priority">
+                    <option value="normal">Normal</option>
+                    <option value="high">Alta</option>
+                    <option value="low">Baixa</option>
+                  </select>
                 </div>
               </div>
+              <p class="field-hint">O status é calculado automaticamente pelas datas.</p>
               <div>
                 <label for="reason">Motivo da viagem</label>
                 <textarea
@@ -87,6 +91,24 @@
                   required
                   placeholder="Descreva o objetivo da viagem…"
                 ></textarea>
+              </div>
+
+              <div class="equipment-checklist">
+                <div class="section-heading">
+                  <div>
+                    <label>Equipamentos levados</label>
+                    <p class="field-hint mb-1">
+                      Adicione os equipamentos que serão levados e marque os conferidos.
+                    </p>
+                  </div>
+                </div>
+                <div id="equipment-items" class="equipment-items">
+                  <div class="empty-state">Nenhum equipamento adicionado</div>
+                </div>
+                <div class="equipment-add-row">
+                  <input id="equipment-name" placeholder="Ex: Notebook, multímetro, ferramentas" maxlength="120" />
+                  <button type="button" class="btn btn-secondary" id="btn-add-equipment">Adicionar equipamento</button>
+                </div>
               </div>
 
               <div class="members-section">

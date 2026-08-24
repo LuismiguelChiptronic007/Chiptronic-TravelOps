@@ -193,7 +193,13 @@ trips.post('/', async (c) => {
   const end_date = String(body.end_date || '').trim();
   const reason = String(body.reason || '').trim();
   const sector = String(body.sector || user.sector || '').trim();
+  const priority = ['low', 'normal', 'high'].includes(body.priority) ? body.priority : 'normal';
   const memberIds = Array.isArray(body.member_ids) ? body.member_ids : [];
+  const equipmentChecklist = Array.isArray(body.equipment_checklist)
+    ? body.equipment_checklist
+        .map((item) => ({ name: String(item?.name || '').trim(), carried: Boolean(item?.carried) }))
+        .filter((item) => item.name)
+    : [];
 
   if (!origin || !destination) return err('Informe origem e destino.');
   if (!start_date || !end_date) return err('Informe as datas da viagem.');
@@ -202,10 +208,10 @@ trips.post('/', async (c) => {
 
   const status = computeStatus({ start_date, end_date, status: 'planned' });
   const result = await c.env.DB.prepare(
-    `INSERT INTO trips (user_id, origin, destination, start_date, end_date, reason, sector, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO trips (user_id, origin, destination, start_date, end_date, reason, sector, status, priority)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(user.id, origin, destination, start_date, end_date, reason, sector, status)
+    .bind(user.id, origin, destination, start_date, end_date, reason, sector, status, priority)
     .run();
 
   const tripId = result.meta.last_row_id;
@@ -217,6 +223,11 @@ trips.post('/', async (c) => {
     details: { destination, start_date, end_date, sector },
   });
   await c.env.DB.prepare('INSERT INTO trip_checklists (trip_id) VALUES (?)').bind(tripId).run();
+  if (equipmentChecklist.length) {
+    await c.env.DB.prepare('UPDATE trip_checklists SET equipment_checklist = ? WHERE trip_id = ?')
+      .bind(JSON.stringify(equipmentChecklist), tripId)
+      .run();
+  }
 
   // Always include the trip creator as a trip member so they can be
   // selected as responsible for tasks.
@@ -308,6 +319,12 @@ trips.put('/:id', async (c) => {
   const end_date = String(body.end_date ?? trip.end_date).trim();
   const reason = String(body.reason ?? trip.reason).trim();
   const sector = String(body.sector ?? trip.sector).trim();
+  const priority = ['low', 'normal', 'high'].includes(body.priority) ? body.priority : (trip.priority || 'normal');
+  const equipmentChecklist = Array.isArray(body.equipment_checklist)
+    ? body.equipment_checklist
+        .map((item) => ({ name: String(item?.name || '').trim(), carried: Boolean(item?.carried) }))
+        .filter((item) => item.name)
+    : null;
 
   if (!origin || !destination || !start_date || !end_date || !reason) {
     return err('Preencha todos os campos obrigatórios.');
@@ -316,13 +333,13 @@ trips.put('/:id', async (c) => {
 
   const status = computeStatus({ start_date, end_date, status: trip.status });
   const changes = {};
-  for (const [field, value] of Object.entries({ origin, destination, start_date, end_date, reason, sector, status })) {
+  for (const [field, value] of Object.entries({ origin, destination, start_date, end_date, reason, sector, status, priority })) {
     if (String(trip[field] ?? '') !== String(value ?? '')) changes[field] = { from: trip[field] ?? null, to: value };
   }
   await c.env.DB.prepare(
-    `UPDATE trips SET origin=?, destination=?, start_date=?, end_date=?, reason=?, sector=?, status=?, updated_at=datetime('now') WHERE id=?`
+    `UPDATE trips SET origin=?, destination=?, start_date=?, end_date=?, reason=?, sector=?, status=?, priority=?, updated_at=datetime('now') WHERE id=?`
   )
-    .bind(origin, destination, start_date, end_date, reason, sector, status, id)
+    .bind(origin, destination, start_date, end_date, reason, sector, status, priority, id)
     .run();
 
   if (Object.keys(changes).length) {
@@ -344,6 +361,12 @@ trips.put('/:id', async (c) => {
     } catch (e) {
       console.error('Falha ao atualizar integrantes:', e);
     }
+  }
+
+  if (equipmentChecklist) {
+    await c.env.DB.prepare('UPDATE trip_checklists SET equipment_checklist = ? WHERE trip_id = ?')
+      .bind(JSON.stringify(equipmentChecklist), id)
+      .run();
   }
 
   return json({ success: true, trip: await fetchTripFull(c.env.DB, id, userId) });

@@ -137,6 +137,18 @@ function formatTask(task, photos = []) {
   };
 }
 
+function parseEquipmentChecklist(value) {
+  if (!value) return [];
+  try {
+    const items = JSON.parse(value);
+    return Array.isArray(items)
+      ? items.map((item) => ({ name: String(item?.name || '').trim(), carried: Boolean(item?.carried) })).filter((item) => item.name)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 export function formatTrip(trip, checklist = null, expenses = [], attachments = [], members = [], tasks = []) {
   const taskList = tasks || [];
   return {
@@ -148,6 +160,7 @@ export function formatTrip(trip, checklist = null, expenses = [], attachments = 
     end_date: trip.end_date,
     reason: trip.reason,
     sector: trip.sector,
+    priority: trip.priority || 'normal',
     status: trip.status,
     status_label: statusLabel(trip.status),
     is_overdue: isReportOverdue(trip),
@@ -163,12 +176,14 @@ export function formatTrip(trip, checklist = null, expenses = [], attachments = 
           people_visited: checklist.people_visited || '',
           activities_summary: checklist.activities_summary || '',
           pending_items: checklist.pending_items || '',
+          equipment_checklist: parseEquipmentChecklist(checklist.equipment_checklist),
           completed_at: checklist.completed_at || null,
           is_complete: checklistIsComplete(checklist, taskList),
         }
       : {
           is_complete: checklistIsComplete(null, taskList),
           completed_at: null,
+          equipment_checklist: [],
         },
     members: (members || []).map(formatMember),
     tasks: taskList,

@@ -1,5 +1,6 @@
 import { api, hideAlert, showAlert } from "./api.js";
 import { escapeHtml, mountShell } from "./layout.js";
+import { saveTripOffline } from "./db-offline.js";
 
 const params = new URLSearchParams(location.search);
 const editTripId = Number(params.get("id")) || null;
@@ -11,12 +12,40 @@ const sectorSelect = document.getElementById("sector");
 const membersCheckboxes = document.getElementById("members-checkboxes");
 const pageTitle = document.querySelector(".page-header h1");
 const pageSubtitle = document.querySelector(".page-header p");
+const equipmentItems = document.getElementById("equipment-items");
+const equipmentName = document.getElementById("equipment-name");
+const addEquipmentBtn = document.getElementById("btn-add-equipment");
 
 /** @type {Map<number, object>} */
 const selectedMembers = new Map();
 /** @type {object[]} */
 let availableUsers = [];
 let currentTrip = null;
+let equipmentChecklist = [];
+
+function renderEquipmentChecklist() {
+  if (!equipmentItems) return;
+  if (!equipmentChecklist.length) {
+    equipmentItems.innerHTML = '<div class="empty-state">Nenhum equipamento adicionado</div>';
+    return;
+  }
+  equipmentItems.innerHTML = equipmentChecklist.map((item, index) => `
+    <label class="equipment-item">
+      <input type="checkbox" data-equipment-index="${index}" ${item.carried ? "checked" : ""}>
+      <span>${escapeHtml(item.name)}</span>
+      <button type="button" class="icon-btn" data-remove-equipment="${index}" aria-label="Remover equipamento" title="Remover equipamento">×</button>
+    </label>
+  `).join("");
+}
+
+function addEquipment() {
+  const name = equipmentName?.value.trim();
+  if (!name) return;
+  equipmentChecklist.push({ name, carried: false });
+  equipmentName.value = "";
+  renderEquipmentChecklist();
+  equipmentName.focus();
+}
 
 function setEditMode() {
   if (!isEditing) return;
@@ -128,9 +157,12 @@ async function init() {
           currentTrip.start_date || "";
         document.getElementById("end_date").value = currentTrip.end_date || "";
         document.getElementById("reason").value = currentTrip.reason || "";
+        document.getElementById("priority").value = currentTrip.priority || "normal";
         if (sectorSelect && currentTrip.sector)
           sectorSelect.value = currentTrip.sector;
         setSelectedMembersFromTrip(currentTrip.members || []);
+        equipmentChecklist = currentTrip.checklist?.equipment_checklist || [];
+        renderEquipmentChecklist();
         renderMemberCheckboxes();
       }
     } catch (err) {
@@ -171,6 +203,25 @@ membersCheckboxes?.addEventListener("change", (e) => {
   else selectedMembers.delete(id);
 });
 
+addEquipmentBtn?.addEventListener("click", addEquipment);
+equipmentName?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    addEquipment();
+  }
+});
+equipmentItems?.addEventListener("change", (e) => {
+  const checkbox = e.target.closest("[data-equipment-index]");
+  if (!checkbox) return;
+  equipmentChecklist[Number(checkbox.dataset.equipmentIndex)].carried = checkbox.checked;
+});
+equipmentItems?.addEventListener("click", (e) => {
+  const remove = e.target.closest("[data-remove-equipment]");
+  if (!remove) return;
+  equipmentChecklist.splice(Number(remove.dataset.removeEquipment), 1);
+  renderEquipmentChecklist();
+});
+
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
   hideAlert(alertEl);
@@ -182,11 +233,19 @@ form?.addEventListener("submit", async (e) => {
     start_date: document.getElementById("start_date").value,
     end_date: document.getElementById("end_date").value,
     reason: document.getElementById("reason").value.trim(),
+    priority: document.getElementById("priority").value || "normal",
     sector: sectorSelect.value,
     member_ids: [...selectedMembers.keys()].map(Number),
+    equipment_checklist: equipmentChecklist,
   };
 
   try {
+    if (!navigator.onLine && !isEditing) {
+      await saveTripOffline(payload);
+      showAlert(alertEl, "Sem conexão. Viagem salva neste dispositivo e será enviada quando a internet voltar.", "success");
+      btn.disabled = false;
+      return;
+    }
     const res = isEditing
       ? await api.updateTrip(editTripId, payload)
       : await api.createTrip(payload);

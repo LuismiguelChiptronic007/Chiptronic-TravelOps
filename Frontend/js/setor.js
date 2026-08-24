@@ -11,6 +11,10 @@ const sectorFilters = {
   workType: '',
   date: '',
   destination: '',
+  status: '',
+  priority: '',
+  from: '',
+  to: '',
 };
 
 function normalizeFilterText(value) {
@@ -29,6 +33,8 @@ function getDateLabel(dateValue) {
 }
 
 function matchesTaskFilters(task = {}, filters = sectorFilters) {
+  if (filters.status && task.trip_status !== filters.status) return false;
+  if (filters.priority && normalizeFilterText(task.priority) !== normalizeFilterText(filters.priority)) return false;
   if (filters.workType) {
     const selected = normalizeFilterText(filters.workType);
     const current = normalizeFilterText(task.work_type || '');
@@ -38,6 +44,8 @@ function matchesTaskFilters(task = {}, filters = sectorFilters) {
     const selectedDate = String(filters.date).trim();
     if (String(task.task_date || '').trim() !== selectedDate) return false;
   }
+  if (filters.from && String(task.task_date || '') < filters.from) return false;
+  if (filters.to && String(task.task_date || '') > filters.to) return false;
   if (filters.destination) {
     const selected = normalizeFilterText(filters.destination);
     const current = normalizeFilterText(task.destination || '');
@@ -47,6 +55,12 @@ function matchesTaskFilters(task = {}, filters = sectorFilters) {
 }
 
 function matchesReportFilters(report = {}, filters = sectorFilters) {
+  if (filters.status && report.status !== filters.status) return false;
+  if (filters.priority && normalizeFilterText(report.priority) !== normalizeFilterText(filters.priority)) return false;
+  const reportStart = String(report.period || '').split(' — ')[0];
+  const reportEnd = String(report.period || '').split(' — ')[1] || reportStart;
+  if (filters.from && reportEnd < filters.from) return false;
+  if (filters.to && reportStart > filters.to) return false;
   if (filters.date) {
     const selectedDate = String(filters.date).trim();
     const dateLabel = getDateLabel(selectedDate);
@@ -73,7 +87,7 @@ function applyFiltersToMember(member, filters = sectorFilters) {
   const filteredReports = (member.reports || []).filter((report) => matchesReportFilters(report, filters));
   const filteredTasks = (member.tasks || []).filter((task) => matchesTaskFilters(task, filters));
 
-  if (filters.workType || filters.date || filters.destination) {
+  if (filters.workType || filters.date || filters.destination || filters.status || filters.priority || filters.from || filters.to) {
     if (!filteredReports.length && !filteredTasks.length) {
       return false;
     }
@@ -88,21 +102,54 @@ function renderFilteredTeam(team = [], filters = sectorFilters) {
   for (const member of team) {
     const result = applyFiltersToMember(member, filters);
     if (result === false) continue;
-    filteredTeam.push(member);
+    const filteredTripIds = new Set(result.reports.map((report) => report.trip_id));
+    filteredTeam.push({
+      ...member,
+      tasks: result.tasks,
+      reports: result.reports,
+      trips: (member.trips || []).filter((trip) => filteredTripIds.has(trip.id)),
+    });
     filteredData.set(member, result);
   }
   if (!filteredTeam.length) {
     teamRoot.innerHTML = '<div class="panel"><div class="panel-body"><p class="empty-state">Nenhum resultado encontrado para os filtros aplicados.</p></div></div>';
-    return;
+    return [];
   }
 
   teamRoot.innerHTML = `<h2 class="section-title">Integrantes e relatórios</h2>${filteredTeam.map((member) => renderMemberCard(member, filters, filteredData.get(member))).join('')}`;
   window.__sectorTeam = filteredTeam;
+  return filteredTeam;
+}
+
+function buildFilteredDashboardData(data, team) {
+  const tasks = team.flatMap((member) => member.tasks || []);
+  const trips = team.flatMap((member) => member.trips || []);
+  const workTypeCounts = {};
+  const monthlyCounts = {};
+  for (const task of tasks) workTypeCounts[task.work_type] = (workTypeCounts[task.work_type] || 0) + 1;
+  for (const trip of trips) {
+    const month = String(trip.start_date || '').slice(0, 7);
+    if (month) monthlyCounts[month] = (monthlyCounts[month] || 0) + 1;
+  }
+  return {
+    ...data,
+    ranking: team.map((member) => ({
+      full_name: member.user.full_name,
+      trip_count: member.trips?.length || 0,
+      task_count: member.tasks?.length || 0,
+      days_away: member.stats?.total_days_away || 0,
+      pending_reports: member.stats?.pending_reports || 0,
+      overdue_reports: member.stats?.overdue_reports || 0,
+    })).sort((a, b) => b.trip_count - a.trip_count || b.task_count - a.task_count),
+    work_types: Object.entries(workTypeCounts).map(([name, count]) => ({ name, count })),
+    monthly_trips: (data.monthly_trips || []).map((item) => ({ ...item, count: monthlyCounts[item.month] || 0 })),
+    team,
+  };
 }
 
 async function loadActivities() {
   const memberSelect = document.getElementById('activity-member');
-  const team = window.__sectorTeam || [];
+  const team = window.__allSectorTeam || window.__sectorTeam || [];
   if (memberSelect && memberSelect.options.length === 1) {
     memberSelect.innerHTML += team.map((member) => `<option value="${member.user?.id || ''}">${escapeHtml(member.user?.full_name || '')}</option>`).join('');
   }
@@ -238,6 +285,37 @@ function renderCharts(data) {
         },
       });
     }
+  }
+
+  destroyChart('workload');
+  const workloadCtx = document.getElementById('chart-workload');
+  if (workloadCtx && data.team?.length) {
+    charts.workload = new Chart(workloadCtx.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: data.team.map((member) => member.user.full_name.split(' ')[0]),
+        datasets: [{ label: 'Tarefas', data: data.team.map((member) => member.tasks?.length || 0), backgroundColor: '#f59e0b', borderRadius: 6 }],
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } },
+    });
+  }
+
+  destroyChart('dailyCompletion');
+  const dailyCtx = document.getElementById('chart-daily-completion');
+  if (dailyCtx && data.team?.length) {
+    const today = new Date().toISOString().slice(0, 10);
+    charts.dailyCompletion = new Chart(dailyCtx.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: data.team.map((member) => member.user.full_name.split(' ')[0]),
+        datasets: [{ label: '% hoje', data: data.team.map((member) => {
+          const total = member.tasks?.length || 0;
+          const todayCount = (member.tasks || []).filter((task) => task.task_date === today).length;
+          return total ? Math.round((todayCount / total) * 100) : 0;
+        }), backgroundColor: '#10b981', borderRadius: 6 }],
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (value) => `${value}%` } } } },
+    });
   }
 }
 
@@ -411,9 +489,6 @@ async function load() {
       alertsWrap?.classList.add('hidden-fields');
     }
 
-    renderCharts(data);
-    renderRankingList(data.ranking || []);
-
     const team = data.team || [];
     if (!team.length) {
       teamRoot.innerHTML =
@@ -421,8 +496,10 @@ async function load() {
       return;
     }
 
+    window.__allSectorTeam = team;
     const memberSelect = document.getElementById('filter-member');
     const workTypeSelect = document.getElementById('filter-work-type');
+    const prioritySelect = document.getElementById('filter-priority');
     if (memberSelect) {
       const nameToId = new Map(team.map((member) => [member.user?.full_name, member.user?.id]));
       const members = team.map((member) => member.user?.full_name).filter(Boolean);
@@ -441,29 +518,65 @@ async function load() {
       if (currentValue) workTypeSelect.value = currentValue;
     }
 
+    if (prioritySelect) {
+      const priorities = [...new Set(team.flatMap((member) => [
+        ...(member.tasks || []).map((task) => task.priority),
+        ...(member.reports || []).map((report) => report.priority),
+      ]).filter(Boolean))];
+      if (priorities.length) {
+        prioritySelect.innerHTML = '<option value="">Todas</option>' + priorities.map((priority) => `<option value="${escapeHtml(priority)}">${escapeHtml(priority)}</option>`).join('');
+      }
+    }
+
     const applyCurrentFilters = () => {
       const memberValue = document.getElementById('filter-member')?.value || '';
       const workTypeValue = document.getElementById('filter-work-type')?.value || '';
-      const dateValue = document.getElementById('filter-date')?.value || '';
       const destinationValue = document.getElementById('filter-destination')?.value || '';
+      const statusValue = document.getElementById('filter-status')?.value || '';
+      const priorityValue = document.getElementById('filter-priority')?.value || '';
+      const fromValue = document.getElementById('filter-from')?.value || '';
+      const toValue = document.getElementById('filter-to')?.value || '';
 
       sectorFilters.member = memberValue;
       sectorFilters.workType = workTypeValue;
-      sectorFilters.date = dateValue;
+      sectorFilters.date = '';
       sectorFilters.destination = destinationValue;
-      renderFilteredTeam(team, sectorFilters);
+      sectorFilters.status = statusValue;
+      sectorFilters.priority = priorityValue;
+      sectorFilters.from = fromValue;
+      sectorFilters.to = toValue;
+      const filteredTeam = renderFilteredTeam(team, sectorFilters);
+      const filteredData = buildFilteredDashboardData(data, filteredTeam);
+      renderCharts(filteredData);
+      renderRankingList(filteredData.ranking || []);
+      const filteredTasks = filteredTeam.flatMap((member) => member.tasks || []);
+      const filteredTrips = filteredTeam.flatMap((member) => member.trips || []);
+      document.getElementById('s-members').textContent = filteredTeam.length;
+      document.getElementById('s-trips').textContent = filteredTrips.length;
+      document.getElementById('s-tasks').textContent = filteredTasks.length;
+      document.getElementById('s-pending').textContent = filteredTeam.reduce(
+        (sum, member) => sum + (member.reports || []).filter((report) => report.status === 'awaiting_report').length,
+        0,
+      );
     };
 
     const debouncedApply = debounce(applyCurrentFilters, 250);
     document.getElementById('filter-member')?.addEventListener('change', applyCurrentFilters);
     document.getElementById('filter-work-type')?.addEventListener('change', applyCurrentFilters);
-    document.getElementById('filter-date')?.addEventListener('input', debouncedApply);
+    document.getElementById('filter-status')?.addEventListener('change', applyCurrentFilters);
+    document.getElementById('filter-priority')?.addEventListener('change', applyCurrentFilters);
+    document.getElementById('filter-from')?.addEventListener('input', debouncedApply);
+    document.getElementById('filter-to')?.addEventListener('input', debouncedApply);
     document.getElementById('filter-destination')?.addEventListener('input', debouncedApply);
 
-    renderFilteredTeam(team, sectorFilters);
+    applyCurrentFilters();
     window.__sectorTeam = team;
     await loadActivities();
     document.getElementById('activity-refresh')?.addEventListener('click', () => loadActivities().catch((error) => showAlert(alertEl, error.message)));
+    document.getElementById('activity-member')?.addEventListener('change', () => loadActivities().catch((error) => showAlert(alertEl, error.message)));
+    document.getElementById('activity-from')?.addEventListener('change', () => loadActivities().catch((error) => showAlert(alertEl, error.message)));
+    document.getElementById('activity-to')?.addEventListener('change', () => loadActivities().catch((error) => showAlert(alertEl, error.message)));
+    window.setInterval(() => loadActivities().catch(() => {}), 30000);
   } catch (err) {
     showAlert(alertEl, err.message);
     teamRoot.innerHTML = '';

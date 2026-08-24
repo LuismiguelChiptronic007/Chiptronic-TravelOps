@@ -7,6 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
   <meta name="theme-color" content="#0a0a0a" />
+  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="stylesheet" href="css/components.css" />
   <link rel="stylesheet" href="css/tables.css" />
@@ -77,6 +78,17 @@
             <p class="empty-state">Carregando…</p>
           </div>
         </div>
+        <div class="panel">
+          <div class="panel-header"><h2>Carga de trabalho</h2></div>
+          <div class="panel-body chart-panel"><canvas id="chart-workload"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h2>Conclusão diária</h2></div>
+          <div class="panel-body chart-panel">
+            <canvas id="chart-daily-completion"></canvas>
+            <p class="field-hint">Percentual de tarefas registradas hoje em relação ao total de cada integrante.</p>
+          </div>
+        </div>
       </div>
 
       <div class="panel" style="margin-top: 1rem;">
@@ -96,8 +108,31 @@
               </select>
             </div>
             <div>
-              <label for="filter-date">Data</label>
-              <input id="filter-date" type="date" />
+              <label for="filter-status">Status</label>
+              <select id="filter-status">
+                <option value="">Todos</option>
+                <option value="planned">Planejada</option>
+                <option value="in_progress">Em andamento</option>
+                <option value="awaiting_report">Aguardando relatório</option>
+                <option value="completed">Concluída</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-priority">Prioridade</label>
+              <select id="filter-priority">
+                <option value="">Todas</option>
+                <option value="high">Alta</option>
+                <option value="normal">Normal</option>
+                <option value="low">Baixa</option>
+              </select>
+            </div>
+            <div>
+              <label for="filter-from">De</label>
+              <input id="filter-from" type="date" />
+            </div>
+            <div>
+              <label for="filter-to">Até</label>
+              <input id="filter-to" type="date" />
             </div>
             <div>
               <label for="filter-destination">Destino</label>
