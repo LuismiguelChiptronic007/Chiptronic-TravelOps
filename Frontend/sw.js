@@ -1,4 +1,4 @@
-const CACHE_NAME = 'travelops-shell-v4';
+const CACHE_NAME = 'travelops-shell-v5';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -54,13 +54,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // APIs and authentication must always be handled by the network.
+  // API calls and non-GET requests must always be handled by the network.
+  // HTML pages such as login.html still need the offline navigation fallback.
   if (
     event.request.method !== 'GET' ||
     url.pathname.startsWith('/api/') ||
-    url.pathname === '/api' ||
-    url.pathname.startsWith('/auth') ||
-    url.pathname.includes('/login')
+    url.pathname === '/api'
   ) return;
 
   const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
