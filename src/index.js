@@ -19,7 +19,7 @@ app.use(
   '/api/*',
   cors({
     origin: '*',
-    allowMethods: ['G ET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
   })
 );
@@ -74,7 +74,11 @@ export default {
     }
 
     if (env.ASSETS) {
-      const response = await env.ASSETS.fetch(request);
+      let response = await env.ASSETS.fetch(request);
+      if (response.status === 404 && request.method === 'GET' && !url.pathname.includes('.')) {
+        const htmlRequest = new Request(new URL(`${url.pathname}.html${url.search}`, request.url), request);
+        response = await env.ASSETS.fetch(htmlRequest);
+      }
       const contentType = response.headers.get('content-type') || '';
       const headers = new Headers(response.headers);
       if (contentType.includes('text/html')) {
