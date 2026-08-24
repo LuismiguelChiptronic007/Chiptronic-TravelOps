@@ -1381,7 +1381,9 @@ export function renderTrip(t) {
 
   const completeBtn = document.getElementById("btn-complete");
   if (completeBtn) {
-    const canFinishEarly = t.status === "in_progress" && hasTaskEveryTripDay(t);
+    const canFinishEarly =
+      ["in_progress", "awaiting_report"].includes(t.status) &&
+      hasTaskEveryTripDay(t);
     completeBtn.classList.toggle("hidden", !canFinishEarly);
     completeBtn.textContent = "Finalizar viagem";
   }
