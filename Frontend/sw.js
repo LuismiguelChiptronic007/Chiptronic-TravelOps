@@ -1,5 +1,6 @@
-const CACHE_NAME = 'travelops-shell-v2';
+const CACHE_NAME = 'travelops-shell-v3';
 const APP_SHELL = [
+  '/',
   '/index.html',
   '/login.html',
   '/viagens.html',
@@ -53,11 +54,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  if (event.request.mode === 'navigate') {
+  const acceptsHtml = event.request.headers.get('accept')?.includes('text/html');
+  if (event.request.mode === 'navigate' || acceptsHtml) {
     event.respondWith(
       fetch(event.request).catch(async () => {
-        const cachedPage = await caches.match(event.request);
-        return cachedPage || caches.match('/index.html') || caches.match('/offline.html');
+        const cache = await caches.open(CACHE_NAME);
+        const cachedPage = await cache.match(event.request);
+        return cachedPage || await cache.match('/') || await cache.match('/index.html') || await cache.match('/offline.html');
       })
     );
     return;
