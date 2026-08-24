@@ -1,4 +1,4 @@
-const CACHE_NAME = 'travelops-shell-v1';
+const CACHE_NAME = 'travelops-shell-v2';
 const APP_SHELL = [
   '/index.html',
   '/login.html',
@@ -16,6 +16,14 @@ const APP_SHELL = [
   '/js/theme.js',
   '/js/ui.js',
   '/js/db-offline.js',
+  '/js/dashboard.js',
+  '/js/login.js',
+  '/js/viagens.js',
+  '/js/trip-new.js',
+  '/js/trip-detail.js',
+  '/js/trip-render.js',
+  '/js/trip-history.js',
+  '/js/trip-task-edit.js',
   '/assets/icone.png',
   '/assets/favicon.svg',
   '/assets/logo-mark.svg',
@@ -23,7 +31,15 @@ const APP_SHELL = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(caches.open(CACHE_NAME).then(async (cache) => {
+    await Promise.all(APP_SHELL.map(async (asset) => {
+      try {
+        await cache.add(asset);
+      } catch {
+        // Um asset opcional ausente nao deve impedir a ativacao do app offline.
+      }
+    }));
+  }));
   self.skipWaiting();
 });
 
@@ -36,6 +52,17 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(async () => {
+        const cachedPage = await caches.match(event.request);
+        return cachedPage || caches.match('/index.html') || caches.match('/offline.html');
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request).then((response) => {
       if (response.ok && new URL(event.request.url).origin === self.location.origin) {
