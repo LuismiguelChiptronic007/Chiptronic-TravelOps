@@ -29,6 +29,14 @@ const API_BASE = (() => {
   return `${location.origin}/api`;
 })();
 
+function getApiBases() {
+  const bases = [API_BASE];
+  if (typeof window !== "undefined" && location.origin && location.origin !== "null") {
+    bases.push(`${location.origin}/api`);
+  }
+  return [...new Set(bases.filter(Boolean))];
+}
+
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -66,10 +74,22 @@ async function request(path, options = {}) {
     options.body = JSON.stringify(options.json);
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  let res;
+  let lastError;
+  for (const base of getApiBases()) {
+    try {
+      res = await fetch(`${base}${path}`, {
+        ...options,
+        headers,
+        mode: "cors",
+        cache: path.startsWith("/auth/") ? "no-store" : options.cache,
+      });
+      break;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (!res) throw lastError || new Error("Não foi possível conectar ao servidor.");
 
   let data = null;
   const ct = res.headers.get("content-type") || "";
