@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Hono } from "hono";
 import { requireUser } from "./auth.js";
 import { err, json, todayISO } from "./helpers.js";
@@ -10,13 +11,30 @@ function parseResponsibleIds(raw) {
     return raw.map(Number).filter((n) => Number.isInteger(n) && n > 0);
   return String(raw || "")
     .split(",")
+=======
+import { Hono } from 'hono';
+import { requireUser } from './auth.js';
+import { err, json, todayISO } from './helpers.js';
+
+export const mapaOperacional = new Hono();
+mapaOperacional.use('*', requireUser);
+
+function parseResponsibleIds(raw) {
+  if (Array.isArray(raw)) return raw.map(Number).filter((n) => Number.isInteger(n) && n > 0);
+  return String(raw || '')
+    .split(',')
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
     .map((s) => Number(String(s).trim()))
     .filter((n) => Number.isInteger(n) && n > 0);
 }
 
 function timeToMinutes(value) {
   if (!value || !/^\d{2}:\d{2}$/.test(value)) return null;
+<<<<<<< HEAD
   const [h, m] = value.split(":").map(Number);
+=======
+  const [h, m] = value.split(':').map(Number);
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   if (!Number.isInteger(h) || !Number.isInteger(m)) return null;
   return h * 60 + m;
 }
@@ -29,6 +47,7 @@ function currentMinutes() {
 function taskMemberStatus(task, nowMin) {
   const start = timeToMinutes(task.start_time);
   const end = timeToMinutes(task.end_time);
+<<<<<<< HEAD
   const hasPending = String(task.pending_items || "").trim().length > 0;
 
   if (start === null || end === null) {
@@ -52,11 +71,37 @@ function taskMemberStatus(task, nowMin) {
   }
 
   return { key: "SEM_ATIVIDADE", label: "Sem atividade" };
+=======
+  const hasPending = String(task.pending_items || '').trim().length > 0;
+
+  if (start === null || end === null) {
+    return { key: 'SEM_ATIVIDADE', label: 'Sem atividade' };
+  }
+
+  if (hasPending && nowMin >= end) {
+    return { key: 'ATENCAO', label: 'Aten√ß√£o' };
+  }
+
+  if (nowMin >= start && nowMin <= end) {
+    return { key: 'EM_ANDAMENTO', label: 'Em andamento' };
+  }
+
+  if (nowMin < start) {
+    return { key: 'PENDENTE', label: 'Pend√™ncia' };
+  }
+
+  if (hasPending) {
+    return { key: 'PENDENTE', label: 'Pend√™ncia' };
+  }
+
+  return { key: 'SEM_ATIVIDADE', label: 'Sem atividade' };
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
 }
 
 function memberOverallStatus(tasksOfDay, nowMin) {
   const statuses = tasksOfDay.map((t) => taskMemberStatus(t, nowMin).key);
 
+<<<<<<< HEAD
   if (statuses.includes("ATENCAO"))
     return { key: "ATENCAO", badge: "🔴", label: "Aten√ß√£o" };
   if (statuses.includes("EM_ANDAMENTO"))
@@ -69,12 +114,27 @@ function memberOverallStatus(tasksOfDay, nowMin) {
 mapaOperacional.post("/trabalhos/checkin", async (c) => {
   const userId = c.get("userId");
   const user = c.get("user");
+=======
+  if (statuses.includes('ATENCAO')) return { key: 'ATENCAO', badge: '🔴', label: 'Aten√ß√£o' };
+  if (statuses.includes('EM_ANDAMENTO')) return { key: 'EM_ANDAMENTO', badge: '🟢', label: 'Em andamento' };
+  if (statuses.includes('PENDENTE')) return { key: 'PENDENTE', badge: '🟡', label: 'Pend√™ncia' };
+  return { key: 'SEM_ATIVIDADE', badge: '🔵', label: 'Sem atividade' };
+}
+
+mapaOperacional.post('/trabalhos/checkin', async (c) => {
+  const userId = c.get('userId');
+  const user = c.get('user');
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
 
   let body;
   try {
     body = await c.req.json();
   } catch {
+<<<<<<< HEAD
     return err("JSON inv√°lido.");
+=======
+    return err('JSON inv√°lido.');
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   }
 
   const trabalhoId = Number(body.trabalho_id || body.task_id || 0);
@@ -82,6 +142,7 @@ mapaOperacional.post("/trabalhos/checkin", async (c) => {
   const longitude = Number(body.longitude);
 
   if (!trabalhoId || !Number.isInteger(trabalhoId) || trabalhoId <= 0) {
+<<<<<<< HEAD
     return err("Informe trabalho_id v√°lido.");
   }
   if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
@@ -89,25 +150,46 @@ mapaOperacional.post("/trabalhos/checkin", async (c) => {
   }
   if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
     return err("Longitude inv√°lida.");
+=======
+    return err('Informe trabalho_id v√°lido.');
+  }
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+    return err('Latitude inv√°lida.');
+  }
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    return err('Longitude inv√°lida.');
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   }
 
   const task = await c.env.DB.prepare(
     `SELECT tt.*, t.status AS trip_status, t.user_id AS trip_user_id
      FROM trip_tasks tt
      INNER JOIN trips t ON t.id = tt.trip_id
+<<<<<<< HEAD
      WHERE tt.id = ?`,
+=======
+     WHERE tt.id = ?`
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   )
     .bind(trabalhoId)
     .first();
 
+<<<<<<< HEAD
   if (!task) return err("Trabalho n√£o encontrado.", 404);
 
   if (task.trip_status !== "in_progress") {
     return err("S√≥ √© permitido check-in em viagens ativas (em andamento).");
+=======
+  if (!task) return err('Trabalho n√£o encontrado.', 404);
+
+  if (task.trip_status !== 'in_progress') {
+    return err('S√≥ √© permitido check-in em viagens ativas (em andamento).');
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   }
 
   const responsibleIds = parseResponsibleIds(task.responsible_ids);
   const legacyResponsible = Number(task.responsible_id) || 0;
+<<<<<<< HEAD
   const allResponsible = new Set([
     ...responsibleIds,
     ...(legacyResponsible ? [legacyResponsible] : []),
@@ -115,22 +197,39 @@ mapaOperacional.post("/trabalhos/checkin", async (c) => {
 
   const isMember = await c.env.DB.prepare(
     `SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ? LIMIT 1`,
+=======
+  const allResponsible = new Set([...responsibleIds, ...(legacyResponsible ? [legacyResponsible] : [])]);
+
+  const isMember = await c.env.DB.prepare(
+    `SELECT id FROM trip_members WHERE trip_id = ? AND user_id = ? LIMIT 1`
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   )
     .bind(task.trip_id, userId)
     .first();
 
   const isTripOwner = Number(task.trip_user_id) === Number(userId);
   const isTaskResponsible = allResponsible.has(Number(userId));
+<<<<<<< HEAD
   const isAdmin = user?.role === "admin" || user?.role === "admin_master";
 
   if (!isMember && !isTripOwner && !isTaskResponsible && !isAdmin) {
     return err("Voc√™ n√£o faz parte desta viagem ou trabalho.", 403);
+=======
+  const isAdmin = user?.role === 'admin' || user?.role === 'admin_master';
+
+  if (!isMember && !isTripOwner && !isTaskResponsible && !isAdmin) {
+    return err('Voc√™ n√£o faz parte desta viagem ou trabalho.', 403);
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   }
 
   if (!isAdmin && isTaskResponsible === false && isTripOwner === false) {
     const responsible = Array.from(allResponsible);
     if (responsible.length && !responsible.includes(Number(userId))) {
+<<<<<<< HEAD
       return err("Este trabalho n√£o est√° atribu√≠do a voc√™.", 403);
+=======
+      return err('Este trabalho n√£o est√° atribu√≠do a voc√™.', 403);
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
     }
   }
 
@@ -138,11 +237,16 @@ mapaOperacional.post("/trabalhos/checkin", async (c) => {
 
   const result = await c.env.DB.prepare(
     `INSERT INTO checkins (trabalho_id, integrante_id, viagem_id, latitude, longitude)
+<<<<<<< HEAD
      VALUES (?, ?, ?, ?, ?)`,
+=======
+     VALUES (?, ?, ?, ?, ?)`
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   )
     .bind(trabalhoId, integranteId, task.trip_id, latitude, longitude)
     .run();
 
+<<<<<<< HEAD
   return json(
     {
       success: true,
@@ -168,6 +272,25 @@ async function handleMapaEstado(c) {
     user?.sector && (user?.role === "admin" || user?.role === "admin_master")
       ? user.sector
       : null;
+=======
+  return json({
+    success: true,
+    checkin_id: result.meta.last_row_id,
+    viagem_id: task.trip_id,
+    trabalho_id: trabalhoId,
+    timestamp: new Date().toISOString(),
+  }, 201);
+});
+
+mapaOperacional.get('/mapa-operacional/estado', async (c) => {
+  const userId = c.get('userId');
+  const user = c.get('user');
+
+  const viagemIdFilter = c.req.query('viagemId') || c.req.query('trip_id') || '';
+  const workTypeFilter = c.req.query('work_type') || c.req.query('tipo_trabalho') || '';
+  const isAdmin = user?.role === 'admin' || user?.role === 'admin_master';
+  const ledSector = user?.sector && (user?.role === 'admin' || user?.role === 'admin_master') ? user.sector : null;
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
 
   const today = todayISO();
   const nowMin = currentMinutes();
@@ -176,14 +299,22 @@ async function handleMapaEstado(c) {
   const tripsBinds = [];
 
   if (viagemIdFilter) {
+<<<<<<< HEAD
     tripsWhere += " AND t.id = ?";
+=======
+    tripsWhere += ' AND t.id = ?';
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
     tripsBinds.push(Number(viagemIdFilter));
   }
 
   if (!isAdmin) {
     tripsWhere += ` AND (t.user_id = ? OR EXISTS (SELECT 1 FROM trip_members tm WHERE tm.trip_id = t.id AND tm.user_id = ?))`;
     tripsBinds.push(userId, userId);
+<<<<<<< HEAD
   } else if (ledSector && user?.role !== "admin_master") {
+=======
+  } else if (ledSector && user?.role !== 'admin_master') {
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
     tripsWhere += ` AND t.sector = ?`;
     tripsBinds.push(ledSector);
   }
@@ -192,7 +323,11 @@ async function handleMapaEstado(c) {
     `SELECT t.*, u.full_name AS owner_name FROM trips t
      LEFT JOIN users u ON u.id = t.user_id
      WHERE ${tripsWhere}
+<<<<<<< HEAD
      ORDER BY t.start_date DESC, t.id DESC`,
+=======
+     ORDER BY t.start_date DESC, t.id DESC`
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   )
     .bind(...tripsBinds)
     .all();
@@ -219,7 +354,11 @@ async function handleMapaEstado(c) {
     return json({ success: true, ...state });
   }
 
+<<<<<<< HEAD
   const placeholders = tripIds.map(() => "?").join(",");
+=======
+  const placeholders = tripIds.map(() => '?').join(',');
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
 
   const { results: allMembers } = await c.env.DB.prepare(
     `SELECT DISTINCT tm.trip_id, tm.user_id, tm.full_name, tm.sector, tm.manager_name,
@@ -227,7 +366,11 @@ async function handleMapaEstado(c) {
      FROM trip_members tm
      INNER JOIN users u ON u.id = tm.user_id
      WHERE tm.trip_id IN (${placeholders})
+<<<<<<< HEAD
      ORDER BY tm.full_name ASC`,
+=======
+     ORDER BY tm.full_name ASC`
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   )
     .bind(...tripIds)
     .all();
@@ -237,7 +380,11 @@ async function handleMapaEstado(c) {
             u.email, u.employee_id, u.avatar_data, u.avatar_key, u.role
      FROM trips t
      INNER JOIN users u ON u.id = t.user_id
+<<<<<<< HEAD
      WHERE t.id IN (${placeholders})`,
+=======
+     WHERE t.id IN (${placeholders})`
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
   )
     .bind(...tripIds)
     .all();
@@ -249,9 +396,13 @@ async function handleMapaEstado(c) {
   }
   for (const o of tripOwners || []) {
     if (!membersByTrip.has(o.trip_id)) membersByTrip.set(o.trip_id, []);
+<<<<<<< HEAD
     const exists = membersByTrip
       .get(o.trip_id)
       .some((m) => Number(m.user_id) === Number(o.user_id));
+=======
+    const exists = membersByTrip.get(o.trip_id).some((m) => Number(m.user_id) === Number(o.user_id));
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
     if (!exists) {
       membersByTrip.get(o.trip_id).push({
         trip_id: o.trip_id,
@@ -278,6 +429,7 @@ async function handleMapaEstado(c) {
   let tasksSql = `SELECT tt.* FROM trip_tasks tt WHERE tt.trip_id IN (${placeholders}) AND tt.task_date = ?`;
   const tasksBinds = [...tripIds, today];
   if (workTypeFilter) {
+<<<<<<< HEAD
     tasksSql += " AND tt.work_type = ?";
     tasksBinds.push(workTypeFilter);
   }
@@ -286,6 +438,14 @@ async function handleMapaEstado(c) {
   const { results: todayTasks } = await c.env.DB.prepare(tasksSql)
     .bind(...tasksBinds)
     .all();
+=======
+    tasksSql += ' AND tt.work_type = ?';
+    tasksBinds.push(workTypeFilter);
+  }
+  tasksSql += ' ORDER BY tt.start_time ASC, tt.id ASC';
+
+  const { results: todayTasks } = await c.env.DB.prepare(tasksSql).bind(...tasksBinds).all();
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
 
   const workTypesSet = new Set();
   const tasksByResponsible = new Map();
@@ -301,9 +461,13 @@ async function handleMapaEstado(c) {
     const allResp = new Set([...respIds, ...(legacy ? [legacy] : [])]);
 
     if (allResp.size === 0) {
+<<<<<<< HEAD
       const ownerTrip = activeTrips.find(
         (t) => Number(t.id) === Number(task.trip_id),
       );
+=======
+      const ownerTrip = activeTrips.find((t) => Number(t.id) === Number(task.trip_id));
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
       if (ownerTrip) allResp.add(Number(ownerTrip.user_id));
     }
 
@@ -313,14 +477,22 @@ async function handleMapaEstado(c) {
     }
   }
 
+<<<<<<< HEAD
   state.work_types = Array.from(workTypesSet).sort((a, b) =>
     a.localeCompare(b, "pt-BR"),
   );
+=======
+  state.work_types = Array.from(workTypesSet).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
 
   const memberUserIdsArr = Array.from(allMemberUserIds);
   let lastCheckins = [];
   if (memberUserIdsArr.length) {
+<<<<<<< HEAD
     const ph = memberUserIdsArr.map(() => "?").join(",");
+=======
+    const ph = memberUserIdsArr.map(() => '?').join(',');
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
     const { results } = await c.env.DB.prepare(
       `SELECT c.* FROM checkins c
        INNER JOIN (
@@ -329,7 +501,11 @@ async function handleMapaEstado(c) {
          WHERE integrante_id IN (${ph})
          GROUP BY integrante_id
        ) lm ON lm.integrante_id = c.integrante_id AND lm.max_ts = c.timestamp
+<<<<<<< HEAD
        WHERE c.integrante_id IN (${ph})`,
+=======
+       WHERE c.integrante_id IN (${ph})`
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
     )
       .bind(...memberUserIdsArr, ...memberUserIdsArr)
       .all();
@@ -343,19 +519,31 @@ async function handleMapaEstado(c) {
 
   const todayCheckinsCountsByIntegrante = new Map();
   if (memberUserIdsArr.length) {
+<<<<<<< HEAD
     const ph = memberUserIdsArr.map(() => "?").join(",");
     const { results } = await c.env.DB.prepare(
       `SELECT integrante_id, COUNT(*) AS cnt FROM checkins
        WHERE integrante_id IN (${ph}) AND DATE(timestamp) = ?
        GROUP BY integrante_id`,
+=======
+    const ph = memberUserIdsArr.map(() => '?').join(',');
+    const { results } = await c.env.DB.prepare(
+      `SELECT integrante_id, COUNT(*) AS cnt FROM checkins
+       WHERE integrante_id IN (${ph}) AND DATE(timestamp) = ?
+       GROUP BY integrante_id`
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
     )
       .bind(...memberUserIdsArr, today)
       .all();
     for (const r of results || []) {
+<<<<<<< HEAD
       todayCheckinsCountsByIntegrante.set(
         Number(r.integrante_id),
         Number(r.cnt) || 0,
       );
+=======
+      todayCheckinsCountsByIntegrante.set(Number(r.integrante_id), Number(r.cnt) || 0);
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
     }
   }
 
@@ -364,28 +552,41 @@ async function handleMapaEstado(c) {
     for (const m of members) {
       const uid = Number(m.user_id);
       const memberTasks = tasksByResponsible.get(uid) || [];
+<<<<<<< HEAD
       const memberTodayTasks = memberTasks.filter(
         (t) => Number(t.trip_id) === Number(trip.id),
       );
+=======
+      const memberTodayTasks = memberTasks.filter((t) => Number(t.trip_id) === Number(trip.id));
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
       const overallStatus = memberOverallStatus(memberTodayTasks, nowMin);
 
       let currentTask = null;
       for (const t of memberTodayTasks) {
         const st = taskMemberStatus(t, nowMin);
+<<<<<<< HEAD
         if (st.key === "EM_ANDAMENTO") {
+=======
+        if (st.key === 'EM_ANDAMENTO') {
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
           currentTask = { ...t, _status: st };
           break;
         }
       }
       if (!currentTask && memberTodayTasks.length) {
+<<<<<<< HEAD
         currentTask = {
           ...memberTodayTasks[0],
           _status: taskMemberStatus(memberTodayTasks[0], nowMin),
         };
+=======
+        currentTask = { ...memberTodayTasks[0], _status: taskMemberStatus(memberTodayTasks[0], nowMin) };
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
       }
 
       const lastCheckin = checkinByIntegrante.get(uid);
       const totalTarefas = memberTodayTasks.length;
+<<<<<<< HEAD
       const pendentes = memberTodayTasks.filter(
         (t) => taskMemberStatus(t, nowMin).key === "PENDENTE",
       ).length;
@@ -399,6 +600,17 @@ async function handleMapaEstado(c) {
 
       if (overallStatus.key === "PENDENTE") state.alertas.pendentes++;
       if (overallStatus.key === "ATENCAO") state.alertas.atencao++;
+=======
+      const pendentes = memberTodayTasks.filter((t) => taskMemberStatus(t, nowMin).key === 'PENDENTE').length;
+      const atencao = memberTodayTasks.filter((t) => taskMemberStatus(t, nowMin).key === 'ATENCAO').length;
+      const concluidos = memberTodayTasks.filter((t) => {
+        const st = taskMemberStatus(t, nowMin).key;
+        return st === 'SEM_ATIVIDADE' && !String(t.pending_items || '').trim();
+      }).length;
+
+      if (overallStatus.key === 'PENDENTE') state.alertas.pendentes++;
+      if (overallStatus.key === 'ATENCAO') state.alertas.atencao++;
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
 
       state.integrantes.push({
         integrante_id: uid,
@@ -410,7 +622,11 @@ async function handleMapaEstado(c) {
           ? m.avatar_data
           : m.avatar_key
             ? `/api/files/${m.avatar_key}`
+<<<<<<< HEAD
             : "assets/default-avatar.svg",
+=======
+            : 'assets/default-avatar.svg',
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
         viagem: {
           id: trip.id,
           origin: trip.origin,
@@ -460,7 +676,11 @@ async function handleMapaEstado(c) {
   state.alertas.total = state.alertas.pendentes + state.alertas.atencao;
 
   return json({ success: true, ...state });
+<<<<<<< HEAD
 }
 
 mapaOperacional.get("/mapa-operacional/estado", handleMapaEstado);
 mapaOperacional.get("/mapa_operacional/estado", handleMapaEstado);
+=======
+});
+>>>>>>> 504a5ecb730af7c66f05d2840e2a07a7aa4b6dce
