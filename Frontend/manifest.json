@@ -1,0 +1,20 @@
+{
+  "short_name": "TravelOps",
+  "name": "Chiptronic TravelOps",
+  "description": "Acompanhamento operacional e gestao de viagens de equipes em campo.",
+  "icons": [
+    {
+      "src": "/assets/icone.png",
+      "type": "image/png",
+      "sizes": "225x225",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "pt-BR"
+}
