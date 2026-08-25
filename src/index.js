@@ -11,10 +11,7 @@ import { configuracoes } from './configuracoes.js';
 import { activity } from './activity.js';
 import { presence } from './presence.js';
 import { admin } from './admin.js';
-<<<<<<< HEAD
 import { mapaOperacional } from './mapa_operacional.js';
-=======
->>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 import { err, json } from './helpers.js';
 
 const app = new Hono();
@@ -47,10 +44,7 @@ app.route('/api/configuracoes', configuracoes);
 app.route('/api/activity', activity);
 app.route('/api/presence', presence);
 app.route('/api/admin', admin);
-<<<<<<< HEAD
 app.route('/api', mapaOperacional);
-=======
->>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 app.route('/api', files);
 
 app.notFound((c) => {

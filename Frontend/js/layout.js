@@ -173,20 +173,14 @@ const ACTIVE_ALIASES = {
   'new': 'new-trip',
   'trip-detail': 'viagens',
   'trip': 'viagens',
-<<<<<<< HEAD
   'mapa': 'mapa-operacional',
   'map': 'mapa-operacional',
-=======
->>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 };
 
 const SIDEBAR_ICONS = {
   dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5z"/></svg>',
   viagens: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>',
-<<<<<<< HEAD
   'mapa-operacional': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15"/><path d="M15 6v15"/><circle cx="12" cy="10" r="1.8"/><path d="M12 11.8v3.2"/></svg>',
-=======
->>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
   'new-trip': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>',
   setor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
   profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
@@ -201,16 +195,10 @@ function renderSidebar(user, active) {
   if (ACTIVE_ALIASES[resolvedActive]) resolvedActive = ACTIVE_ALIASES[resolvedActive];
 
   const links = [
-<<<<<<< HEAD
     { id: 'dashboard',        title: 'Dashboard',        href: 'index.html' },
     { id: 'viagens',          title: 'Viagens',          href: 'viagens.html' },
     { id: 'mapa-operacional', title: 'Mapa Operacional', href: 'mapa-operacional.html' },
     { id: 'new-trip',         title: 'Nova viagem',      href: 'trip-new.html' }
-=======
-    { id: 'dashboard',   title: 'Dashboard',       href: 'index.html' },
-    { id: 'viagens',     title: 'Viagens',         href: 'viagens.html' },
-    { id: 'new-trip',    title: 'Nova viagem',     href: 'trip-new.html' }
->>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
   ];
   if (user.is_sector_leader && user.led_sector) {
     links.push({ id: 'setor', title: 'Painel do Setor', href: 'setor.html' });
@@ -271,7 +259,6 @@ function renderTopbar(user, active) {
   if (ACTIVE_ALIASES[resolvedActive]) resolvedActive = ACTIVE_ALIASES[resolvedActive];
 
   const titles = {
-<<<<<<< HEAD
     dashboard:        ['Home', 'Dashboard'],
     viagens:          ['Viagens', 'Listagem'],
     'mapa-operacional':['Operação', 'Mapa em tempo real'],
@@ -280,15 +267,6 @@ function renderTopbar(user, active) {
     profile:          ['Conta', 'Meu perfil'],
     settings:         ['Configurações', 'Sistema'],
     admin:            ['Administração', 'Painel de controle']
-=======
-    dashboard:   ['Home', 'Dashboard'],
-    viagens:     ['Viagens', 'Listagem'],
-    'new-trip':  ['Viagens', 'Nova'],
-    setor:       ['Setor', user.led_sector || 'Painel'],
-    profile:     ['Conta', 'Meu perfil'],
-    settings:    ['Configurações', 'Sistema'],
-    admin:       ['Administração', 'Painel de controle']
->>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
   };
   const parts = titles[resolvedActive] || ['Viagens', 'Detalhes'];
 

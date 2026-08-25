@@ -374,7 +374,6 @@ export const api = {
   sectorDashboard: () => request("/sector/dashboard"),
   sectorAccess: () => request("/sector/access"),
 
-<<<<<<< HEAD
   trabalhoCheckin: (body) =>
     request("/trabalhos/checkin", { method: "POST", json: body }),
 
@@ -383,8 +382,6 @@ export const api = {
     return request(`/mapa-operacional/estado${qs ? `?${qs}` : ""}`);
   },
 
-=======
->>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
   adminUsers: () => request('/admin/users'),
   updateAdminRole: (id, role) => request(`/admin/users/${id}/role`, {
     method: 'PUT',
