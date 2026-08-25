@@ -3,6 +3,7 @@ import { mountShell } from "./layout.js";
 
 let map = null;
 const markersLayer = L.layerGroup();
+const routesLayer = L.layerGroup();
 let currentState = null;
 let pollTimer = null;
 
@@ -279,13 +280,9 @@ function renderLista(state) {
     `;
 
     item.addEventListener("click", () => {
-      const loc = i.location;
-      if (
-        loc &&
-        Number.isFinite(loc.latitude) &&
-        Number.isFinite(loc.longitude)
-      ) {
-        map.flyTo([loc.latitude, loc.longitude], Math.max(map.getZoom(), 14), {
+      const coordinates = getIntegranteCoordinates(i);
+      if (coordinates) {
+        map.flyTo(coordinates, Math.max(map.getZoom(), 14), {
           duration: 0.9,
           easeLinearity: 0.25,
         });
@@ -308,23 +305,87 @@ function renderLista(state) {
 
 const markersByIntegrante = new Map();
 
+function getIntegranteCoordinates(integrante) {
+  if (
+    integrante.location &&
+    Number.isFinite(integrante.location.latitude) &&
+    Number.isFinite(integrante.location.longitude)
+  ) {
+    return [integrante.location.latitude, integrante.location.longitude];
+  }
+
+  const viagem = integrante.viagem;
+  if (
+    viagem &&
+    Number.isFinite(viagem.destination_lat) &&
+    Number.isFinite(viagem.destination_lng)
+  ) {
+    return [viagem.destination_lat, viagem.destination_lng];
+  }
+
+  return null;
+}
+
+function renderRotas(state) {
+  routesLayer.clearLayers();
+  const routePoints = [];
+
+  for (const trip of state.trips || []) {
+    const origin = [trip.origin_lat, trip.origin_lng];
+    const destination = [trip.destination_lat, trip.destination_lng];
+    if (!origin.every(Number.isFinite) || !destination.every(Number.isFinite))
+      continue;
+
+    const line = L.polyline([origin, destination], {
+      color:
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("--border")
+          .trim() || "#c7ccd1",
+      weight: 2,
+      opacity: 0.8,
+      dashArray: "6 8",
+    });
+    line.bindTooltip(
+      `${trip.origin || "Origem"} → ${trip.destination || "Destino"}`,
+    );
+    routesLayer.addLayer(line);
+    routesLayer.addLayer(
+      L.circleMarker(origin, {
+        radius: 5,
+        color: "#64748b",
+        weight: 2,
+        fillColor: "#fff",
+        fillOpacity: 1,
+      }).bindTooltip(`Origem: ${trip.origin || "—"}`),
+    );
+    routesLayer.addLayer(
+      L.circleMarker(destination, {
+        radius: 5,
+        color: "#64748b",
+        weight: 2,
+        fillColor: "#fff",
+        fillOpacity: 1,
+      }).bindTooltip(`Destino: ${trip.destination || "—"}`),
+    );
+    routePoints.push(origin, destination);
+  }
+
+  routesLayer.addTo(map);
+  return routePoints;
+}
+
 function renderMarkers(state) {
   markersLayer.clearLayers();
   markersByIntegrante.clear();
 
   const list = getFilteredIntegrantes(state);
-  const validLocations = [];
+  const validLocations = renderRotas(state);
 
   for (const i of list) {
-    const loc = i.location;
-    if (
-      !loc ||
-      !Number.isFinite(loc.latitude) ||
-      !Number.isFinite(loc.longitude)
-    )
-      continue;
+    const coordinates = getIntegranteCoordinates(i);
+    if (!coordinates) continue;
 
-    const marker = L.marker([loc.latitude, loc.longitude], {
+    const marker = L.marker(coordinates, {
       icon: makeMarkerIcon(i),
     });
     marker.bindPopup(makePopupHtml(i), {
@@ -344,7 +405,7 @@ function renderMarkers(state) {
     });
     markersLayer.addLayer(marker);
     markersByIntegrante.set(Number(i.integrante_id), marker);
-    validLocations.push([loc.latitude, loc.longitude]);
+    validLocations.push(coordinates);
   }
 
   markersLayer.addTo(map);

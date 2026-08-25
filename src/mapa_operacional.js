@@ -208,6 +208,12 @@ async function handleMapaEstado(c) {
       sector: t.sector,
       reason: t.reason,
       owner_name: t.owner_name || null,
+      origin_lat: t.origin_lat == null ? null : Number(t.origin_lat),
+      origin_lng: t.origin_lng == null ? null : Number(t.origin_lng),
+      destination_lat:
+        t.destination_lat == null ? null : Number(t.destination_lat),
+      destination_lng:
+        t.destination_lng == null ? null : Number(t.destination_lng),
     })),
     integrantes: [],
     work_types: [],
@@ -418,6 +424,12 @@ async function handleMapaEstado(c) {
           start_date: trip.start_date,
           end_date: trip.end_date,
           reason: trip.reason,
+          origin_lat: trip.origin_lat == null ? null : Number(trip.origin_lat),
+          origin_lng: trip.origin_lng == null ? null : Number(trip.origin_lng),
+          destination_lat:
+            trip.destination_lat == null ? null : Number(trip.destination_lat),
+          destination_lng:
+            trip.destination_lng == null ? null : Number(trip.destination_lng),
         },
         status: {
           key: overallStatus.key,
