@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Avatar padrão Chiptronic</title>
+  <desc id="desc">Símbolo Chiptronic em um círculo cinza</desc>
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b8bec2"/>
+      <stop offset=".52" stop-color="#e5e7e8"/>
+      <stop offset="1" stop-color="#f8f9f9"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#f5f6f6"/>
+    </linearGradient>
+  </defs>
+  <circle cx="128" cy="128" r="126" fill="url(#ring)"/>
+  <circle cx="128" cy="128" r="105" fill="url(#paper)"/>
+  <text x="128" y="31" fill="#668083" font-family="Arial, sans-serif" font-size="7" font-weight="700" letter-spacing="2" text-anchor="middle">CHIPTRONIC TECNOLOGIA AUTOMOTIVA</text>
+  <path d="M62 73h111c-18-18-51-24-78-15-13 4-25 10-33 15Z" fill="#e31b23"/>
+  <path d="m62 73 28-16v32Z" fill="#e31b23"/>
+  <path d="M194 183H83c18 18 51 24 78 15 13-4 25-10 33-15Z" fill="#ffd400"/>
+  <path d="m194 183-28-16v32Z" fill="#ffd400"/>
+  <path d="M167 96H113c-22 0-32 13-39 31-7 18-8 38 1 45 6 5 15 6 25 6h34c18 0 28-8 35-22H104c-8 0-11-4-8-13 4-12 10-17 24-17h35c7 0 11-3 12-8Z" fill="#343434"/>
+</svg>

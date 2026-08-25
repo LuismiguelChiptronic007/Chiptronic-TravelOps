@@ -1,0 +1,5 @@
+# Chave secreta para assinatura/verificação de tokens JWT.
+# OBRIGATÓRIA: sem ela, login e cadastro retornam erro 500.
+# Use uma string aleatória forte com pelo menos 32 bytes/caracteres.
+# Em produção, configure via wrangler secret put JWT_SECRET
+JWT_SECRET=chiptronic-travelops-dev-secret-key-2026-change-in-production-please-use-strong-32byte-key

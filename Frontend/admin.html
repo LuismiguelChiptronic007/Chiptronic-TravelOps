@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Painel de admin — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container admin-page">
+      <section class="admin-hero">
+        <div>
+          <p class="admin-eyebrow">Controle de acesso</p>
+          <h1>⚙️ Painel de Controle Admin</h1>
+          <p>Gerencie usuários e permissões do sistema</p>
+        </div>
+        <a class="admin-close" href="index.html" aria-label="Voltar ao dashboard">×</a>
+      </section>
+
+      <div id="admin-alert" class="alert hidden"></div>
+
+      <section class="admin-toolbar">
+        <div class="admin-stat"><strong id="users-count">—</strong><span>Usuários</span></div>
+        <div class="admin-stat"><strong id="admins-count">—</strong><span>Administradores</span></div>
+        <button type="button" class="btn btn-secondary" id="refresh-users">↻ Atualizar</button>
+      </section>
+
+      <section class="admin-table-wrap">
+        <div class="admin-table-scroll">
+          <table class="data admin-table">
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>E-mail</th>
+                <th>Status</th>
+                <th>Nível</th>
+                <th>Última atividade</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="users-body">
+              <tr><td colspan="6" class="empty-state">Carregando usuários...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/admin.js"></script>
+</body>
+</html>

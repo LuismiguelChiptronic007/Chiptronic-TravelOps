@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Histórico da viagem — Chiptronic TravelOps</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/tables.css" />
+    <script type="module" src="js/theme.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar" id="topbar"></header>
+      <main class="container">
+        <div class="page-header">
+          <div>
+            <h1>Histórico da viagem</h1>
+            <p id="trip-subtitle" class="text-muted">Carregando viagem...</p>
+          </div>
+          <a id="back-trip" href="index.html" class="btn btn-secondary">Voltar para a viagem</a>
+        </div>
+        <div id="alert" class="alert alert-error hidden"></div>
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Registro de alterações</h2>
+            <span id="activity-count" class="text-muted"></span>
+          </div>
+          <div id="activity-list" class="panel-body">
+            <p class="empty-state">Carregando histórico...</p>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="js/config.js"></script>
+    <script type="module" src="js/trip-history.js"></script>
+  </body>
+</html>

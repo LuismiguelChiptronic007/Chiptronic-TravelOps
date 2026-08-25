@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Detalhe da viagem — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1 id="trip-title">Viagem</h1>
+          <p id="trip-subtitle" class="text-muted">Carregando…</p>
+        </div>
+        <div class="form-actions mb-0">
+          <span id="trip-status"></span>
+          <button type="button" class="btn btn-secondary" id="btn-trip-history" aria-label="Ver histórico da viagem" title="Ver histórico da viagem">?</button>
+          <button type="button" class="btn btn-secondary" id="btn-edit-trip">Editar viagem</button>
+          <button type="button" class="btn btn-danger" id="btn-delete-trip">Excluir viagem</button>
+          <a href="index.html" class="btn btn-secondary">Voltar</a>
+        </div>
+      </div>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+      <div id="overdue-banner" class="alert alert-warning hidden">
+        Esta viagem encerrou e o relatório ainda não foi preenchido.
+      </div>
+
+      <div class="stack">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Dados gerais</h2>
+            <button type="button" class="panel-toggle collapsed" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+          </div>
+          <div class="panel-body panel-content collapsed">
+            <div class="detail-grid">
+              <div class="kv" id="trip-kv"></div>
+              <div>
+                <label>Motivo</label>
+                <p id="trip-reason" class="mb-0"></p>
+                <div class="mt-2">
+                  <label>Integrantes</label>
+                  <div id="trip-members" class="members-list"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel hidden-fields" id="location-monitor-panel">
+          <div class="panel-header">
+            <div>
+              <h2>📍 Monitoramento de localiza&ccedil;&atilde;o</h2>
+              <span class="text-muted" style="font-size:0.85rem">Compartilhamento com o Mapa Operacional</span>
+            </div>
+            <button type="button" class="panel-toggle" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+          </div>
+          <div class="panel-body panel-content">
+            <div style="display:flex;align-items:flex-start;gap:14px;padding:4px 0 10px;">
+              <label style="display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;flex:1;">
+                <label class="switch" style="margin:0;">
+                  <input type="checkbox" id="trip-share-location" />
+                  <span class="slider round"></span>
+                </label>
+                <div>
+                  <div style="font-weight:600;font-size:14px;">Compartilhar minha localiza&ccedil;&atilde;o nesta viagem</div>
+                  <p class="field-hint mb-1" style="margin:4px 0 0;">
+                    Sua posi&ccedil;&atilde;o ser&aacute; enviada ao Mapa Operacional enquanto a viagem estiver ativa.
+                    Desative a qualquer momento. Nenhum dado ser&aacute; coletado fora do per&iacute;odo da viagem ativa.
+                  </p>
+                </div>
+              </label>
+              </div>
+            <div id="location-monitor-status" class="alert alert-info" style="margin:6px 0 0;">
+              Aguardando ativa&ccedil;&atilde;o…
+            </div>
+            <div id="location-monitor-metrics" class="hidden-fields" style="margin-top:10px;font-size:12.5px;color:var(--muted);">
+              <span id="loc-last-checkin">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Checklist de encerramento</h2>
+              <span class="text-muted" style="font-size:0.85rem">Registre as tarefas realizadas</span>
+            </div>
+            <button type="button" class="panel-toggle collapsed" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+          </div>
+          <div class="panel-body panel-content collapsed">
+            <div class="task-filters">
+              <div>
+                <label for="filter-responsible">Responsável</label>
+                <select id="filter-responsible">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-work-type">Tipo de trabalho</label>
+                <select id="filter-work-type">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-location">Local</label>
+                <select id="filter-location">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-montadora">Montadora</label>
+                <select id="filter-montadora">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-modelo">Modelo</label>
+                <select id="filter-modelo">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-submodelo">Versão</label>
+                <select id="filter-submodelo">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+            </div>
+            <div id="trip-days" class="trip-days"></div>
+            <div id="tasks-board" class="tasks-board"></div>
+
+            <div id="completion-progress" class="completion-progress mt-2 hidden-fields">
+              <div class="completion-progress-header">
+                <h3>Conclusão da viagem</h3>
+                <span id="progress-text" class="text-muted">0 de 0 dias com tarefa</span>
+              </div>
+              <div class="completion-progress-bar">
+                <div id="progress-fill" class="completion-progress-fill"></div>
+              </div>
+              <p id="progress-hint" class="completion-progress-hint text-muted"></p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="panel">
+          <div id="task-form-wrap" class="task-form-wrap panel-body">
+            <div class="panel-subheader">
+              <h3 id="task-form-title">Nova tarefa</h3>
+              <button type="button" class="panel-toggle" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+            </div>
+             <form id="task-form" class="checklist-box form-grid panel-content">
+               <div class="collapsible-section collapsed" id="task-fields-section">
+                 <div class="collapsible-header">
+                   <span class="text-muted" style="font-size:0.85rem">Campos da tarefa (tipo, data, responsável, veículo, horários...)</span>
+                   <button type="button" class="panel-toggle collapsed" data-target="task-fields-section" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+                 </div>
+                 <div class="collapsible-content collapsed">
+                   <div class="form-grid two">
+                     <div>
+                       <label for="work_type">Tipo de trabalho *</label>
+                       <select id="work_type" required>
+                         <option value="">Selecione…</option>
+                       </select>
+                     </div>
+                     <div>
+                       <label for="task_date">Data da tarefa *</label>
+                       <input id="task_date" type="date" required />
+                     </div>
+                   </div>
+                   <div>
+                     <label for="project_id">Projeto</label>
+                     <select id="project_id">
+                       <option value="">Sem projeto</option>
+                     </select>
+                   </div>
+                   <div>
+                     <label>Responsáveis pela tarefa</label>
+                     <div id="responsible_id" class="responsible-list" aria-label="Responsáveis pela tarefa"></div>
+                   </div>
+                  <div id="vehicle-fields" class="form-grid two hidden-fields">
+                    <div>
+                      <label for="vehicle">Veículo</label>
+                      <input id="vehicle" placeholder="Ex: Caminhão / Van / Carreta" />
+                    </div>
+                    <div>
+                      <label for="plate">Placa</label>
+                      <input id="plate" placeholder="Ex: ABC-1234" />
+                    </div>
+                  </div>
+                  <div id="vehicle-detail-fields" class="form-grid three hidden-fields">
+                    <div>
+                      <label for="montadora">Montadora</label>
+                      <input id="montadora" placeholder="Ex: Chevrolet" />
+                    </div>
+                    <div>
+                      <label for="modelo">Modelo</label>
+                      <input id="modelo" placeholder="Ex: S10" />
+                    </div>
+                    <div>
+                      <label for="submodelo">Submodelo</label>
+                      <input id="submodelo" placeholder="Ex: LTZ 2.8" />
+                    </div>
+                   </div>
+                   <div id="custom-fields-container"></div>
+                   <div id="location-field">
+                    <label for="location">Local do serviço *</label>
+                    <input id="location" required placeholder="Ex: Cliente XYZ — unidade centro" />
+                  </div>
+                  <div class="form-grid two">
+                    <div>
+                      <label for="start_time">Hora de início *</label>
+                      <input id="start_time" type="time" required />
+                    </div>
+                    <div>
+                      <label for="end_time">Hora de término *</label>
+                      <input id="end_time" type="time" required />
+                    </div>
+                  </div>
+                  <div id="task-time-availability" class="hidden-fields" style="font-size:0.7rem; color:#4b5563; line-height:1.2; margin-top:-6px;"></div>
+                 </div>
+               </div>
+               <div id="summary-field">
+                <label for="summary">Resumo do que foi feito *</label>
+                <textarea id="summary" required placeholder="Descreva a atividade realizada…" class="textarea-expanded" style="min-height: 260px;"></textarea>
+              </div>
+              <div>
+                <label for="pending_items">Pendências neste trabalho</label>
+                <textarea id="pending_items" placeholder="O que ficou pendente neste mesmo trabalho…" class="textarea-expanded" style="min-height: 260px;"></textarea>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="btn-save-task">Salvar tarefa</button>
+                <button type="button" class="btn btn-success" id="btn-complete">Finalizar viagem</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/trip-detail.js"></script>
+</body>
+</html>
