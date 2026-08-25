@@ -119,12 +119,19 @@ function ensureShellElements() {
           <a href="index.html" class="sidebar-brand" id="sidebar-brand-link" aria-label="Chiptronic TravelOps">
             <img src="assets/logo-mark.svg" alt="Chiptronic TravelOps" class="sidebar-logo-img" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%230a0a0a%22/><text x=%2224%22 y=%2230%22 font-family=%22Inter, sans-serif%22 font-size=%2220%22 font-weight=%22800%22 fill=%22white%22 text-anchor=%22middle%22>C</text></svg>';">
           </a>
+          <button type="button" class="sidebar-collapse-toggle" id="sidebar-collapse-toggle" aria-label="Recolher menu" aria-controls="sidebar" data-tooltip="Recolher menu">
+            <svg class="sidebar-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+          </button>
         </div>
         <nav class="sidebar-nav" id="sidebar-nav">
           <div class="sidebar-section">Principal</div>
         </nav>
+        <div class="sidebar-footer" id="sidebar-footer"></div>
       </aside>
     `);
+    applySidebarCollapsedState(localStorage.getItem('cto_sidebar_collapsed') === 'true');
+  } else if (!document.getElementById('sidebar-footer')) {
+    document.getElementById('sidebar')?.insertAdjacentHTML('beforeend', '<div class="sidebar-footer" id="sidebar-footer"></div>');
   }
 
   if (!document.getElementById('drawer-overlay')) {
@@ -168,6 +175,15 @@ const ACTIVE_ALIASES = {
   'trip': 'viagens',
 };
 
+const SIDEBAR_ICONS = {
+  dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5z"/></svg>',
+  viagens: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>',
+  'new-trip': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>',
+  setor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
+};
+
 function renderSidebar(user, active) {
   const nav = document.getElementById('sidebar-nav');
   if (!nav) return;
@@ -176,29 +192,55 @@ function renderSidebar(user, active) {
   if (ACTIVE_ALIASES[resolvedActive]) resolvedActive = ACTIVE_ALIASES[resolvedActive];
 
   const links = [
-    { id: 'dashboard',   title: 'Dashboard',       icon: '🏠', href: 'index.html' },
-    { id: 'viagens',     title: 'Viagens',         icon: '✈️', href: 'viagens.html' },
-    { id: 'new-trip',    title: 'Nova viagem',     icon: '➕', href: 'trip-new.html' }
+    { id: 'dashboard',   title: 'Dashboard',       href: 'index.html' },
+    { id: 'viagens',     title: 'Viagens',         href: 'viagens.html' },
+    { id: 'new-trip',    title: 'Nova viagem',     href: 'trip-new.html' }
   ];
   if (user.is_sector_leader && user.led_sector) {
-    links.push({ id: 'setor', title: 'Painel do Setor', icon: '👥', href: 'setor.html' });
+    links.push({ id: 'setor', title: 'Painel do Setor', href: 'setor.html' });
   }
   links.push(
-    { id: 'profile',   title: 'Meu perfil',       icon: '👤', href: 'profile.html' },
-    { id: 'settings',  title: 'Configurações',    icon: '⚙️', href: 'settings.html' }
+    { id: 'profile',   title: 'Meu perfil',       href: 'profile.html' },
+    { id: 'settings',  title: 'Configurações',    href: 'settings.html' }
   );
 
   const html = [
     '<div class="sidebar-section">Principal</div>',
     ...links.map((l) => `
       <a href="${l.href}" class="sidebar-link ${resolvedActive === l.id ? 'active' : ''}" data-id="${l.id}" data-tooltip="${l.title}">
-        <span class="sl-icon">${l.icon}</span>
+        <span class="sl-icon">${SIDEBAR_ICONS[l.id] || ''}</span>
         <span>${l.title}</span>
       </a>
     `)
   ].join('');
 
   nav.innerHTML = html;
+  renderSidebarFooter(user);
+}
+
+function renderSidebarFooter(user) {
+  const footer = document.getElementById('sidebar-footer');
+  if (!footer || !user) return;
+
+  const avatarHtml = user.avatar_url
+    ? `<img src="${user.avatar_url}" alt="">`
+    : initials(user.full_name);
+
+  const roleLabel = user.is_sector_leader
+    ? `Líder · ${user.led_sector}`
+    : user.position_title;
+
+  footer.innerHTML = `
+    <button type="button" class="sidebar-user-card" id="sidebar-user-btn" aria-label="Abrir menu de usuário" data-tooltip="${escapeHtml(user.full_name)}">
+      <div class="avatar">${avatarHtml}</div>
+      <div class="sidebar-user-meta">
+        <strong>${escapeHtml(user.full_name)}</strong>
+        <small>${escapeHtml(user.sector)} · ${escapeHtml(roleLabel)}</small>
+      </div>
+    </button>
+  `;
+
+  document.getElementById('sidebar-user-btn')?.addEventListener('click', openDrawer);
 }
 
 function renderTopbar(user, active) {
@@ -283,6 +325,8 @@ function bindShellEvents(user) {
   shellEventsInstalled = true;
 
   document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebarMobile);
+  document.getElementById('sidebar-collapse-toggle')?.addEventListener('click', toggleSidebarCollapsed);
+  window.addEventListener('resize', handleSidebarResize, { passive: true });
   document.getElementById('drawer-overlay')?.addEventListener('click', () => {
     closeDrawer();
     closeSidebarMobile();
@@ -371,6 +415,39 @@ function toggleSidebarMobile() {
   if (open) { closeDrawer(); closeNotifications(); }
   refreshOverlay();
 }
+
+function applySidebarCollapsedState(collapsed) {
+  const appShell = document.querySelector('.app-shell');
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('sidebar-collapse-toggle');
+  if (!appShell || !sidebar || !toggle) return;
+
+  const isMobile = window.innerWidth < 880;
+  const effectiveCollapsed = collapsed && !isMobile;
+
+  appShell.classList.toggle('sidebar-collapsed', effectiveCollapsed);
+  sidebar.classList.toggle('is-collapsed', effectiveCollapsed);
+  toggle.setAttribute('aria-expanded', String(!effectiveCollapsed));
+  toggle.setAttribute('aria-label', effectiveCollapsed ? 'Expandir menu' : 'Recolher menu');
+  toggle.setAttribute('data-tooltip', effectiveCollapsed ? 'Expandir menu' : 'Recolher menu');
+}
+
+function handleSidebarResize() {
+  const collapsed = localStorage.getItem('cto_sidebar_collapsed') === 'true';
+  applySidebarCollapsedState(collapsed);
+  if (window.innerWidth >= 880) closeSidebarMobile();
+}
+
+function toggleSidebarCollapsed() {
+  if (window.innerWidth < 880) {
+    toggleSidebarMobile();
+    return;
+  }
+  const collapsed = !document.querySelector('.app-shell')?.classList.contains('sidebar-collapsed');
+  applySidebarCollapsedState(collapsed);
+  localStorage.setItem('cto_sidebar_collapsed', String(collapsed));
+}
+
 function closeSidebarMobile() {
   const sb = document.getElementById('sidebar');
   if (!sb) return;

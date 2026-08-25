@@ -14,7 +14,10 @@ function showError(message) {
 
 function formatActivity(value) {
   if (!value) return 'Nunca';
-  const date = new Date(String(value).replace(' ', 'T') + (String(value).includes('Z') ? '' : 'Z'));
+  const rawValue = String(value).trim();
+  const normalizedValue = rawValue.includes('T') ? rawValue : rawValue.replace(' ', 'T');
+  const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalizedValue);
+  const date = new Date(hasTimezone ? normalizedValue : `${normalizedValue}Z`);
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('pt-BR');
 }
 
