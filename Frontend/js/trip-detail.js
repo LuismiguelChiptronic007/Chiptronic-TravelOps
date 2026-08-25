@@ -1,6 +1,7 @@
 import { api, hideAlert, showAlert } from "./api.js";
 import { mountShell } from "./layout.js";
 import {
+<<<<<<< HEAD
   fillWorkTypes, prepareTaskForm, renderTrip, taskFormPayload, validateTaskTimeAvailability, setupPanelToggles } from "./trip-render.js";
 import { confirmDialog } from "./ui.js";
 import {
@@ -11,6 +12,16 @@ import {
   isMonitoringActive,
   registrarCheckinTrabalho,
 } from "./location.js";
+=======
+  fillWorkTypes,
+  prepareTaskForm,
+  renderTrip,
+  taskFormPayload,
+  validateTaskTimeAvailability,
+  setupPanelToggles,
+} from "./trip-render.js";
+import { confirmDialog } from "./ui.js";
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 
 function getTripDays(startDate, endDate) {
   const days = [];
@@ -40,6 +51,7 @@ const params = new URLSearchParams(location.search);
 const tripId = Number(params.get("id"));
 const alertEl = document.getElementById("alert");
 
+<<<<<<< HEAD
 let monitorMetricsTimer = null;
 
 function updateLocationMonitorStatus(trip, extra = {}) {
@@ -162,6 +174,8 @@ function setupLocationMonitor(trip) {
   monitorMetricsTimer = setInterval(() => updateLocationMonitorStatus(trip), 15000);
 }
 
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 async function init() {
   if (!tripId) {
     window.location.href = "index.html";
@@ -180,7 +194,10 @@ async function init() {
     fillWorkTypes(typesRes.work_types || []);
     renderTrip(trip);
     setupPanelToggles();
+<<<<<<< HEAD
     setupLocationMonitor(trip);
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 
     const editBtn = document.getElementById("btn-edit-trip");
     if (editBtn) {
@@ -223,6 +240,7 @@ document.getElementById("task-form")?.addEventListener("submit", async (e) => {
     setupPanelToggles();
     prepareTaskForm(res.trip, { keepDate: true });
     showAlert(alertEl, "Tarefa salva com sucesso.", "success");
+<<<<<<< HEAD
 
     const taskId = res.task_id || (res.trip?.tasks || []).slice(-1)[0]?.id || null;
     if (taskId && getLocationConsent(tripId) === true) {
@@ -232,6 +250,8 @@ document.getElementById("task-form")?.addEventListener("submit", async (e) => {
         })
         .catch(() => {});
     }
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
   } catch (err) {
     showAlert(alertEl, err.message);
     alertEl?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -256,6 +276,7 @@ document.getElementById("btn-complete")?.addEventListener("click", async () => {
   });
   if (!confirmed) return;
   try {
+<<<<<<< HEAD
     stopTripLocationMonitor(tripId, { notify: false });
     const res = await api.completeTrip(tripId);
     renderTrip(res.trip);
@@ -266,6 +287,12 @@ document.getElementById("btn-complete")?.addEventListener("click", async () => {
       clearInterval(monitorMetricsTimer);
       monitorMetricsTimer = null;
     }
+=======
+    const res = await api.completeTrip(tripId);
+    renderTrip(res.trip);
+    setupPanelToggles();
+    showAlert(alertEl, "Viagem finalizada com sucesso!", "success");
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
   } catch (err) {
     showAlert(alertEl, err.message);
   }

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 const CACHE_NAME = 'travelops-shell-v7';
+=======
+const CACHE_NAME = 'travelops-shell-v5';
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -6,14 +10,20 @@ const APP_SHELL = [
   '/viagens.html',
   '/trip-new.html',
   '/trip.html',
+<<<<<<< HEAD
   '/mapa-operacional.html',
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
   '/offline.html',
   '/manifest.json',
   '/css/styles.css',
   '/css/components.css',
   '/css/tables.css',
+<<<<<<< HEAD
   '/vendor/leaflet/leaflet.css',
   '/vendor/leaflet/leaflet.js',
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
   '/js/config.js',
   '/js/api.js',
   '/js/layout.js',
@@ -28,8 +38,11 @@ const APP_SHELL = [
   '/js/trip-render.js',
   '/js/trip-history.js',
   '/js/trip-task-edit.js',
+<<<<<<< HEAD
   '/js/location.js',
   '/js/mapa-operacional.js',
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
   '/assets/icone.png',
   '/assets/favicon.svg',
   '/assets/logo-mark.svg',

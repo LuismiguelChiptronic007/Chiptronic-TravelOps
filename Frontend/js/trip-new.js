@@ -1,8 +1,11 @@
 import { api, hideAlert, showAlert } from "./api.js";
 import { escapeHtml, mountShell } from "./layout.js";
 import { saveTripOffline } from "./db-offline.js";
+<<<<<<< HEAD
 import { getLocationConsent, setLocationConsent } from "./location.js";
 import { searchCities } from "./cidades.js";
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 
 const params = new URLSearchParams(location.search);
 const editTripId = Number(params.get("id")) || null;
@@ -17,9 +20,12 @@ const pageSubtitle = document.querySelector(".page-header p");
 const equipmentItems = document.getElementById("equipment-items");
 const equipmentName = document.getElementById("equipment-name");
 const addEquipmentBtn = document.getElementById("btn-add-equipment");
+<<<<<<< HEAD
 const originInput = document.getElementById("origin");
 const destinationInput = document.getElementById("destination");
 const cityDatalist = document.getElementById("city-options");
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 
 /** @type {Map<number, object>} */
 const selectedMembers = new Map();
@@ -28,6 +34,7 @@ let availableUsers = [];
 let currentTrip = null;
 let equipmentChecklist = [];
 
+<<<<<<< HEAD
 function renderCitySuggestions(input) {
   if (!input || !cityDatalist) return;
 
@@ -44,6 +51,8 @@ function renderCitySuggestions(input) {
   }
 }
 
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 function renderEquipmentChecklist() {
   if (!equipmentItems) return;
   if (!equipmentChecklist.length) {
@@ -185,10 +194,13 @@ async function init() {
         equipmentChecklist = currentTrip.checklist?.equipment_checklist || [];
         renderEquipmentChecklist();
         renderMemberCheckboxes();
+<<<<<<< HEAD
 
         const consent = getLocationConsent(editTripId);
         const toggle = document.getElementById("toggle-share-location");
         if (toggle) toggle.checked = Boolean(consent);
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
       }
     } catch (err) {
       showAlert(
@@ -217,8 +229,11 @@ function syncTripDates() {
 
 startDateInput?.addEventListener("change", syncTripDates);
 endDateInput?.addEventListener("change", syncTripDates);
+<<<<<<< HEAD
 originInput?.addEventListener("input", () => renderCitySuggestions(originInput));
 destinationInput?.addEventListener("input", () => renderCitySuggestions(destinationInput));
+=======
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
 
 membersCheckboxes?.addEventListener("change", (e) => {
   const checkbox = e.target.closest('input[type="checkbox"]');
@@ -276,6 +291,7 @@ form?.addEventListener("submit", async (e) => {
     const res = isEditing
       ? await api.updateTrip(editTripId, payload)
       : await api.createTrip(payload);
+<<<<<<< HEAD
 
     const tripId = res.trip.id;
     const toggle = document.getElementById("toggle-share-location");
@@ -285,6 +301,9 @@ form?.addEventListener("submit", async (e) => {
     }
 
     window.location.href = `trip.html?id=${tripId}`;
+=======
+    window.location.href = `trip.html?id=${res.trip.id}`;
+>>>>>>> 2d51f852f158caac4c1b360bbbba5710351d4f54
   } catch (err) {
     showAlert(alertEl, err.message);
     btn.disabled = false;
