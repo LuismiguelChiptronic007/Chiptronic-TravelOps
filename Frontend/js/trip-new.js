@@ -234,6 +234,7 @@ async function init() {
     }
   }
 
+  syncTripDates();
   await refreshAvailableUsers();
   renderMemberCheckboxes();
   setEditMode();
@@ -244,11 +245,14 @@ const endDateInput = document.getElementById("end_date");
 
 function syncTripDates() {
   const start = startDateInput?.value;
-  if (endDateInput && start) {
-    endDateInput.min = start;
-    if (endDateInput.value && endDateInput.value < start) {
-      endDateInput.value = start;
-    }
+  const end = endDateInput?.value;
+  if (!endDateInput) return;
+
+  endDateInput.min = start || "1900-01-01";
+  endDateInput.max = "2100-12-31";
+
+  if (start && end && end < start) {
+    endDateInput.value = start;
   }
 }
 
