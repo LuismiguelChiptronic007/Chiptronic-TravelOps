@@ -1,0 +1,24 @@
+name = "chiptronic-travelops"
+main = "src/index.js"
+compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./Frontend"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "travelops-db"
+database_id = "7d8961a1-e6a5-44d5-b222-1f56f51c1be2"
+migrations_dir = "migrations"
+
+# [[r2_buckets]]
+# binding = "FILES"
+# bucket_name = "travelops-files"
+# Descomente as linhas acima se quiser habilitar upload de arquivos (avatares, anexos, fotos de tarefa).
+# Requer habilitar o R2 no painel Cloudflare e criar o bucket com `npm run r2:create`.
+
+[vars]
+APP_NAME = "Chiptronic TravelOps"

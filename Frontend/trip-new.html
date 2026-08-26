@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nova viagem — Chiptronic TravelOps</title>
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+    <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+    <meta name="theme-color" content="#0a0a0a" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/tables.css" />
+    <script type="module" src="js/theme.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar" id="topbar"></header>
+      <main class="container">
+        <div class="page-header">
+          <div>
+            <h1>Nova viagem</h1>
+            <p>Registre uma viagem corporativa</p>
+          </div>
+          <a href="index.html" class="btn btn-secondary">Voltar</a>
+        </div>
+
+        <div class="panel">
+          <div class="panel-body">
+            <div id="alert" class="alert alert-error hidden"></div>
+            <form id="trip-form" class="form-grid">
+              <div class="form-grid two">
+                <div>
+                  <label for="origin">Origem</label>
+                  <input
+                    id="origin"
+                    list="city-options"
+                    required
+                    placeholder="Ex: São Paulo - SP"
+                    autocomplete="off"
+                  />
+                </div>
+                <div>
+                  <label for="destination">Destino</label>
+                  <input
+                    id="destination"
+                    list="city-options"
+                    required
+                    placeholder="Ex: Curitiba - PR"
+                    autocomplete="off"
+                  />
+                </div>
+              </div>
+              <datalist id="city-options"></datalist>
+              <div class="form-grid two">
+                <div>
+                  <label for="start_date">Data início</label>
+                  <input
+                    id="start_date"
+                    type="date"
+                    required
+                    min="1900-01-01"
+                    max="2100-12-31"
+                  />
+                </div>
+                <div>
+                  <label for="end_date">Data término</label>
+                  <input
+                    id="end_date"
+                    type="date"
+                    required
+                    min="1900-01-01"
+                    max="2100-12-31"
+                  />
+                </div>
+              </div>
+              <div class="form-grid two">
+                <div>
+                  <label for="sector">Setor responsável</label>
+                  <select id="sector" required></select>
+                </div>
+                <div>
+                  <label for="priority">Prioridade</label>
+                  <select id="priority">
+                    <option value="normal">Normal</option>
+                    <option value="high">Alta</option>
+                    <option value="low">Baixa</option>
+                  </select>
+                </div>
+              </div>
+              <p class="field-hint">O status é calculado automaticamente pelas datas.</p>
+              <div>
+                <label for="reason">Motivo da viagem</label>
+                <textarea
+                  id="reason"
+                  required
+                  placeholder="Descreva o objetivo da viagem…"
+                ></textarea>
+              </div>
+
+              <div class="equipment-checklist">
+                <div class="section-heading">
+                  <div>
+                    <label>Equipamentos levados</label>
+                    <p class="field-hint mb-1">
+                      Adicione os equipamentos que serão levados e marque os conferidos.
+                    </p>
+                  </div>
+                </div>
+                <div id="equipment-items" class="equipment-items">
+                  <div class="empty-state">Nenhum equipamento adicionado</div>
+                </div>
+                <div class="equipment-add-row">
+                  <input id="equipment-name" placeholder="Ex: Notebook, multímetro, ferramentas" maxlength="120" />
+                  <button type="button" class="btn btn-secondary" id="btn-add-equipment">Adicionar equipamento</button>
+                </div>
+              </div>
+
+              <div class="members-section">
+                <label>Integrantes da viagem</label>
+
+                <p class="field-hint mb-1">
+                  Marque os usuários que participarão da viagem.
+                </p>
+                <div id="members-checkboxes" class="members-checkboxes">
+                  <div class="empty-state">Carregando integrantes…</div>
+                </div>
+              </div>
+
+              <div class="location-consent-card" id="location-consent-card">
+                <div class="section-heading" style="margin-bottom:0;">
+                  <div>
+                    <label style="display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;">
+                      <label class="switch" style="margin:0;">
+                        <input type="checkbox" id="toggle-share-location" />
+                        <span class="slider round"></span>
+                      </label>
+                      <div>
+                        <div style="font-weight:600;font-size:14px;">Compartilhar localização durante esta viagem</div>
+                        <p class="field-hint mb-1" style="margin:4px 0 0;">
+                          Ao ativar, sua posição será enviada periodicamente ao Mapa Operacional enquanto a viagem estiver em andamento.
+                          Você pode desativar a qualquer momento. Dados são coletados apenas durante o período da viagem e excluídos quando ela é encerrada.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="btn-submit">
+                  Criar viagem
+                </button>
+                <a href="index.html" class="btn btn-secondary">Cancelar</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script src="js/config.js"></script>
+    <script type="module" src="js/trip-new.js"></script>
+  </body>
+</html>
