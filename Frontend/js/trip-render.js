@@ -127,19 +127,13 @@ function renderMembers(t) {
     return;
   }
   el.innerHTML = members
-    .map(
-      (m) => `
-    <div class="member-chip static">
-      <div class="info">
-        <strong>${escapeHtml(m.full_name)}</strong>
-        <small>
-          Setor: ${escapeHtml(formatSectorName(m.sector || "—"))}
-          · Responsável: ${escapeHtml(m.manager_name || "Não informado")}
-          ${m.position_title ? ` · ${escapeHtml(m.position_title)}` : ""}
-        </small>
-      </div>
-    </div>`,
-    )
+    .map((m) => {
+      const details = `Setor: ${formatSectorName(m.sector || "—")} · Responsável: ${m.manager_name || "Não informado"}${m.position_title ? ` · ${m.position_title}` : ""}`;
+      return `
+    <div class="member-chip static" title="${escapeHtml(details)}">
+      <span class="member-chip-name">${escapeHtml(m.full_name)}</span>
+    </div>`;
+    })
     .join("");
 }
 
