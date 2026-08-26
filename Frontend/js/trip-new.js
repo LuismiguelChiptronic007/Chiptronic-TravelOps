@@ -3,7 +3,7 @@ import { escapeHtml, mountShell } from "./layout.js";
 import { saveTripOffline } from "./db-offline.js";
 
 import { getLocationConsent, setLocationConsent } from "./location.js";
-import { searchCities } from "./cidades.js";
+import { findCity, searchCities } from "./cidades.js";
 
 const params = new URLSearchParams(location.search);
 const editTripId = Number(params.get("id")) || null;
@@ -261,9 +261,22 @@ form?.addEventListener("submit", async (e) => {
   hideAlert(alertEl);
   btn.disabled = true;
 
+  const origin = findCity(originInput?.value);
+  const destination = findCity(destinationInput?.value);
+  if (!origin || !destination) {
+    showAlert(
+      alertEl,
+      "Informe origem e destino usando uma cidade válida no formato Cidade - UF.",
+    );
+    btn.disabled = false;
+    if (!origin) originInput?.focus();
+    else destinationInput?.focus();
+    return;
+  }
+
   const payload = {
-    origin: document.getElementById("origin").value.trim(),
-    destination: document.getElementById("destination").value.trim(),
+    origin,
+    destination,
     start_date: document.getElementById("start_date").value,
     end_date: document.getElementById("end_date").value,
     reason: document.getElementById("reason").value.trim(),

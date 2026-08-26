@@ -222,6 +222,27 @@ export function formatCityName(name, state) {
   return `${name} - ${state}`;
 }
 
+function normalizeCity(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function findCity(value) {
+  const normalized = normalizeCity(value);
+  if (!normalized) return null;
+
+  for (const [name, state] of BR_CITIES) {
+    const city = formatCityName(name, state);
+    if (normalizeCity(city) === normalized) return city;
+  }
+
+  return null;
+}
+
 export function searchCities(query, max = 8) {
   if (!query) return [];
   const q = String(query).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();

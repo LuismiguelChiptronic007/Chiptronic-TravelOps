@@ -27,6 +27,8 @@ function statusDotClass(key) {
       return "status-sem_atividade";
     case "ATENCAO":
       return "status-atencao";
+    case "CONCLUIDA":
+      return "status-concluida";
     default:
       return "status-sem_atividade";
   }
@@ -42,6 +44,8 @@ function statusBadgeColor(key) {
       return "#2563eb";
     case "ATENCAO":
       return "#dc2626";
+    case "CONCLUIDA":
+      return "#64748b";
     default:
       return "#64748b";
   }
@@ -227,7 +231,8 @@ function getFilteredIntegrantes(state) {
     ATENCAO: 0,
     PENDENTE: 1,
     EM_ANDAMENTO: 2,
-    SEM_ATIVIDADE: 3,
+    CONCLUIDA: 3,
+    SEM_ATIVIDADE: 4,
   };
   list.sort((a, b) => {
     const ka = orderKey[a.status?.key] ?? 9;

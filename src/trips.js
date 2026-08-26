@@ -31,6 +31,16 @@ async function geocodeCity(city) {
     if (!response.ok) return null;
     const results = await response.json();
     const first = Array.isArray(results) ? results[0] : null;
+    const address = first?.address || {};
+    const placeTypes = new Set(["city", "town", "village", "municipality"]);
+    const isCityResult =
+      first?.class === "place" && placeTypes.has(first?.type);
+    const isAdministrativeCity =
+      first?.class === "boundary" &&
+      first?.type === "administrative" &&
+      Boolean(address.city || address.town || address.village || address.municipality);
+    if (!isCityResult && !isAdministrativeCity) return null;
+
     const latitude = Number(first?.lat);
     const longitude = Number(first?.lon);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
@@ -278,6 +288,14 @@ trips.post("/", async (c) => {
 
   const status = computeStatus({ start_date, end_date, status: "planned" });
   const coordinates = await geocodeTripCities(origin, destination);
+  if (
+    coordinates.origin_lat === null ||
+    coordinates.origin_lng === null ||
+    coordinates.destination_lat === null ||
+    coordinates.destination_lng === null
+  ) {
+    return err("Origem e destino devem ser cidades válidas no formato Cidade - UF.");
+  }
   const result = await c.env.DB.prepare(
     `INSERT INTO trips (user_id, origin, destination, start_date, end_date, reason, sector, status, priority,
                         origin_lat, origin_lng, destination_lat, destination_lng)
@@ -436,7 +454,12 @@ trips.put("/:id", async (c) => {
   const status = computeStatus({ start_date, end_date, status: trip.status });
   const citiesChanged =
     origin !== trip.origin || destination !== trip.destination;
-  const coordinates = citiesChanged
+  const hasMissingCoordinates =
+    trip.origin_lat == null ||
+    trip.origin_lng == null ||
+    trip.destination_lat == null ||
+    trip.destination_lng == null;
+  const coordinates = citiesChanged || hasMissingCoordinates
     ? await geocodeTripCities(origin, destination)
     : {
         origin_lat: trip.origin_lat ?? null,
@@ -444,6 +467,14 @@ trips.put("/:id", async (c) => {
         destination_lat: trip.destination_lat ?? null,
         destination_lng: trip.destination_lng ?? null,
       };
+  if (
+    coordinates.origin_lat === null ||
+    coordinates.origin_lng === null ||
+    coordinates.destination_lat === null ||
+    coordinates.destination_lng === null
+  ) {
+    return err("Origem e destino devem ser cidades válidas no formato Cidade - UF.");
+  }
   const changes = {};
   for (const [field, value] of Object.entries({
     origin,

@@ -35,10 +35,6 @@ function taskMemberStatus(task, nowMin) {
     return { key: "SEM_ATIVIDADE", label: "Sem atividade" };
   }
 
-  if (hasPending && nowMin >= end) {
-    return { key: "ATENCAO", label: "Atenção" };
-  }
-
   if (nowMin >= start && nowMin <= end) {
     return { key: "EM_ANDAMENTO", label: "Em andamento" };
   }
@@ -48,10 +44,10 @@ function taskMemberStatus(task, nowMin) {
   }
 
   if (hasPending) {
-    return { key: "PENDENTE", label: "Pendência" };
+    return { key: "ATENCAO", label: "Atenção" };
   }
 
-  return { key: "SEM_ATIVIDADE", label: "Sem atividade" };
+  return { key: "CONCLUIDA", label: "Concluída" };
 }
 
 function memberOverallStatus(tasksOfDay, nowMin) {
@@ -63,6 +59,8 @@ function memberOverallStatus(tasksOfDay, nowMin) {
     return { key: "EM_ANDAMENTO", badge: "🟢", label: "Em andamento" };
   if (statuses.includes("PENDENTE"))
     return { key: "PENDENTE", badge: "🟡", label: "Pendência" };
+  if (statuses.includes("CONCLUIDA"))
+    return { key: "CONCLUIDA", badge: "⚪", label: "Concluída" };
   return { key: "SEM_ATIVIDADE", badge: "🔵", label: "Sem atividade" };
 }
 
@@ -400,7 +398,7 @@ async function handleMapaEstado(c) {
       ).length;
       const concluidos = memberTodayTasks.filter((t) => {
         const st = taskMemberStatus(t, nowMin).key;
-        return st === "SEM_ATIVIDADE" && !String(t.pending_items || "").trim();
+          return st === "CONCLUIDA";
       }).length;
 
       if (overallStatus.key === "PENDENTE") state.alertas.pendentes++;
