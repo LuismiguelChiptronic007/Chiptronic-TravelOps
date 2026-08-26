@@ -186,6 +186,11 @@ export const api = {
         method: "POST",
         json: { name },
       }),
+    update: (id, name) =>
+      request(`/configuracoes/lider/projetos/${id}`, {
+        method: "PUT",
+        json: { name },
+      }),
     remove: (id) =>
       request(`/configuracoes/lider/projetos/${id}`, { method: "DELETE" }),
     fields: {

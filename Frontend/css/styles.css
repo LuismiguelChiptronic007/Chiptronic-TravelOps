@@ -1239,9 +1239,9 @@ html[data-theme='dark'] {
   --border-strong: #3a4049;
   --border-subtle: #22262c;
   --text: #f1f5f9;
-  --text-2: #cbd5e1;
-  --muted: #94a3b8;
-  --muted-2: #64748b;
+  --text-2: #ffffff;
+  --muted: #ffffff;
+  --muted-2: #ffffff;
 
   --brand: #f8fafc;
   --brand-600: #e2e8f0;
@@ -1332,6 +1332,20 @@ html[data-theme='dark'] textarea {
   background: rgba(22, 26, 31, 0.95);
   color: var(--text);
   border-color: var(--border-strong);
+}
+html[data-theme='dark'] input::placeholder,
+html[data-theme='dark'] textarea::placeholder {
+  color: #ffffff;
+  opacity: 1;
+}
+html[data-theme='dark'] .text-muted,
+html[data-theme='dark'] .field-hint,
+html[data-theme='dark'] .form-grid small,
+html[data-theme='dark'] .form-grid p {
+  color: #ffffff;
+}
+html[data-theme='dark'] a:not(.btn) {
+  color: #ffffff;
 }
 html[data-theme='dark'] input:hover,
 html[data-theme='dark'] select:hover,

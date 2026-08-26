@@ -92,15 +92,32 @@ async function findOverlappingMemberIds(db, memberIds, startDate, endDate, exclu
 
 trips.get("/", async (c) => {
   const userId = c.get("userId");
+  const user = c.get("user");
+  const ledSector = getLedSector(user);
   await syncUserTripStatuses(c.env.DB, userId);
 
   const status = c.req.query("status") || "";
   const q = c.req.query("q") || "";
 
   let sql = `SELECT DISTINCT t.* FROM trips t
+             INNER JOIN users trip_owner ON trip_owner.id = t.user_id
              LEFT JOIN trip_members tm ON tm.trip_id = t.id
-             WHERE t.user_id = ? OR tm.user_id = ?`;
+             WHERE (t.user_id = ? OR tm.user_id = ?`;
   const binds = [userId, userId];
+  if (ledSector) {
+    sql += ` OR TRIM(t.sector) = TRIM(?) COLLATE NOCASE
+             OR TRIM(trip_owner.sector) = TRIM(?) COLLATE NOCASE
+             OR trip_owner.manager_id = ?
+             OR EXISTS (
+               SELECT 1
+               FROM trip_members team_member
+               INNER JOIN users team_user ON team_user.id = team_member.user_id
+               WHERE team_member.trip_id = t.id
+                 AND TRIM(team_user.sector) = TRIM(?) COLLATE NOCASE
+             )`;
+    binds.push(ledSector, ledSector, userId, ledSector);
+  }
+  sql += ")";
 
   if (status && status !== "all") {
     sql += " AND t.status = ?";

@@ -1000,7 +1000,7 @@ function renderTripDays(t) {
       renderTasks(t);
       updateTaskAvailability(t, selectedTripDate);
       document.getElementById("task-form-title").textContent =
-        `Nova tarefa — ${formatDateBR(selectedTripDate)}`;
+        `Trabalhos do dia — ${formatDateBR(selectedTripDate)}`;
       prepareTaskForm(t, { clearDate: false });
     });
   });
@@ -1393,8 +1393,8 @@ export function renderTrip(t) {
   loadProjects({ trip_id: t.id, sector: t.sector });
 
   document.getElementById("task-form-title").textContent = selectedTripDate
-    ? `Nova tarefa — ${formatDateBR(selectedTripDate)}`
-    : "Nova tarefa";
+    ? `Trabalhos do dia — ${formatDateBR(selectedTripDate)}`
+    : "Trabalhos do dia";
 
   const completeBtn = document.getElementById("btn-complete");
   if (completeBtn) {

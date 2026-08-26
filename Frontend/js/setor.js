@@ -17,6 +17,21 @@ const sectorFilters = {
   to: '',
 };
 
+function setupSectorPanelToggles() {
+  document.querySelectorAll('[data-sector-panel-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const key = button.dataset.sectorPanelToggle;
+      const content = document.querySelector(`[data-sector-panel-content="${key}"]`);
+      if (!content) return;
+      const collapsed = content.classList.toggle('collapsed');
+      button.classList.toggle('collapsed', collapsed);
+      button.setAttribute('aria-expanded', String(!collapsed));
+      button.setAttribute('aria-label', collapsed ? 'Expandir painel' : 'Minimizar painel');
+      button.setAttribute('title', collapsed ? 'Expandir painel' : 'Minimizar painel');
+    });
+  });
+}
+
 function normalizeFilterText(value) {
   return String(value || '').trim().toLowerCase();
 }
@@ -204,6 +219,13 @@ function renderRankingList(ranking) {
 function renderCharts(data) {
   if (!window.Chart) return;
 
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const chartText = dark ? '#ffffff' : '#374151';
+  const chartGrid = dark ? 'rgba(255,255,255,0.22)' : 'rgba(55,65,81,0.14)';
+  Chart.defaults.color = chartText;
+  Chart.defaults.borderColor = chartGrid;
+  Chart.defaults.plugins.legend.labels.color = chartText;
+
   destroyChart('ranking');
   const rankCtx = document.getElementById('chart-ranking');
   const ranking = (data.ranking || []).slice(0, 6);
@@ -215,7 +237,7 @@ function renderCharts(data) {
         datasets: [{
           label: 'Viagens',
           data: ranking.map((r) => r.trip_count),
-          backgroundColor: '#0b5fff',
+          backgroundColor: dark ? '#60a5fa' : '#0b5fff',
           borderRadius: 6,
         }],
       },
@@ -224,7 +246,7 @@ function renderCharts(data) {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+        scales: { x: { beginAtZero: true, ticks: { stepSize: 1, color: chartText }, grid: { color: chartGrid } }, y: { ticks: { color: chartText }, grid: { color: chartGrid } } },
       },
     });
   }
@@ -243,7 +265,7 @@ function renderCharts(data) {
         datasets: [{
           label: 'Viagens',
           data: months.map((m) => m.count),
-          backgroundColor: '#2563eb',
+          backgroundColor: dark ? '#60a5fa' : '#2563eb',
           borderRadius: 6,
         }],
       },
@@ -251,7 +273,7 @@ function renderCharts(data) {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1, color: chartText }, grid: { color: chartGrid } }, x: { ticks: { color: chartText }, grid: { color: chartGrid } } },
       },
     });
   }
@@ -273,7 +295,9 @@ function renderCharts(data) {
           labels: works.map((w) => w.name),
           datasets: [{
             data: works.map((w) => w.count),
-            backgroundColor: works.map((_, i) => WORK_COLORS[i % WORK_COLORS.length]),
+            backgroundColor: works.map((_, i) => dark
+              ? ['#60a5fa', '#22c55e', '#f59e0b', '#f87171', '#c084fc', '#22d3ee', '#ffffff'][i % 7]
+              : WORK_COLORS[i % WORK_COLORS.length]),
             borderWidth: 2,
             borderColor: '#fff',
           }],
@@ -281,7 +305,7 @@ function renderCharts(data) {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom' } },
+          plugins: { legend: { position: 'bottom', labels: { color: chartText } } },
         },
       });
     }
@@ -294,9 +318,9 @@ function renderCharts(data) {
       type: 'bar',
       data: {
         labels: data.team.map((member) => member.user.full_name.split(' ')[0]),
-        datasets: [{ label: 'Tarefas', data: data.team.map((member) => member.tasks?.length || 0), backgroundColor: '#f59e0b', borderRadius: 6 }],
+        datasets: [{ label: 'Tarefas', data: data.team.map((member) => member.tasks?.length || 0), backgroundColor: dark ? '#fbbf24' : '#f59e0b', borderRadius: 6 }],
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1, color: chartText }, grid: { color: chartGrid } }, x: { ticks: { color: chartText }, grid: { color: chartGrid } } } },
     });
   }
 
@@ -312,9 +336,9 @@ function renderCharts(data) {
           const total = member.tasks?.length || 0;
           const todayCount = (member.tasks || []).filter((task) => task.task_date === today).length;
           return total ? Math.round((todayCount / total) * 100) : 0;
-        }), backgroundColor: '#10b981', borderRadius: 6 }],
+        }), backgroundColor: dark ? '#34d399' : '#10b981', borderRadius: 6 }],
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: (value) => `${value}%` } } } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100, ticks: { color: chartText, callback: (value) => `${value}%` }, grid: { color: chartGrid } }, x: { ticks: { color: chartText }, grid: { color: chartGrid } } } },
     });
   }
 }
@@ -420,6 +444,7 @@ function renderMemberCard(member, filters = sectorFilters, preFiltered) {
 async function load() {
   const user = await mountShell({ active: 'setor' });
   if (!user) return;
+  setupSectorPanelToggles();
 
   if (!user.is_sector_leader || !user.led_sector) {
     showToast({ type: 'warning', title: 'Acesso negado', msg: 'Você não tem permissão para acessar o dashboard do setor.', duration: 2800 });

@@ -87,6 +87,7 @@ async function loadLeaderProjects() {
             <span>${escapeHtml(p.name)}</span>
             <div>
               <button type="button" class="btn btn-secondary btn-sm" data-project-fields="${p.id}">Campos</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-edit-project="${p.id}" data-project-name="${escapeHtml(p.name)}">Editar</button>
               <button type="button" class="btn btn-danger btn-sm" data-remove-project="${p.id}">Remover</button>
             </div>
           </div>
@@ -158,6 +159,16 @@ function setupLeaderListeners() {
   const addProjectBtn = document.getElementById('btn-add-project');
   const projectInput = document.getElementById('new-project-name');
   const projectsList = document.getElementById('projects-list');
+
+  projectsList?.addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('[data-edit-project]');
+    if (!editBtn) return;
+    await openEditNameModal({
+      kind: 'project',
+      id: editBtn.dataset.editProject,
+      name: editBtn.dataset.projectName || '',
+    });
+  });
 
   const addProject = async () => {
     const name = projectInput?.value?.trim();
@@ -231,14 +242,11 @@ function setupLeaderListeners() {
     const editBtn = e.target.closest('[data-edit-work-type]');
     if (editBtn) {
       const currentName = editBtn.dataset.workTypeName || '';
-      const newName = window.prompt('Nome do tipo de trabalho:', currentName)?.trim();
-      if (!newName || newName === currentName) return;
-      try {
-        await api.leaderWorkTypes.update(editBtn.dataset.editWorkType, newName);
-        await loadLeaderWorkTypes();
-      } catch (err) {
-        alert(err.message || 'Erro ao editar tipo de trabalho.');
-      }
+      await openEditNameModal({
+        kind: 'work-type',
+        id: editBtn.dataset.editWorkType,
+        name: currentName,
+      });
       return;
     }
 
@@ -386,10 +394,43 @@ function setupLeaderListeners() {
       if (modal) modal.classList.add('hidden');
     });
   });
+
+  const editModal = document.getElementById('edit-name-modal');
+  const editInput = document.getElementById('edit-name-input');
+  const closeEditNameModal = () => editModal?.classList.add('hidden');
+  document.getElementById('btn-close-edit-name')?.addEventListener('click', closeEditNameModal);
+  document.getElementById('btn-cancel-edit-name')?.addEventListener('click', closeEditNameModal);
+  document.getElementById('btn-save-edit-name')?.addEventListener('click', async () => {
+    const name = editInput?.value?.trim();
+    if (!name || !editingName) return;
+    try {
+      if (editingName.kind === 'project') await api.leaderProjects.update(editingName.id, name);
+      else await api.leaderWorkTypes.update(editingName.id, name);
+      closeEditNameModal();
+      await loadLeaderProjects();
+      await loadLeaderWorkTypes();
+    } catch (err) {
+      alert(err.message || 'Erro ao editar.');
+    }
+  });
 }
 
 let currentProjectFieldsId = null;
 let currentWorkTypeFieldsName = null;
+let editingName = null;
+
+async function openEditNameModal({ kind, id, name }) {
+  const modal = document.getElementById('edit-name-modal');
+  const input = document.getElementById('edit-name-input');
+  const title = document.getElementById('edit-name-modal-title');
+  if (!modal || !input || !title) return;
+  editingName = { kind, id };
+  title.textContent = kind === 'project' ? 'Editar projeto' : 'Editar tipo de trabalho';
+  input.value = name;
+  modal.classList.remove('hidden');
+  input.focus();
+  input.select();
+}
 
 async function openProjectFieldsModal(projectId) {
   currentProjectFieldsId = projectId;

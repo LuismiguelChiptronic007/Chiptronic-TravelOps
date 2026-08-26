@@ -58,6 +58,13 @@ function renderRecentTrips(trips) {
 function renderCharts(analytics) {
   if (!window.Chart || !analytics) return;
 
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const chartText = dark ? '#ffffff' : '#374151';
+  const chartGrid = dark ? 'rgba(255,255,255,0.22)' : 'rgba(55,65,81,0.14)';
+  Chart.defaults.color = chartText;
+  Chart.defaults.borderColor = chartGrid;
+  Chart.defaults.plugins.legend.labels.color = chartText;
+
   const status = analytics.status_counts || {};
   destroyChart('status');
   const statusCtx = document.getElementById('chart-status');
@@ -70,7 +77,9 @@ function renderCharts(analytics) {
         labels,
         datasets: [{
           data,
-          backgroundColor: Object.keys(STATUS_LABELS).map((k) => STATUS_COLORS[k]),
+          backgroundColor: Object.keys(STATUS_LABELS).map((k) => dark
+            ? ({ planned: '#94a3b8', in_progress: '#22c55e', awaiting_report: '#f59e0b', completed: '#60a5fa' }[k])
+            : STATUS_COLORS[k]),
           borderWidth: 2,
           borderColor: '#fff',
         }],
@@ -78,7 +87,7 @@ function renderCharts(analytics) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom' } },
+        plugins: { legend: { position: 'bottom', labels: { color: chartText } } },
       },
     });
   }
@@ -97,7 +106,7 @@ function renderCharts(analytics) {
         datasets: [{
           label: 'Viagens',
           data: months.map((m) => m.count),
-          backgroundColor: '#0f172a',
+          backgroundColor: dark ? '#f8fafc' : '#0f172a',
           borderRadius: 6,
         }],
       },
@@ -105,7 +114,7 @@ function renderCharts(analytics) {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1, color: chartText }, grid: { color: chartGrid } }, x: { ticks: { color: chartText }, grid: { color: chartGrid } } },
       },
     });
   }
@@ -121,7 +130,7 @@ function renderCharts(analytics) {
         datasets: [{
           label: 'Viagens',
           data: dests.map((d) => d.count),
-          backgroundColor: '#2563eb',
+          backgroundColor: dark ? '#60a5fa' : '#2563eb',
           borderRadius: 6,
         }],
       },
@@ -130,7 +139,7 @@ function renderCharts(analytics) {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+        scales: { x: { beginAtZero: true, ticks: { stepSize: 1, color: chartText }, grid: { color: chartGrid } }, y: { ticks: { color: chartText }, grid: { color: chartGrid } } },
       },
     });
   }
@@ -152,7 +161,9 @@ function renderCharts(analytics) {
           labels: works.map((w) => w.name),
           datasets: [{
             data: works.map((w) => w.count),
-            backgroundColor: works.map((_, i) => WORK_COLORS[i % WORK_COLORS.length]),
+            backgroundColor: works.map((_, i) => dark
+              ? ['#60a5fa', '#22c55e', '#f59e0b', '#f87171', '#c084fc', '#22d3ee', '#ffffff'][i % 7]
+              : WORK_COLORS[i % WORK_COLORS.length]),
             borderWidth: 2,
             borderColor: '#fff',
           }],
@@ -160,7 +171,7 @@ function renderCharts(analytics) {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom' } },
+          plugins: { legend: { position: 'bottom', labels: { color: chartText } } },
         },
       });
     }

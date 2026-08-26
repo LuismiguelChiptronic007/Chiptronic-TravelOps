@@ -226,6 +226,20 @@ html[data-theme="dark"] .auth-page::after {
   overflow-wrap: anywhere;
 }
 
+.equipment-status {
+  margin-left: auto;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.equipment-status.is-carried {
+  color: var(--success-600);
+}
+
+.equipment-status.is-pending {
+  color: var(--warning);
+}
+
 .equipment-item .icon-btn {
   border: 0;
   background: transparent;

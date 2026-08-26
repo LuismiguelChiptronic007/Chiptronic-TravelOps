@@ -1,6 +1,7 @@
 import { api, hideAlert, showAlert } from "./api.js";
 import { escapeHtml, mountShell } from "./layout.js";
 import { saveTripOffline } from "./db-offline.js";
+import { confirmDialog } from "./ui.js";
 
 import { setLocationConsent } from "./location.js";
 import { findCity, searchCities } from "./cidades.js";
@@ -90,18 +91,28 @@ function renderEquipmentChecklist() {
     return;
   }
   equipmentItems.innerHTML = equipmentChecklist.map((item, index) => `
-    <label class="equipment-item">
-      <input type="checkbox" data-equipment-index="${index}" ${item.carried ? "checked" : ""}>
+    <div class="equipment-item">
       <span>${escapeHtml(item.name)}</span>
+      <strong class="equipment-status ${item.carried ? "is-carried" : "is-pending"}">
+        ${item.carried ? "Carregado" : "Pendente"}
+      </strong>
       <button type="button" class="icon-btn" data-remove-equipment="${index}" aria-label="Remover equipamento" title="Remover equipamento">×</button>
-    </label>
+    </div>
   `).join("");
 }
 
-function addEquipment() {
+async function addEquipment() {
   const name = equipmentName?.value.trim();
   if (!name) return;
-  equipmentChecklist.push({ name, carried: false });
+
+  const carried = await confirmDialog({
+    title: "Equipamento já carregado?",
+    message: `O equipamento "${name}" já foi carregado para esta viagem?`,
+    confirmLabel: "Sim, carregado",
+    cancelLabel: "Não, pendente",
+    tone: "confirm",
+  });
+  equipmentChecklist.push({ name, carried });
   equipmentName.value = "";
   renderEquipmentChecklist();
   equipmentName.focus();
@@ -281,11 +292,6 @@ equipmentName?.addEventListener("keydown", (e) => {
     e.preventDefault();
     addEquipment();
   }
-});
-equipmentItems?.addEventListener("change", (e) => {
-  const checkbox = e.target.closest("[data-equipment-index]");
-  if (!checkbox) return;
-  equipmentChecklist[Number(checkbox.dataset.equipmentIndex)].carried = checkbox.checked;
 });
 equipmentItems?.addEventListener("click", (e) => {
   const remove = e.target.closest("[data-remove-equipment]");

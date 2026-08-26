@@ -65,7 +65,7 @@ export function isLeaderPosition(position) {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
-  return p === 'lider';
+  return p === 'lider' || p.startsWith('lider ' ) || p.startsWith('lider-');
 }
 
 export function getLedSector(userOrEmail) {

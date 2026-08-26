@@ -101,13 +101,9 @@ function updateLocationMonitorStatus(trip, extra = {}) {
 
 function setupLocationMonitor(trip) {
   if (!trip) return;
-  const panelEl = document.getElementById('location-monitor-panel');
-  if (!panelEl) return;
   if (trip.status !== 'in_progress') {
-    panelEl.classList.add('hidden-fields');
     return;
   }
-  panelEl.classList.remove('hidden-fields');
 
   setLocationConsent(tripId, true);
   const consent = true;

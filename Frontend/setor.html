@@ -92,8 +92,11 @@
       </div>
 
       <div class="panel" style="margin-top: 1rem;">
-        <div class="panel-header"><h2>Filtros</h2></div>
-        <div class="panel-body">
+        <div class="panel-header">
+          <h2>Filtros</h2>
+          <button type="button" class="panel-toggle" data-sector-panel-toggle="sector-filters" aria-expanded="true" aria-label="Minimizar filtros" title="Minimizar filtros">▼</button>
+        </div>
+        <div class="panel-body panel-content" data-sector-panel-content="sector-filters">
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; align-items:end;">
             <div>
               <label for="filter-member">Integrante</label>
@@ -143,8 +146,11 @@
       </div>
 
       <div class="panel" style="margin-top: 1rem;">
-        <div class="panel-header"><h2>Atividades da equipe</h2></div>
-        <div class="panel-body">
+        <div class="panel-header">
+          <h2>Atividades da equipe</h2>
+          <button type="button" class="panel-toggle" data-sector-panel-toggle="team-activities" aria-expanded="true" aria-label="Minimizar atividades da equipe" title="Minimizar atividades da equipe">▼</button>
+        </div>
+        <div class="panel-body panel-content" data-sector-panel-content="team-activities">
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; align-items:end;">
             <div><label for="activity-member">Pessoa</label><select id="activity-member"><option value="">Todos</option></select></div>
             <div><label for="activity-from">De</label><input id="activity-from" type="date" /></div>
@@ -163,6 +169,6 @@
   </div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="js/config.js"></script>
-  <script type="module" src="js/setor.js"></script>
+  <script type="module" src="js/setor.js?v=3"></script>
 </body>
 </html>

@@ -70,6 +70,32 @@ configuracoesLider.delete("/projetos/:id", async (c) => {
   return json({ success: true });
 });
 
+configuracoesLider.put("/projetos/:id", async (c) => {
+  const user = c.get("user");
+  if (!isSectorLeader(user)) {
+    return err("Apenas líderes de setor podem editar projetos.", 403);
+  }
+
+  const id = Number(c.req.param("id"));
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return err("JSON inválido.", 400);
+  }
+  const name = String(body.name || "").trim();
+  if (!id || !name) return err("Informe um nome válido para o projeto.", 400);
+
+  const sector = getLedSector(user) || user.sector;
+  const result = await c.env.DB.prepare(
+    "UPDATE leader_projects SET name = ? WHERE id = ? AND sector = ?",
+  )
+    .bind(name, id, sector)
+    .run();
+  if (!result.meta.changes) return err("Projeto não encontrado.", 404);
+  return json({ success: true });
+});
+
 configuracoesLider.get("/tipos-trabalho", async (c) => {
   const user = c.get("user");
   const sector = getLedSector(user) || user?.sector;
