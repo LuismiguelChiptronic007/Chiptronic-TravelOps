@@ -305,7 +305,6 @@ function renderLista(state) {
 
 const markersByIntegrante = new Map();
 
-<<<<<<< HEAD
 function spreadOverlappingCoordinates(items) {
   const groups = new Map();
   const coordinatesById = new Map();
@@ -344,8 +343,6 @@ function spreadOverlappingCoordinates(items) {
   return coordinatesById;
 }
 
-=======
->>>>>>> 8c9d75601380a49d4874ffccdd2dfb1c364a8bac
 function getIntegranteCoordinates(integrante) {
   if (
     integrante.location &&
@@ -421,16 +418,10 @@ function renderMarkers(state) {
 
   const list = getFilteredIntegrantes(state);
   const validLocations = renderRotas(state);
-<<<<<<< HEAD
   const markerCoordinates = spreadOverlappingCoordinates(list);
 
   for (const i of list) {
     const coordinates = markerCoordinates.get(i.integrante_id);
-=======
-
-  for (const i of list) {
-    const coordinates = getIntegranteCoordinates(i);
->>>>>>> 8c9d75601380a49d4874ffccdd2dfb1c364a8bac
     if (!coordinates) continue;
 
     const marker = L.marker(coordinates, {
