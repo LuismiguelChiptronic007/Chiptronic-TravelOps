@@ -119,7 +119,7 @@ function ensureShellElements() {
           <a href="index.html" class="sidebar-brand" id="sidebar-brand-link" aria-label="Chiptronic TravelOps">
             <img src="assets/logo-mark.svg" alt="Chiptronic TravelOps" class="sidebar-logo-img" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%230a0a0a%22/><text x=%2224%22 y=%2230%22 font-family=%22Inter, sans-serif%22 font-size=%2220%22 font-weight=%22800%22 fill=%22white%22 text-anchor=%22middle%22>C</text></svg>';">
           </a>
-          <button type="button" class="sidebar-collapse-toggle" id="sidebar-collapse-toggle" aria-label="Recolher menu" aria-controls="sidebar" data-tooltip="Recolher menu">
+          <button type="button" class="sidebar-collapse-toggle" id="sidebar-collapse-toggle" aria-label="Recolher menu" aria-controls="sidebar">
             <svg class="sidebar-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
           </button>
         </div>
@@ -434,7 +434,6 @@ function applySidebarCollapsedState(collapsed) {
   sidebar.classList.toggle('is-collapsed', effectiveCollapsed);
   toggle.setAttribute('aria-expanded', String(!effectiveCollapsed));
   toggle.setAttribute('aria-label', effectiveCollapsed ? 'Expandir menu' : 'Recolher menu');
-  toggle.setAttribute('data-tooltip', effectiveCollapsed ? 'Expandir menu' : 'Recolher menu');
 }
 
 function handleSidebarResize() {
