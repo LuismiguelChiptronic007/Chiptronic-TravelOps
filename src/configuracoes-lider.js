@@ -120,6 +120,54 @@ configuracoesLider.post("/tipos-trabalho", async (c) => {
   return json({ success: true, id: result.meta.last_row_id });
 });
 
+configuracoesLider.put("/tipos-trabalho/:id", async (c) => {
+  const user = c.get("user");
+  if (!isSectorLeader(user)) {
+    return err("Apenas líderes de setor podem editar tipos de trabalho.", 403);
+  }
+
+  const id = Number(c.req.param("id"));
+  let body;
+  try {
+    body = await c.req.json();
+  } catch {
+    return err("JSON inválido.", 400);
+  }
+
+  const name = String(body.name || "").trim();
+  if (!id || !name) return err("Informe um nome válido para o tipo de trabalho.", 400);
+
+  const sector = getLedSector(user) || user.sector;
+  const current = await c.env.DB.prepare(
+    "SELECT name FROM leader_work_types WHERE id = ? AND sector = ?",
+  )
+    .bind(id, sector)
+    .first();
+  if (!current) return err("Tipo de trabalho não encontrado.", 404);
+
+  try {
+    await c.env.DB.prepare(
+      "UPDATE leader_work_types SET name = ? WHERE id = ? AND sector = ?",
+    )
+      .bind(name, id, sector)
+      .run();
+    if (current.name !== name) {
+      await c.env.DB.prepare(
+        "UPDATE leader_work_type_fields SET work_type_name = ? WHERE sector = ? AND work_type_name = ?",
+      )
+        .bind(name, sector, current.name)
+        .run();
+    }
+  } catch (error) {
+    if (String(error?.message || error).toLowerCase().includes("unique")) {
+      return err("Já existe um tipo de trabalho com esse nome.", 409);
+    }
+    throw error;
+  }
+
+  return json({ success: true });
+});
+
 configuracoesLider.delete("/tipos-trabalho/:id", async (c) => {
   const user = c.get("user");
   if (!isSectorLeader(user)) {

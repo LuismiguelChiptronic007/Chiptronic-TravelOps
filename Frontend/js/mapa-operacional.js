@@ -6,11 +6,13 @@ const markersLayer = L.layerGroup();
 const routesLayer = L.layerGroup();
 let currentState = null;
 let pollTimer = null;
+let selectedStatus = "";
 
 const els = {
   mapa: () => document.getElementById("mapa"),
   filterViagem: () => document.getElementById("filter-viagem"),
   filterWorktype: () => document.getElementById("filter-worktype"),
+  statusFilters: () => document.querySelectorAll("[data-status-filter]"),
   atividadeLista: () => document.getElementById("atividade-lista"),
   integrantesCount: () => document.getElementById("integrantes-count"),
   alertasTopo: () => document.getElementById("alertas-topo"),
@@ -217,6 +219,9 @@ function getFilteredIntegrantes(state) {
   const viagemId = els.filterViagem().value;
   const workType = els.filterWorktype().value;
   let list = [...(state.integrantes || [])];
+  if (selectedStatus) {
+    list = list.filter((i) => i.status?.key === selectedStatus);
+  }
   if (viagemId) {
     list = list.filter((i) => String(i.viagem?.id) === String(viagemId));
   }
@@ -499,6 +504,27 @@ function applyFilterChange() {
   renderLista(currentState);
 }
 
+function initStatusFilters() {
+  for (const filter of els.statusFilters()) {
+    filter.addEventListener("click", () => {
+      selectedStatus = selectedStatus === filter.dataset.statusFilter
+        ? ""
+        : filter.dataset.statusFilter;
+      for (const item of els.statusFilters()) {
+        item.classList.toggle(
+          "active",
+          item.dataset.statusFilter === selectedStatus,
+        );
+        item.setAttribute(
+          "aria-pressed",
+          String(item.dataset.statusFilter === selectedStatus),
+        );
+      }
+      applyFilterChange();
+    });
+  }
+}
+
 async function loadEstado() {
   const viagemId = els.filterViagem().value || "";
   const workType = els.filterWorktype().value || "";
@@ -573,6 +599,7 @@ function initMap() {
 function initFilters() {
   els.filterViagem().addEventListener("change", applyFilterChange);
   els.filterWorktype().addEventListener("change", applyFilterChange);
+  initStatusFilters();
 }
 
 export function startPolling(intervalMs = 25000) {

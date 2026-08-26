@@ -179,6 +179,7 @@ document.getElementById("task-form")?.addEventListener("submit", async (e) => {
       payload.task_date,
       payload.start_time,
       payload.end_time,
+      payload.responsible_ids,
     );
 
     if (!validation.ok) {

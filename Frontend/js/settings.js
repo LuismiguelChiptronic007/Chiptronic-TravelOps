@@ -114,6 +114,7 @@ async function loadLeaderWorkTypes() {
             <span>${escapeHtml(wt.name)}</span>
             <div>
               <button type="button" class="btn btn-secondary btn-sm" data-work-type-fields="${encodeURIComponent(wt.name)}">Campos</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-edit-work-type="${wt.id}" data-work-type-name="${escapeHtml(wt.name)}" title="Editar tipo de trabalho">Editar</button>
               <button type="button" class="btn btn-danger btn-sm" data-remove-work-type="${wt.id}">Remover</button>
             </div>
           </div>
@@ -227,6 +228,20 @@ function setupLeaderListeners() {
   });
 
   workTypesList?.addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('[data-edit-work-type]');
+    if (editBtn) {
+      const currentName = editBtn.dataset.workTypeName || '';
+      const newName = window.prompt('Nome do tipo de trabalho:', currentName)?.trim();
+      if (!newName || newName === currentName) return;
+      try {
+        await api.leaderWorkTypes.update(editBtn.dataset.editWorkType, newName);
+        await loadLeaderWorkTypes();
+      } catch (err) {
+        alert(err.message || 'Erro ao editar tipo de trabalho.');
+      }
+      return;
+    }
+
     const btn = e.target.closest('[data-remove-work-type]');
     if (btn) {
       const id = btn.dataset.removeWorkType;

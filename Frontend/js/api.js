@@ -218,6 +218,11 @@ export const api = {
         method: "POST",
         json: { name },
       }),
+    update: (id, name) =>
+      request(`/configuracoes/lider/tipos-trabalho/${id}`, {
+        method: "PUT",
+        json: { name },
+      }),
     remove: (id) =>
       request(`/configuracoes/lider/tipos-trabalho/${id}`, {
         method: "DELETE",

@@ -321,6 +321,17 @@
         transform: translateY(-1px);
         box-shadow: var(--shadow-sm);
       }
+      .status-filter {
+        border: 0;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+      }
+      .status-filter.active {
+        background: var(--surface);
+        border-radius: 6px;
+        box-shadow: 0 0 0 2px var(--border-strong);
+      }
       html[data-theme="dark"] .popup-body .p-actions a.primary {
         background: #f8fafc;
         color: #0b0d10;
@@ -486,26 +497,26 @@
                 </select>
               </div>
               <div class="legend" style="margin-top: 8px">
-                <div class="legend-item">
+                <button type="button" class="legend-item status-filter" data-status-filter="EM_ANDAMENTO" aria-pressed="false">
                   <span class="legend-dot" style="background: #16a34a"></span>Em
                   andamento
-                </div>
-                <div class="legend-item">
+                </button>
+                <button type="button" class="legend-item status-filter" data-status-filter="PENDENTE" aria-pressed="false">
                   <span class="legend-dot" style="background: #ca8a04"></span
                   >Pend&ecirc;ncia
-                </div>
-                <div class="legend-item">
+                </button>
+                <button type="button" class="legend-item status-filter" data-status-filter="SEM_ATIVIDADE" aria-pressed="false">
                   <span class="legend-dot" style="background: #2563eb"></span
                   >Sem atividade
-                </div>
-                <div class="legend-item">
+                </button>
+                <button type="button" class="legend-item status-filter" data-status-filter="ATENCAO" aria-pressed="false">
                   <span class="legend-dot" style="background: #dc2626"></span
                   >Aten&ccedil;&atilde;o
-                </div>
-                <div class="legend-item">
+                </button>
+                <button type="button" class="legend-item status-filter" data-status-filter="CONCLUIDA" aria-pressed="false">
                   <span class="legend-dot" style="background: #64748b"></span
                   >Conclu&iacute;da
-                </div>
+                </button>
               </div>
             </div>
 

@@ -351,8 +351,15 @@ taskRoutes.post("/:id/tasks", async (c) => {
     return err("Informe um intervalo de horário válido.", 400);
   }
 
+  const selectedResponsibleIds = responsible_ids.length
+    ? responsible_ids
+    : responsible_id
+      ? [Number(responsible_id)]
+      : [trip.user_id];
+  const uniqueIds = [...new Set(selectedResponsibleIds)];
+
   const { results: conflictingTasks } = await c.env.DB.prepare(
-    "SELECT start_time, end_time FROM trip_tasks WHERE trip_id = ? AND task_date = ?",
+    "SELECT start_time, end_time, responsible_id, responsible_ids FROM trip_tasks WHERE trip_id = ? AND task_date = ?",
   )
     .bind(id, task_date)
     .all();
@@ -361,7 +368,14 @@ taskRoutes.post("/:id/tasks", async (c) => {
     const existingStart = timeToMinutes(task.start_time);
     const existingEnd = timeToMinutes(task.end_time);
     if (existingStart == null || existingEnd == null) return false;
-    return rangesOverlap(startMinutes, endMinutes, existingStart, existingEnd);
+    const existingIds = String(task.responsible_ids || task.responsible_id || "")
+      .split(",")
+      .map(Number)
+      .filter(Boolean);
+    return (
+      rangesOverlap(startMinutes, endMinutes, existingStart, existingEnd) &&
+      existingIds.some((id) => uniqueIds.includes(id))
+    );
   });
 
   if (hasConflict) {
@@ -370,13 +384,6 @@ taskRoutes.post("/:id/tasks", async (c) => {
       409,
     );
   }
-
-  const selectedResponsibleIds = responsible_ids.length
-    ? responsible_ids
-    : responsible_id
-      ? [Number(responsible_id)]
-      : [trip.user_id];
-  const uniqueIds = [...new Set(selectedResponsibleIds)];
 
   const validUserIds = new Set();
   if (uniqueIds.length) {
@@ -690,8 +697,13 @@ taskRoutes.put("/:id/tasks/:taskId", async (c) => {
     return err("Informe um intervalo de horário válido.", 400);
   }
 
+  const selectedResponsibleIds = responsible_ids.length
+    ? responsible_ids
+    : [task.responsible_id || trip.user_id];
+  const uniqueIds = [...new Set(selectedResponsibleIds)];
+
   const { results: conflictingTasks } = await c.env.DB.prepare(
-    "SELECT id, start_time, end_time FROM trip_tasks WHERE trip_id = ? AND task_date = ? AND id != ?",
+    "SELECT id, start_time, end_time, responsible_id, responsible_ids FROM trip_tasks WHERE trip_id = ? AND task_date = ? AND id != ?",
   )
     .bind(id, task_date, taskId)
     .all();
@@ -700,7 +712,14 @@ taskRoutes.put("/:id/tasks/:taskId", async (c) => {
     const existingStart = timeToMinutes(t.start_time);
     const existingEnd = timeToMinutes(t.end_time);
     if (existingStart == null || existingEnd == null) return false;
-    return rangesOverlap(startMinutes, endMinutes, existingStart, existingEnd);
+    const existingIds = String(t.responsible_ids || t.responsible_id || "")
+      .split(",")
+      .map(Number)
+      .filter(Boolean);
+    return (
+      rangesOverlap(startMinutes, endMinutes, existingStart, existingEnd) &&
+      existingIds.some((id) => uniqueIds.includes(id))
+    );
   });
 
   if (hasConflict) {
@@ -709,11 +728,6 @@ taskRoutes.put("/:id/tasks/:taskId", async (c) => {
       409,
     );
   }
-
-  const selectedResponsibleIds = responsible_ids.length
-    ? responsible_ids
-    : [task.responsible_id || trip.user_id];
-  const uniqueIds = [...new Set(selectedResponsibleIds)];
 
   const validUserIds = new Set();
   if (uniqueIds.length) {

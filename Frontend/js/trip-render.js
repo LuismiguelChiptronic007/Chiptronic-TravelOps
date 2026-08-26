@@ -1120,7 +1120,7 @@ function computeTimeline(tasksForDate = []) {
   return timeline.filter((entry) => entry.end > entry.start);
 }
 
-function findConflict(startMinutes, endMinutes, tasksForDate = []) {
+function findConflict(startMinutes, endMinutes, tasksForDate = [], responsibleIds = []) {
   const dayStart = 0;
   const dayEnd = 24 * 60;
   if (
@@ -1136,14 +1136,25 @@ function findConflict(startMinutes, endMinutes, tasksForDate = []) {
       start: minutesFromTime(task.start_time),
       end: minutesFromTime(task.end_time),
       label: task.work_type || "Trabalho",
+      responsibleIds: Array.isArray(task.responsible_ids)
+        ? task.responsible_ids.map(Number).filter(Boolean)
+        : String(task.responsible_ids || task.responsible_id || "")
+            .split(",")
+            .map(Number)
+            .filter(Boolean),
     }))
     .filter(
       (block) =>
         block.start != null && block.end != null && block.end > block.start,
     );
 
+  const selectedIds = responsibleIds.map(Number).filter(Boolean);
   const clash = workBlocks.find(
-    (block) => block.start < endMinutes && block.end > startMinutes,
+    (block) =>
+      block.start < endMinutes &&
+      block.end > startMinutes &&
+      (!selectedIds.length ||
+        block.responsibleIds.some((id) => selectedIds.includes(id))),
   );
   return clash || null;
 }
@@ -1202,6 +1213,7 @@ export function validateTaskTimeAvailability(
   selectedDate,
   startTime,
   endTime,
+  responsibleIds = [],
 ) {
   if (!selectedDate || !startTime || !endTime) return { ok: true, message: "" };
 
@@ -1215,7 +1227,12 @@ export function validateTaskTimeAvailability(
     return { ok: true, message: "" };
   }
 
-  const conflict = findConflict(startMinutes, endMinutes, tasksForDate);
+  const conflict = findConflict(
+    startMinutes,
+    endMinutes,
+    tasksForDate,
+    responsibleIds,
+  );
   if (conflict) {
     return {
       ok: false,
