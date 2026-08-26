@@ -156,8 +156,13 @@ export const api = {
   presenceHeartbeat: () => request('/presence/heartbeat', { method: 'POST' }),
   presenceUsers: () => request('/presence/users'),
 
-  usersForMembers: (q = "") => {
-    const qs = q ? `?q=${encodeURIComponent(q)}` : "";
+  usersForMembers: (q = "", opts = {}) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (opts.start_date) params.set("start_date", opts.start_date);
+    if (opts.end_date) params.set("end_date", opts.end_date);
+    if (opts.exclude_trip_id) params.set("exclude_trip_id", opts.exclude_trip_id);
+    const qs = params.toString() ? `?${params.toString()}` : "";
     return request(`/trips/users-for-members${qs}`);
   },
 

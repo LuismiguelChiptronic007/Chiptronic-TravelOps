@@ -312,14 +312,23 @@
         transition: all 0.15s var(--ease);
       }
       .popup-body .p-actions a.primary {
-        background: var(--gradient-2);
+        background: var(--brand);
         color: #fff;
-        border-color: transparent;
+        border-color: var(--brand);
       }
       .popup-body .p-actions a:hover,
       .popup-body .p-actions button:hover {
         transform: translateY(-1px);
         box-shadow: var(--shadow-sm);
+      }
+      html[data-theme="dark"] .popup-body .p-actions a.primary {
+        background: #f8fafc;
+        color: #0b0d10;
+        border-color: #f8fafc;
+      }
+      html[data-theme="dark"] .popup-body .p-actions a.primary:hover {
+        background: #e2e8f0;
+        border-color: #e2e8f0;
       }
 
       .atividade-item {

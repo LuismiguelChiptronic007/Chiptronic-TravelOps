@@ -52,7 +52,6 @@ let monitorMetricsTimer = null;
 function updateLocationMonitorStatus(trip, extra = {}) {
   const statusEl = document.getElementById('location-monitor-status');
   const panelEl = document.getElementById('location-monitor-panel');
-  const toggle = document.getElementById('trip-share-location');
   const metricsEl = document.getElementById('loc-last-checkin');
   const metricsWrap = document.getElementById('location-monitor-metrics');
   if (!statusEl || !panelEl) return;
@@ -60,7 +59,6 @@ function updateLocationMonitorStatus(trip, extra = {}) {
   panelEl.classList.remove('hidden-fields');
 
   const consent = getLocationConsent(tripId);
-  if (toggle) toggle.checked = Boolean(consent);
 
   if (!trip || trip.status !== 'in_progress') {
     panelEl.classList.add('hidden-fields');
@@ -111,9 +109,8 @@ function setupLocationMonitor(trip) {
   }
   panelEl.classList.remove('hidden-fields');
 
-  const toggle = document.getElementById('trip-share-location');
-  const consent = getLocationConsent(tripId);
-  if (toggle) toggle.checked = Boolean(consent);
+  setLocationConsent(tripId, true);
+  const consent = true;
 
   if (consent === true && !isMonitoringActive(tripId)) {
     startTripLocationMonitor(tripId, {
@@ -127,43 +124,6 @@ function setupLocationMonitor(trip) {
   }
 
   updateLocationMonitorStatus(trip);
-
-  toggle?.addEventListener('change', async () => {
-    const enabled = Boolean(toggle.checked);
-    setLocationConsent(tripId, enabled);
-    if (enabled && !isMonitoringActive(tripId)) {
-      const h = startTripLocationMonitor(tripId, {
-        intervalMs: 4 * 60 * 1000,
-        loadTrip: () => api.getTrip(tripId).then((r) => r.trip),
-        onTripEnded: () => {
-          stopTripLocationMonitor(tripId, { notify: true, alertEl, showAlertFn: showAlert });
-          updateLocationMonitorStatus(trip);
-        },
-      });
-      if (!h) {
-        updateLocationMonitorStatus(trip, { error: 'Não foi possível iniciar monitoramento (localização indisponível ou bloqueada).' });
-        toggle.checked = false;
-        setLocationConsent(tripId, false);
-        return;
-      }
-      try {
-        const posOk = await new Promise((resolve, reject) => {
-          if (!('geolocation' in navigator)) return reject(new Error('sem-geoloc'));
-          navigator.geolocation.getCurrentPosition(() => resolve(true), (e) => reject(e), { timeout: 7000 });
-        }).catch((e) => e && e?.code === 1 ? 'denied' : false);
-        if (posOk === 'denied') {
-          toggle.checked = false;
-          setLocationConsent(tripId, false);
-          stopTripLocationMonitor(tripId);
-          updateLocationMonitorStatus(trip, { error: 'Permissão de localização negada. Habilite nas configurações do navegador e ative novamente.' });
-          return;
-        }
-      } catch {}
-    } else if (!enabled) {
-      stopTripLocationMonitor(tripId);
-    }
-    updateLocationMonitorStatus(trip);
-  });
 
   if (monitorMetricsTimer) clearInterval(monitorMetricsTimer);
   monitorMetricsTimer = setInterval(() => updateLocationMonitorStatus(trip), 15000);

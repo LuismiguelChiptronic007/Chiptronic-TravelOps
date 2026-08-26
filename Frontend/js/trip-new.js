@@ -2,7 +2,7 @@ import { api, hideAlert, showAlert } from "./api.js";
 import { escapeHtml, mountShell } from "./layout.js";
 import { saveTripOffline } from "./db-offline.js";
 
-import { getLocationConsent, setLocationConsent } from "./location.js";
+import { setLocationConsent } from "./location.js";
 import { findCity, searchCities } from "./cidades.js";
 
 const params = new URLSearchParams(location.search);
@@ -28,7 +28,42 @@ const selectedMembers = new Map();
 /** @type {object[]} */
 let availableUsers = [];
 let currentTrip = null;
+let currentUser = null;
 let equipmentChecklist = [];
+
+async function refreshAvailableUsers() {
+  const startDate = startDateInput?.value || "";
+  const endDate = endDateInput?.value || "";
+  if (!startDate || !endDate || endDate < startDate) return;
+
+  try {
+    const usersRes = await api.usersForMembers("", {
+      start_date: startDate,
+      end_date: endDate,
+      exclude_trip_id: editTripId || undefined,
+    });
+    availableUsers = usersRes.users || [];
+    if (currentUser && !availableUsers.some((u) => Number(u.id) === Number(currentUser.id))) {
+      availableUsers.unshift({
+        id: currentUser.id,
+        full_name: currentUser.full_name,
+        sector: currentUser.sector || "",
+        manager_name: currentUser.manager_name || null,
+        position_title: currentUser.position_title || null,
+        employee_id: currentUser.employee_id || null,
+      });
+    }
+    if (!isEditing) {
+      const availableIds = new Set(availableUsers.map((u) => Number(u.id)));
+      for (const userId of selectedMembers.keys()) {
+        if (!availableIds.has(Number(userId))) selectedMembers.delete(userId);
+      }
+    }
+    renderMemberCheckboxes();
+  } catch {
+    showAlert(alertEl, "Não foi possível atualizar os integrantes disponíveis.");
+  }
+}
 
 
 function renderCitySuggestions(input) {
@@ -128,8 +163,8 @@ function renderMemberCheckboxes() {
 }
 
 async function init() {
-  const user = await mountShell({ active: "new" });
-  if (!user) return;
+  currentUser = await mountShell({ active: "new" });
+  if (!currentUser) return;
 
   try {
     const [sectorsRes, usersRes] = await Promise.all([
@@ -141,26 +176,26 @@ async function init() {
       const opt = document.createElement("option");
       opt.value = s;
       opt.textContent = s;
-      if (s === user.sector) opt.selected = true;
+      if (s === currentUser.sector) opt.selected = true;
       sectorSelect.appendChild(opt);
     }
 
     availableUsers = usersRes.users || [];
-    if (user && !availableUsers.some((u) => Number(u.id) === Number(user.id))) {
+    if (currentUser && !availableUsers.some((u) => Number(u.id) === Number(currentUser.id))) {
       const me = {
-        id: user.id,
-        full_name: user.full_name,
-        sector: user.sector || "",
-        manager_name: user.manager_name || null,
-        position_title: user.position_title || null,
-        employee_id: user.employee_id || null,
+        id: currentUser.id,
+        full_name: currentUser.full_name,
+        sector: currentUser.sector || "",
+        manager_name: currentUser.manager_name || null,
+        position_title: currentUser.position_title || null,
+        employee_id: currentUser.employee_id || null,
       };
       availableUsers.unshift(me);
     }
   } catch {
     const opt = document.createElement("option");
-    opt.value = user.sector;
-    opt.textContent = user.sector;
+    opt.value = currentUser.sector;
+    opt.textContent = currentUser.sector;
     opt.selected = true;
     sectorSelect.appendChild(opt);
     availableUsers = [];
@@ -190,10 +225,6 @@ async function init() {
         renderEquipmentChecklist();
         renderMemberCheckboxes();
 
-        const consent = getLocationConsent(editTripId);
-        const toggle = document.getElementById("toggle-share-location");
-        if (toggle) toggle.checked = Boolean(consent);
-
       }
     } catch (err) {
       showAlert(
@@ -203,6 +234,7 @@ async function init() {
     }
   }
 
+  await refreshAvailableUsers();
   renderMemberCheckboxes();
   setEditMode();
 }
@@ -222,6 +254,8 @@ function syncTripDates() {
 
 startDateInput?.addEventListener("change", syncTripDates);
 endDateInput?.addEventListener("change", syncTripDates);
+startDateInput?.addEventListener("change", refreshAvailableUsers);
+endDateInput?.addEventListener("change", refreshAvailableUsers);
 
 originInput?.addEventListener("input", () => renderCitySuggestions(originInput));
 destinationInput?.addEventListener("input", () => renderCitySuggestions(destinationInput));
@@ -266,7 +300,7 @@ form?.addEventListener("submit", async (e) => {
   if (!origin || !destination) {
     showAlert(
       alertEl,
-      "Informe origem e destino usando uma cidade válida no formato Cidade - UF.",
+      "Informe origem e destino usando uma cidade válida. Formatos aceitos: Cidade - UF (Brasil) ou Cidade - País / Cidade - Estado - País (internacional).",
     );
     btn.disabled = false;
     if (!origin) originInput?.focus();
@@ -299,10 +333,8 @@ form?.addEventListener("submit", async (e) => {
 
 
     const tripId = res.trip.id;
-    const toggle = document.getElementById("toggle-share-location");
-    const shareEnabled = Boolean(toggle?.checked);
     if (tripId) {
-      setLocationConsent(tripId, shareEnabled);
+      setLocationConsent(tripId, true);
     }
 
     window.location.href = `trip.html?id=${tripId}`;

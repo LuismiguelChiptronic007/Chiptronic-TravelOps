@@ -20,7 +20,9 @@ async function geocodeCity(city) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
   try {
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}&limit=1`;
+    // Nominatim interpreta melhor "Cidade, Estado, País" do que "Cidade - Estado - País"
+    const query = String(city || "").replace(/\s*-\s*/g, ", ");
+    const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=1`;
     const response = await fetch(url, {
       headers: {
         "User-Agent":
@@ -65,6 +67,27 @@ async function geocodeTripCities(origin, destination) {
     destination_lat: destinationCoords?.latitude ?? null,
     destination_lng: destinationCoords?.longitude ?? null,
   };
+}
+
+async function findOverlappingMemberIds(db, memberIds, startDate, endDate, excludeTripId = 0) {
+  const ids = [...new Set(memberIds.map(Number).filter((id) => id > 0))];
+  if (!ids.length) return [];
+
+  const placeholders = ids.map(() => "?").join(", ");
+  const { results } = await db.prepare(
+    `SELECT DISTINCT users.id
+     FROM users
+     LEFT JOIN trip_members occupied_member ON occupied_member.user_id = users.id
+     LEFT JOIN trips occupied_trip ON occupied_trip.id = occupied_member.trip_id OR occupied_trip.user_id = users.id
+     WHERE users.id IN (${placeholders})
+       AND occupied_trip.start_date <= ?
+       AND occupied_trip.end_date >= ?
+       AND (? = 0 OR occupied_trip.id != ?)`,
+  )
+    .bind(...ids, endDate, startDate, excludeTripId, excludeTripId)
+    .all();
+
+  return (results || []).map((row) => Number(row.id));
 }
 
 trips.get("/", async (c) => {
@@ -220,10 +243,26 @@ trips.get("/dashboard", async (c) => {
 trips.get("/users-for-members", async (c) => {
   const userId = c.get("userId");
   const q = String(c.req.query("q") || "").trim();
+  const startDate = String(c.req.query("start_date") || "").trim();
+  const endDate = String(c.req.query("end_date") || "").trim();
+  const excludeTripId = Number(c.req.query("exclude_trip_id")) || 0;
 
   let sql = `SELECT id, full_name, email, sector, position_title, manager_name, employee_id
              FROM users WHERE id != ?`;
   const binds = [userId];
+
+  if (startDate && endDate && endDate >= startDate) {
+    sql += ` AND NOT EXISTS (
+      SELECT 1
+      FROM trip_members occupied_member
+      INNER JOIN trips occupied_trip ON occupied_trip.id = occupied_member.trip_id
+      WHERE occupied_trip.start_date <= ?
+        AND occupied_trip.end_date >= ?
+        AND (occupied_trip.user_id = users.id OR occupied_member.user_id = users.id)
+        AND (? = 0 OR occupied_trip.id != ?)
+    )`;
+    binds.push(endDate, startDate, excludeTripId, excludeTripId);
+  }
 
   if (q) {
     sql +=
@@ -286,6 +325,19 @@ trips.post("/", async (c) => {
     return err("Data de término deve ser >= data de início.");
   if (!reason) return err("Informe o motivo da viagem.");
 
+  const memberIdsForValidation = Array.isArray(memberIds)
+    ? memberIds.map(Number).filter((id) => Number.isInteger(id) && id > 0)
+    : [];
+  const overlappingMemberIds = await findOverlappingMemberIds(
+    c.env.DB,
+    memberIdsForValidation,
+    start_date,
+    end_date,
+  );
+  if (overlappingMemberIds.length) {
+    return err("Um ou mais integrantes já estão em outra viagem neste período.");
+  }
+
   const status = computeStatus({ start_date, end_date, status: "planned" });
   const coordinates = await geocodeTripCities(origin, destination);
   if (
@@ -294,7 +346,7 @@ trips.post("/", async (c) => {
     coordinates.destination_lat === null ||
     coordinates.destination_lng === null
   ) {
-    return err("Origem e destino devem ser cidades válidas no formato Cidade - UF.");
+    return err("Origem e destino devem ser cidades válidas (formato Cidade - UF para o Brasil, ou Cidade - País / Cidade - Estado - País para o exterior).");
   }
   const result = await c.env.DB.prepare(
     `INSERT INTO trips (user_id, origin, destination, start_date, end_date, reason, sector, status, priority,
@@ -451,6 +503,20 @@ trips.put("/:id", async (c) => {
   }
   if (end_date < start_date) return err("Data de término inválida.");
 
+  const memberIdsForValidation = Array.isArray(body.member_ids)
+    ? body.member_ids.map(Number).filter((memberId) => Number.isInteger(memberId) && memberId > 0)
+    : [];
+  const overlappingMemberIds = await findOverlappingMemberIds(
+    c.env.DB,
+    memberIdsForValidation,
+    start_date,
+    end_date,
+    id,
+  );
+  if (overlappingMemberIds.length) {
+    return err("Um ou mais integrantes já estão em outra viagem neste período.");
+  }
+
   const status = computeStatus({ start_date, end_date, status: trip.status });
   const citiesChanged =
     origin !== trip.origin || destination !== trip.destination;
@@ -473,7 +539,7 @@ trips.put("/:id", async (c) => {
     coordinates.destination_lat === null ||
     coordinates.destination_lng === null
   ) {
-    return err("Origem e destino devem ser cidades válidas no formato Cidade - UF.");
+    return err("Origem e destino devem ser cidades válidas (formato Cidade - UF para o Brasil, ou Cidade - País / Cidade - Estado - País para o exterior).");
   }
   const changes = {};
   for (const [field, value] of Object.entries({

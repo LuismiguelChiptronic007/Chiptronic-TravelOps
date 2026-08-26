@@ -231,6 +231,24 @@ function normalizeCity(value) {
     .trim();
 }
 
+// Aceita "Cidade - País" ou "Cidade - Estado/Província - País" para destinos
+// fora do Brasil. A existência real da cidade é confirmada depois pelo
+// backend via geocodificação (Nominatim) antes de salvar a viagem.
+function formatInternationalCity(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+
+  const parts = raw
+    .split("-")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  if (parts.length < 2 || parts.length > 3) return null;
+  if (parts.some((p) => p.length < 2 || /^\d+$/.test(p))) return null;
+
+  return parts.join(" - ");
+}
+
 export function findCity(value) {
   const normalized = normalizeCity(value);
   if (!normalized) return null;
@@ -240,7 +258,7 @@ export function findCity(value) {
     if (normalizeCity(city) === normalized) return city;
   }
 
-  return null;
+  return formatInternationalCity(value);
 }
 
 export function searchCities(query, max = 8) {

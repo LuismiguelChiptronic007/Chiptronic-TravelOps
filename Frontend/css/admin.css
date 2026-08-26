@@ -145,7 +145,7 @@ html[data-theme='dark'] .admin-table tbody tr:hover { background: var(--surface-
 html[data-theme='dark'] .admin-level { color: var(--text); background: var(--surface-2); border-color: var(--border-strong); }
 html[data-theme='dark'] .admin-level.user { color: var(--muted); background: var(--surface-alt); }
 html[data-theme='dark'] .admin-action { color: var(--text); background: var(--surface-2); border-color: var(--border-strong); }
-html[data-theme='dark'] .admin-action:hover { color: var(--brand-dark); background: var(--brand-600); }
+html[data-theme='dark'] .admin-action:hover { color: #0b0d10; background: var(--brand-600); border-color: var(--brand-600); }
 html[data-theme='dark'] .admin-action.delete-action { color: var(--text); background: var(--danger-bg); }
 
 @media (max-width: 700px) {

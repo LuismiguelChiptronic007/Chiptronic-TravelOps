@@ -1395,10 +1395,18 @@ html[data-theme='dark'] .icon-btn:hover {
   box-shadow: 0 8px 20px -8px rgba(248, 250, 252, 0.18);
 }
 html[data-theme='dark'] .trip-day-btn.active {
-  background: var(--gradient-1);
-  border-color: transparent;
+  background: var(--brand-600);
+  border-color: var(--brand-600);
   color: #0b0d10;
-  box-shadow: 0 12px 28px -10px rgba(248, 250, 252, 0.30);
+  box-shadow: var(--shadow-sm);
+}
+html[data-theme='dark'] .icon-btn:focus-visible,
+html[data-theme='dark'] .trip-day-btn:focus-visible,
+html[data-theme='dark'] .password-toggle:focus-visible,
+html[data-theme='dark'] .panel-toggle:focus-visible,
+html[data-theme='dark'] .modal-close:focus-visible {
+  outline: 3px solid var(--brand-400);
+  outline-offset: 2px;
 }
 html[data-theme='dark'] .password-rules li { color: var(--muted); }
 html[data-theme='dark'] .password-toggle:hover { background: var(--neutral-bg); }
@@ -1424,6 +1432,40 @@ html[data-theme='dark'] .btn-secondary {
 html[data-theme='dark'] .btn-secondary:hover:not(:disabled) {
   background: rgba(35, 40, 48, 0.98);
   border-color: rgba(248, 250, 252, 0.22);
+  color: var(--text);
+}
+html[data-theme='dark'] .btn-primary {
+  background: #f8fafc;
+  border-color: #f8fafc;
+  color: #0b0d10;
+}
+html[data-theme='dark'] .btn-primary:hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: #e2e8f0;
+  color: #0b0d10;
+}
+html[data-theme='dark'] .btn-danger {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+html[data-theme='dark'] .btn-danger:hover:not(:disabled) {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+html[data-theme='dark'] .btn-success {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
+}
+html[data-theme='dark'] .btn-success:hover:not(:disabled) {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #052e16;
+}
+html[data-theme='dark'] .btn-ghost:hover:not(:disabled) {
+  background: var(--surface-alt);
   color: var(--text);
 }
 html[data-theme='dark'] #drawer-logout {

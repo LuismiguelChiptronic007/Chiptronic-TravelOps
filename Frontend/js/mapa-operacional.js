@@ -171,8 +171,8 @@ function makePopupHtml(integrante) {
 
   const actionsHtml = `
     <div class="p-actions">
-      ${v ? `<a class="primary" href="trip.html?id=${encodeURIComponent(v.id)}" target="_blank" rel="noopener">Ver viagem</a>` : ""}
-      ${t && v ? `<a href="trip-task-edit.html?id=${encodeURIComponent(v.id)}&task_id=${encodeURIComponent(t.id)}" target="_blank" rel="noopener">Ver atividade</a>` : ""}
+      ${v ? `<a class="primary" href="trip.html?id=${encodeURIComponent(v.id)}">Ver viagem</a>` : ""}
+      ${t && v ? `<a href="trip-task-edit.html?id=${encodeURIComponent(v.id)}&task_id=${encodeURIComponent(t.id)}">Ver atividade</a>` : ""}
     </div>`;
 
   return `<div class="popup-body">${headerNome}${viagemHtml}${atividadeHtml}${metricasHtml}${actionsHtml}</div>`;

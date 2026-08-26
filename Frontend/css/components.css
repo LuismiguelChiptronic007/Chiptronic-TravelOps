@@ -542,9 +542,14 @@ textarea {
   transform: translateY(0) scale(0.98);
 }
 html[data-theme="dark"] .btn-primary {
-  background: var(--surface);
-  color: #0f172a;
-  border-color: var(--surface);
+  background: #f8fafc;
+  color: #0b0d10;
+  border-color: #f8fafc;
+}
+html[data-theme="dark"] .btn-primary:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0b0d10;
+  border-color: #e2e8f0;
 }
 
 .btn-secondary {
@@ -575,6 +580,16 @@ html[data-theme="dark"] .btn-primary {
   box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }
+html[data-theme="dark"] .btn-danger {
+  background: #dc2626;
+  color: #fff;
+  border-color: #dc2626;
+}
+html[data-theme="dark"] .btn-danger:hover:not(:disabled) {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+}
 
 .btn-success {
   background: var(--success);
@@ -587,6 +602,16 @@ html[data-theme="dark"] .btn-primary {
   border-color: var(--success-600);
   box-shadow: var(--shadow-sm);
   transform: translateY(-2px);
+}
+html[data-theme="dark"] .btn-success {
+  background: #16a34a;
+  color: #fff;
+  border-color: #16a34a;
+}
+html[data-theme="dark"] .btn-success:hover:not(:disabled) {
+  background: #22c55e;
+  color: #052e16;
+  border-color: #22c55e;
 }
 
 .btn-ghost {
