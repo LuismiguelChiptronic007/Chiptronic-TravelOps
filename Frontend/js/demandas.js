@@ -52,12 +52,12 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
       : '<option value="">Nenhum projeto cadastrado para o setor</option>';
 
     modal.innerHTML = `
-      <div class="${fullPage ? 'demandas-page-content' : 'modal-content'}">
-        <div class="modal-header">
+      <div class="${fullPage ? 'demandas-page-content' : 'modal-content'}" ${fullPage ? 'data-demandas-page-content' : ''}>
+        <div class="${fullPage ? 'demandas-page-header' : 'modal-header'}">
           <h2>Fornecer demandas — Veículos e atividades</h2>
           <button type="button" class="${fullPage ? 'demandas-page-back' : 'modal-close'}" aria-label="Fechar">${fullPage ? 'Voltar' : '&times;'}</button>
         </div>
-        <div class="modal-body">
+        <div class="${fullPage ? 'demandas-page-body' : 'modal-body'}">
           <div style="margin-bottom: 16px;">
             <label for="demanda-tipo-projeto">Tipo de projeto (todos os veículos)</label>
             <select id="demanda-tipo-projeto" ${projetosCache.length ? '' : 'disabled'}>
@@ -71,7 +71,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
             <button type="button" class="btn btn-secondary" id="btn-duplicar-ultimo" ${veiculos.length === 0 ? 'disabled' : ''}>⎘ Duplicar veículo anterior</button>
           </div>
         </div>
-        <div class="modal-footer">
+        <div class="${fullPage ? 'demandas-page-footer' : 'modal-footer'}">
           <button type="button" class="btn btn-secondary" id="btn-cancelar-demanda">Cancelar</button>
           <button type="button" class="btn btn-primary" id="btn-salvar-demanda">Salvar demandas</button>
         </div>
