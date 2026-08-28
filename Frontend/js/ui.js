@@ -343,7 +343,6 @@ export function registerHotkeys() {
       switch (e.key.toLowerCase()) {
         case 'n': e.preventDefault(); nav('trip-new.html'); break;
         case 'd': e.preventDefault(); nav('index.html'); break;
-        case 'v': e.preventDefault(); nav('viagens.html'); break;
         case 'p': e.preventDefault(); nav('profile.html'); break;
       }
     }
