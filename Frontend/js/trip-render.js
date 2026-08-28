@@ -12,7 +12,7 @@ import {
   inserirCampoAtividadePrioridadeNoForm,
   extrairPayloadDemandaDoForm,
   abrirModalDemandasLider,
-} from "./demandas.js";
+} from "./demandas-src.js";
 
 let lastTaskDate = "";
 let selectedTripDate = "";

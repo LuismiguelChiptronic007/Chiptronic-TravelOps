@@ -38,11 +38,11 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
     ? document.getElementById('demandas-page-form')
     : document.createElement('div');
   if (!modal) return;
+  const closeForm = () => fullPage ? window.history.back() : modal.remove();
   if (!fullPage) {
     modal.className = 'modal-overlay';
     modal.id = 'demanda-modal';
   }
-  const closeForm = () => fullPage ? window.history.back() : modal.remove();
 
   function render() {
     const veiculosHtml = veiculos.map((v, idx) => renderVeiculoCard(v, idx)).join('');
@@ -52,12 +52,12 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
       : '<option value="">Nenhum projeto cadastrado para o setor</option>';
 
     modal.innerHTML = `
-      <div class="${fullPage ? 'demandas-page-content' : 'modal-content'}" ${fullPage ? 'data-demandas-page-content' : ''}>
-        <div class="${fullPage ? 'demandas-page-header' : 'modal-header'}">
+      <div class="${fullPage ? 'panel demandas-form-panel' : 'modal-content'}">
+        <div class="${fullPage ? 'panel-header' : 'modal-header'}">
           <h2>Fornecer demandas — Veículos e atividades</h2>
-          <button type="button" class="${fullPage ? 'demandas-page-back' : 'modal-close'}" aria-label="Fechar">${fullPage ? 'Voltar' : '&times;'}</button>
+          <button type="button" class="${fullPage ? 'btn btn-secondary' : 'modal-close'}" aria-label="Fechar">${fullPage ? 'Voltar' : '&times;'}</button>
         </div>
-        <div class="${fullPage ? 'demandas-page-body' : 'modal-body'}">
+        <div class="${fullPage ? 'panel-body' : 'modal-body'}">
           <div style="margin-bottom: 16px;">
             <label for="demanda-tipo-projeto">Tipo de projeto (todos os veículos)</label>
             <select id="demanda-tipo-projeto" ${projetosCache.length ? '' : 'disabled'}>
@@ -71,13 +71,13 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
             <button type="button" class="btn btn-secondary" id="btn-duplicar-ultimo" ${veiculos.length === 0 ? 'disabled' : ''}>⎘ Duplicar veículo anterior</button>
           </div>
         </div>
-        <div class="${fullPage ? 'demandas-page-footer' : 'modal-footer'}">
+        <div class="${fullPage ? 'form-actions' : 'modal-footer'}">
           <button type="button" class="btn btn-secondary" id="btn-cancelar-demanda">Cancelar</button>
           <button type="button" class="btn btn-primary" id="btn-salvar-demanda">Salvar demandas</button>
         </div>
       </div>`;
 
-    modal.querySelector(fullPage ? '.demandas-page-back' : '.modal-close').addEventListener('click', closeForm);
+    modal.querySelector(fullPage ? '.panel-header .btn' : '.modal-close').addEventListener('click', closeForm);
     if (!fullPage) modal.addEventListener('click', (e) => { if (e.target === modal) closeForm(); });
 
     modal.querySelector('#demanda-tipo-projeto').addEventListener('change', (e) => {
@@ -110,7 +110,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
       render();
     });
 
-    modal.querySelector('#btn-cancelar-demanda').addEventListener('click', () => modal.remove());
+    modal.querySelector('#btn-cancelar-demanda').addEventListener('click', closeForm);
     modal.querySelector('#btn-salvar-demanda').addEventListener('click', salvar);
 
     bindVeiculoInputs();
@@ -244,11 +244,11 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
     }
   }
 
-  document.body.appendChild(modal);
+  if (!fullPage) document.body.appendChild(modal);
 
   const [atividadesResult, projetosResult] = await Promise.allSettled([
     api.demandas.atividadesModelo(),
-    api.projects({ trip_id: viagemId })
+    api.leaderProjects.list()
   ]);
   atividadesModeloCache = atividadesResult.status === 'fulfilled'
     ? atividadesResult.value.atividades || []
@@ -291,12 +291,17 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
         else if (a.status === 'concluida') totalConcluidas++;
 
         const pc = prioridadeCor(a.prioridade);
+        const podeConcluir = user && a.status !== 'concluida';
+
         return `
           <tr>
             <td><span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.75rem;font-weight:700;">${pc.label}</span></td>
             <td>${escapeHtml(a.atividade_descricao || '—')}</td>
             <td>${statusDemandaBadge(a.status)}
                 ${a.status === 'concluida' && a.concluida_nome ? `<div class="text-muted" style="font-size:0.75rem;margin-top:2px;">${escapeHtml(a.concluida_nome)} · ${formatDateBR(String(a.concluida_em || '').slice(0,10))}</div>` : ''}
+            </td>
+            <td class="text-right">
+              ${podeConcluir ? `<button type="button" class="btn btn-success btn-sm btn-concluir-ativ-demanda" data-ativ="${a.id}">Marcar concluída</button>` : ''}
             </td>
           </tr>`;
       }).join('');
@@ -316,7 +321,7 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
           </div>
           ${(dv.atividades || []).length ? `
           <table class="data" style="width:100%;margin:0;">
-            <thead><tr><th style="width:60px;">Pri</th><th>Atividade</th><th style="width:170px;">Status</th></tr></thead>
+            <thead><tr><th style="width:60px;">Pri</th><th>Atividade</th><th style="width:170px;">Status</th><th style="width:150px;"></th></tr></thead>
             <tbody>${rows}</tbody>
           </table>` : '<div class="text-muted" style="padding:8px 4px;">Sem atividades cadastradas.</div>'}
         </div>`;
@@ -353,6 +358,22 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
       </div>
     </div>`;
 
+  container.querySelectorAll('.btn-concluir-ativ-demanda').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const ativId = Number(btn.dataset.ativ);
+      const original = btn.innerHTML;
+      btn.disabled = true;
+      btn.textContent = 'Salvando…';
+      try {
+        const res = await api.demandas.atualizarStatusAtividade(ativId, 'concluida', tripId);
+        if (typeof onStatusChange === 'function') onStatusChange(res.demandas || []);
+      } catch (err) {
+        alert(err.message || 'Erro ao concluir atividade.');
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
+    });
+  });
 }
 
 export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange } = {}) {

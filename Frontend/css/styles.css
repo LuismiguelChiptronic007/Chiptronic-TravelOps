@@ -2045,3 +2045,46 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   border-radius: 999px;
   background: var(--gradient-1);
 }
+
+body.demandas-page .app-shell {
+  min-width: 0;
+  padding-left: var(--sidebar-w) !important;
+}
+
+body.demandas-page .app-shell.demandas-collapsed-layout {
+  padding-left: var(--sidebar-w-collapsed) !important;
+}
+
+body.demandas-page .app-shell.demandas-expanded-layout {
+  padding-left: var(--sidebar-w) !important;
+}
+
+body.demandas-page .app-shell.demandas-mobile-layout {
+  padding-left: 0 !important;
+}
+
+@media (max-width: 880px) {
+  body.demandas-page .app-shell.demandas-mobile-layout {
+    padding-left: 0 !important;
+  }
+}
+
+body.demandas-page main.container {
+  width: min(1200px, calc(100% - 2.5rem));
+  max-width: calc(100% - 2.5rem);
+  margin-left: auto;
+  margin-right: auto;
+  min-width: 0;
+}
+
+body.demandas-page .demandas-form-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 880px) {
+  body.demandas-page main.container {
+    width: calc(100% - 1.25rem);
+    max-width: calc(100% - 1.25rem);
+  }
+}

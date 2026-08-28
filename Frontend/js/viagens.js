@@ -1,6 +1,6 @@
 import { api, formatDateBR, statusBadge, showAlert, hideAlert } from './api.js';
 import { escapeHtml, mountShell } from './layout.js';
-import { abrirModalDemandasLider } from './demandas.js';
+import { abrirModalDemandasLider } from './demandas-src.js';
 
 const body = document.getElementById('trips-body');
 const filterQ = document.getElementById('filter-q');
