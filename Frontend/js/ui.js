@@ -270,7 +270,7 @@ export function closeCommandPalette() {
   }
 }
 
-/* Hotkeys help */
+/* Hotkeys help 
 const DEFAULT_HOTKEYS = [
   { key: 'Ctrl / ⌘ + N', desc: 'Criar nova viagem' },
   { key: 'Ctrl / ⌘ + D', desc: 'Ir para o Dashboard' },
@@ -278,7 +278,8 @@ const DEFAULT_HOTKEYS = [
   { key: 'Ctrl / ⌘ + P', desc: 'Abrir meu perfil' },
   { key: 'Ctrl / ⌘ + / ?', desc: 'Ver atalhos disponíveis' },
   { key: 'Tema',          desc: 'Clique no ícone 🌙/☀️ da topbar para alternar' }
-];
+*/
+
 
 export function showHotkeysHelp(list = DEFAULT_HOTKEYS) {
   const overlay = document.createElement('div');
