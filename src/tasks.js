@@ -14,6 +14,62 @@ import { fetchTripFull } from "./trip_utils.js";
 import { notifyUsers } from "./notifications.js";
 import { logActivity } from "./activity.js";
 
+async function atualizarStatusDemandaAtividade(db, demandaAtividadeId, userId) {
+  if (!demandaAtividadeId) return;
+  const atividade = await db.prepare(`
+    SELECT da.*, dv.demanda_id FROM demanda_atividades da
+    INNER JOIN demanda_veiculos dv ON dv.id = da.demanda_veiculo_id
+    WHERE da.id = ?
+  `).bind(demandaAtividadeId).first();
+  if (!atividade) return;
+
+  await db.prepare(`
+    UPDATE demanda_atividades
+    SET status = 'concluida', concluida_por = ?, concluida_em = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).bind(userId, demandaAtividadeId).run();
+
+  const demandaId = atividade.demanda_id;
+  const { results: todasAtividades } = await db.prepare(`
+    SELECT da.id, da.status FROM demanda_atividades da
+    INNER JOIN demanda_veiculos dv ON dv.id = da.demanda_veiculo_id
+    WHERE dv.demanda_id = ?
+  `).bind(demandaId).all();
+
+  const total = (todasAtividades || []).length;
+  const concluidas = (todasAtividades || []).filter(a => a.status === 'concluida').length;
+  const emAndamento = (todasAtividades || []).filter(a => a.status === 'em_andamento').length;
+
+  let novoStatus = 'pendente';
+  if (total > 0 && concluidas === total) {
+    novoStatus = 'concluida';
+  } else if (concluidas > 0 || emAndamento > 0) {
+    novoStatus = 'em_andamento';
+  }
+  await db.prepare('UPDATE demandas SET status = ? WHERE id = ?')
+    .bind(novoStatus, demandaId).run();
+}
+
+async function notificarLiderDemandaConcluida(db, trip, atividade, userId) {
+  const lider = await db.prepare(`
+    SELECT id FROM users
+    WHERE sector = ?
+      AND LOWER(REPLACE(REPLACE(position_title, 'í', 'i'), 'Í', 'I')) = 'lider'
+    LIMIT 1
+  `).bind(trip.sector).first();
+
+  if (!lider || Number(lider.id) === Number(userId)) return;
+
+  const integrante = await db.prepare('SELECT full_name FROM users WHERE id = ?')
+    .bind(userId).first();
+  await notifyUsers(db, [lider.id], {
+    type: 'success',
+    title: 'Demanda de prioridade concluída',
+    message: `${integrante?.full_name || 'Um integrante'} registrou a conclusão de "${atividade.descricao || 'uma atividade'}" na viagem para ${trip.destination}.`,
+    link: `/trip.html?id=${trip.id}#demandas`,
+  });
+}
+
 export const taskRoutes = new Hono();
 
 function timeToMinutes(value) {
@@ -251,6 +307,9 @@ taskRoutes.post("/:id/tasks", async (c) => {
   let submodelo = "";
   let project_id = "";
   let customFields = {};
+  let eh_atividade_prioridade = false;
+  let demanda_atividade_id = null;
+  let demanda_veiculo_id = null;
   const photoFiles = [];
 
   if (contentType.includes("multipart/form-data")) {
@@ -273,6 +332,11 @@ taskRoutes.post("/:id/tasks", async (c) => {
     submodelo = String(form.get("submodelo") || "").trim();
     project_id = String(form.get("project_id") || "").trim();
     customFields = parseCustomFields(form);
+    eh_atividade_prioridade = String(form.get("eh_atividade_prioridade") || "") === "true" || String(form.get("eh_atividade_prioridade") || "") === "1";
+    const rawDaId = form.get("demanda_atividade_id");
+    const rawDvId = form.get("demanda_veiculo_id");
+    demanda_atividade_id = rawDaId && Number(rawDaId) > 0 ? Number(rawDaId) : null;
+    demanda_veiculo_id = rawDvId && Number(rawDvId) > 0 ? Number(rawDvId) : null;
   } else {
     let body;
     try {
@@ -300,6 +364,13 @@ taskRoutes.post("/:id/tasks", async (c) => {
     submodelo = String(body.submodelo || "").trim();
     project_id = String(body.project_id || "").trim();
     customFields = parseCustomFields(body);
+    eh_atividade_prioridade = Boolean(body.eh_atividade_prioridade);
+    demanda_atividade_id = body.demanda_atividade_id && Number(body.demanda_atividade_id) > 0 ? Number(body.demanda_atividade_id) : null;
+    demanda_veiculo_id = body.demanda_veiculo_id && Number(body.demanda_veiculo_id) > 0 ? Number(body.demanda_veiculo_id) : null;
+  }
+
+  if (eh_atividade_prioridade && !demanda_atividade_id) {
+    return err("Selecione a atividade de prioridade correspondente.");
   }
 
   const normalizedWorkType = work_type
@@ -423,33 +494,87 @@ taskRoutes.post("/:id/tasks", async (c) => {
     ? validResponsibleIds.join(",")
     : String(trip.user_id);
 
-  const result = await c.env.DB.prepare(
-    `INSERT INTO trip_tasks (
-       trip_id, work_type, location, start_time, end_time, summary, task_date, responsible_id,
-       responsible_ids, pending_items, vehicle, plate, montadora, modelo, submodelo, project_id
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(
-      id,
-      work_type,
-      location,
-      start_time,
-      end_time,
-      summary,
-      task_date,
-      primaryResponsibleId,
-      responsibleIdsCsv,
-      pending_items || null,
-      vehicle || null,
-      plate || null,
-      montadora || null,
-      modelo || null,
-      submodelo || null,
-      project_id ? Number(project_id) : null,
+  let taskId;
+  try {
+    const result = await c.env.DB.prepare(
+      `INSERT INTO trip_tasks (
+         trip_id, work_type, location, start_time, end_time, summary, task_date, responsible_id,
+         responsible_ids, pending_items, vehicle, plate, montadora, modelo, submodelo, project_id,
+         eh_atividade_prioridade, demanda_atividade_id, demanda_veiculo_id
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run();
+      .bind(
+        id,
+        work_type,
+        location,
+        start_time,
+        end_time,
+        summary,
+        task_date,
+        primaryResponsibleId,
+        responsibleIdsCsv,
+        pending_items || null,
+        vehicle || null,
+        plate || null,
+        montadora || null,
+        modelo || null,
+        submodelo || null,
+        project_id ? Number(project_id) : null,
+        eh_atividade_prioridade ? 1 : 0,
+        demanda_atividade_id,
+        demanda_veiculo_id,
+      )
+      .run();
+    taskId = result.meta.last_row_id;
+  } catch (insertError) {
+    if (String(insertError).includes("no such column")) {
+      const result = await c.env.DB.prepare(
+        `INSERT INTO trip_tasks (
+           trip_id, work_type, location, start_time, end_time, summary, task_date, responsible_id,
+           responsible_ids, pending_items, vehicle, plate, montadora, modelo, submodelo, project_id
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+        .bind(
+          id,
+          work_type,
+          location,
+          start_time,
+          end_time,
+          summary,
+          task_date,
+          primaryResponsibleId,
+          responsibleIdsCsv,
+          pending_items || null,
+          vehicle || null,
+          plate || null,
+          montadora || null,
+          modelo || null,
+          submodelo || null,
+          project_id ? Number(project_id) : null,
+        )
+        .run();
+      taskId = result.meta.last_row_id;
+    } else {
+      throw insertError;
+    }
+  }
 
-  const taskId = result.meta.last_row_id;
+  if (eh_atividade_prioridade && demanda_atividade_id) {
+    try {
+      const atividade = await c.env.DB.prepare(`
+        SELECT da.status, am.descricao
+        FROM demanda_atividades da
+        LEFT JOIN atividades_modelo am ON am.id = da.atividade_modelo_id
+        WHERE da.id = ?
+      `).bind(demanda_atividade_id).first();
+      await atualizarStatusDemandaAtividade(c.env.DB, demanda_atividade_id, userId);
+      if (atividade?.status !== 'concluida') {
+        await notificarLiderDemandaConcluida(c.env.DB, trip, atividade, userId);
+      }
+    } catch (statusError) {
+      console.error("Falha ao atualizar status de demanda atividade:", statusError);
+    }
+  }
 
   if (photoFiles.length > 0 && !hasFileStorage(c.env)) {
     return err("Upload de fotos indisponível: R2 não configurado.", 503);

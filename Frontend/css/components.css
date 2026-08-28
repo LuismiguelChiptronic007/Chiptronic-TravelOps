@@ -1756,6 +1756,71 @@ html[data-theme="dark"] .alert-info .alert-icon {
   animation: fadeIn 0.2s ease;
 }
 
+.modal-overlay.demandas-fullscreen {
+  align-items: stretch;
+  padding: 0;
+}
+
+.modal-overlay.demandas-fullscreen .demandas-fullscreen-content {
+  width: 100%;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  border-radius: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.demandas-fullscreen-content .modal-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.demandas-fullscreen-content .modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--panel-bg);
+  border-top: 1px solid var(--border);
+}
+
+.demandas-page-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.demandas-page-content .modal-header {
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.demandas-page-content .modal-body {
+  padding: 1.3rem;
+}
+
+.demandas-page-back {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .demandas-fullscreen-content .modal-body {
+    padding: 16px;
+  }
+
+  .demandas-fullscreen-content .form-grid.two {
+    grid-template-columns: 1fr;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

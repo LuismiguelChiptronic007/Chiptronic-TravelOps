@@ -12,6 +12,7 @@ import { activity } from './activity.js';
 import { presence } from './presence.js';
 import { admin } from './admin.js';
 import { mapaOperacional } from './mapa_operacional.js';
+import { demandas } from './demandas.js';
 import { err, json } from './helpers.js';
 
 const app = new Hono();
@@ -46,6 +47,7 @@ app.route('/api/presence', presence);
 app.route('/api/admin', admin);
 app.route('/api', mapaOperacional);
 app.route('/api', files);
+app.route('/api/demandas', demandas);
 
 app.notFound((c) => {
   if (c.req.path.startsWith('/api/') || c.req.path === '/api') {

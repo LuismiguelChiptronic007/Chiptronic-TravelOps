@@ -1,4 +1,4 @@
-import { api, clearSession } from './api.js';
+import { api, clearSession, showAlert } from './api.js';
 import { escapeHtml, mountShell } from './layout.js';
 import { getStoredTheme, toggleTheme } from './theme.js';
 import { confirmDialog } from './ui.js';
@@ -179,7 +179,7 @@ function setupLeaderListeners() {
       projectInput.value = '';
       await loadLeaderProjects();
     } catch (err) {
-      alert(err.message || 'Erro ao adicionar projeto.');
+      showAlert(document.getElementById('alert'), err.message || 'Erro ao adicionar projeto.');
     }
   };
 
@@ -227,7 +227,7 @@ function setupLeaderListeners() {
       workTypeInput.value = '';
       await loadLeaderWorkTypes();
     } catch (err) {
-      alert(err.message || 'Erro ao adicionar tipo de trabalho.');
+      showAlert(document.getElementById('alert'), err.message || 'Erro ao adicionar tipo de trabalho.');
     }
   };
 
@@ -288,7 +288,7 @@ function setupLeaderListeners() {
       if (requiredInput) requiredInput.checked = false;
       await loadProjectFields(currentProjectFieldsId);
     } catch (err) {
-      alert(err.message || 'Erro ao adicionar campo.');
+      showAlert(document.getElementById('alert'), err.message || 'Erro ao adicionar campo.');
     }
   });
 
@@ -307,7 +307,7 @@ function setupLeaderListeners() {
       if (requiredInput) requiredInput.checked = false;
       await loadWorkTypeFields(currentWorkTypeFieldsName);
     } catch (err) {
-      alert(err.message || 'Erro ao adicionar campo.');
+      showAlert(document.getElementById('alert'), err.message || 'Erro ao adicionar campo.');
     }
   });
 
@@ -362,7 +362,7 @@ function setupLeaderListeners() {
       }
       await loadProjectFields(currentProjectFieldsId);
     } catch (err) {
-      alert(err.message || 'Erro ao limpar campos.');
+      showAlert(document.getElementById('alert'), err.message || 'Erro ao limpar campos.');
     }
   });
 
@@ -383,7 +383,7 @@ function setupLeaderListeners() {
       }
       await loadWorkTypeFields(currentWorkTypeFieldsName);
     } catch (err) {
-      alert(err.message || 'Erro ao limpar campos.');
+      showAlert(document.getElementById('alert'), err.message || 'Erro ao limpar campos.');
     }
   });
 
@@ -410,7 +410,7 @@ function setupLeaderListeners() {
       await loadLeaderProjects();
       await loadLeaderWorkTypes();
     } catch (err) {
-      alert(err.message || 'Erro ao editar.');
+      showAlert(document.getElementById('alert'), err.message || 'Erro ao editar.');
     }
   });
 }

@@ -133,6 +133,7 @@ async function init() {
   }
   const user = await mountShell({ active: "dashboard" });
   if (!user) return;
+  window.__currentUser = user;
 
   try {
     const res = await api.getTrip(tripId);

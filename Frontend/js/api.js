@@ -267,8 +267,8 @@ export const api = {
       Array.isArray(payload.responsible_ids) &&
       payload.responsible_ids.length
     ) {
-      payload.responsible_ids.forEach((id) =>
-        fd.append("responsible_ids", String(id)),
+      payload.responsible_ids.forEach((rid) =>
+        fd.append("responsible_ids", String(rid)),
       );
     } else if (payload.responsible_id) {
       fd.append("responsible_ids", String(payload.responsible_id));
@@ -281,6 +281,15 @@ export const api = {
     fd.append("modelo", payload.modelo || "");
     fd.append("submodelo", payload.submodelo || "");
     fd.append("project_id", payload.project_id || "");
+    if (payload.eh_atividade_prioridade) {
+      fd.append("eh_atividade_prioridade", "1");
+    }
+    if (payload.demanda_atividade_id) {
+      fd.append("demanda_atividade_id", String(payload.demanda_atividade_id));
+    }
+    if (payload.demanda_veiculo_id) {
+      fd.append("demanda_veiculo_id", String(payload.demanda_veiculo_id));
+    }
     if (payload.custom_fields) {
       for (const [name, value] of Object.entries(payload.custom_fields)) {
         fd.append(`custom_${name}`, value || "");
@@ -403,6 +412,27 @@ export const api = {
     json: { role },
   }),
   deleteAdminUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
+
+  demandas: {
+    atividadesModelo: (opts = {}) => {
+      const qs = [];
+      if (opts.tipo_projeto) qs.push(`tipo_projeto=${encodeURIComponent(opts.tipo_projeto)}`);
+      return request(`/demandas/atividades-modelo${qs.length ? `?${qs.join('&')}` : ''}`);
+    },
+    criarAtividadeModelo: (body) =>
+      request('/demandas/atividades-modelo', { method: 'POST', json: body }),
+    listarViagem: (viagemId) =>
+      request(`/demandas/viagem/${viagemId}`),
+    criarViagem: (viagemId, body) =>
+      request(`/demandas/viagem/${viagemId}`, { method: 'POST', json: body }),
+    atualizarStatusAtividade: (atividadeId, status, tripId) =>
+      request(`/demandas/atividade/${atividadeId}/status?trip_id=${tripId || ''}`, {
+        method: 'PUT',
+        json: { status },
+      }),
+    excluir: (demandaId) =>
+      request(`/demandas/${demandaId}`, { method: 'DELETE' }),
+  },
 };
 
 export function requireAuthPage() {

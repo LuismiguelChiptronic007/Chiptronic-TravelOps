@@ -5,7 +5,14 @@ import {
   api,
   showAlert,
 } from "./api.js";
+
 import { escapeHtml } from "./layout.js";
+import {
+  renderQuadroDemandasIntegrante,
+  inserirCampoAtividadePrioridadeNoForm,
+  extrairPayloadDemandaDoForm,
+  abrirModalDemandasLider,
+} from "./demandas.js";
 
 let lastTaskDate = "";
 let selectedTripDate = "";
@@ -801,7 +808,7 @@ function openTaskModal(task) {
         "success",
       );
     } catch (err) {
-      alert(err.message || "Erro ao atualizar tarefa");
+      showAlert(document.getElementById("alert"), err.message || "Erro ao atualizar tarefa");
       saveBtn.disabled = false;
     }
   });
@@ -1402,6 +1409,58 @@ export function renderTrip(t) {
   prepareTaskForm(t, { clearDate: false });
   setReadOnly(false);
   window.__currentTrip = t;
+
+  const demandasContainer = document.getElementById("demandas-panel-container");
+  if (demandasContainer) {
+    renderQuadroDemandasIntegrante(demandasContainer, t.demandas || [], t.id, {
+      user: window.__currentUser || null,
+      onStatusChange: async (novasDemandas) => {
+        try {
+          const res = await api.getTrip(t.id);
+          if (res?.trip) {
+            window.__currentTrip = res.trip;
+            renderTrip(res.trip);
+            const alertEl = document.getElementById("alert");
+            if (alertEl) showAlert(alertEl, "Status da atividade atualizado.", "success");
+          }
+        } catch (e) {}
+      },
+    });
+  }
+
+  const alertEl = document.getElementById("alert");
+  const taskForm = document.getElementById("task-form");
+  if (taskForm) {
+    const anchor = document.getElementById("demanda-prioridade-anchor");
+    if (anchor) {
+      const tempWrap = document.createElement("div");
+      anchor.parentNode.insertBefore(tempWrap, anchor);
+      tempWrap.remove();
+    }
+    inserirCampoAtividadePrioridadeNoForm(taskForm, t, {});
+  }
+
+  const liderBtnWrap = document.getElementById("btn-demanda-lider-wrap");
+  if (liderBtnWrap) {
+    const u = window.__currentUser || {};
+    const position = String(u.position_title || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const isLeader = position === "lider" && u.sector === t.sector;
+    if (isLeader) {
+      liderBtnWrap.innerHTML = `
+        <button type="button" class="btn btn-success" id="btn-fornecer-demandas-lider" style="width:100%;">
+          🚗 Fornecer / Gerenciar demandas para esta viagem
+        </button>`;
+      liderBtnWrap.querySelector("#btn-fornecer-demandas-lider").addEventListener("click", () => {
+        window.location.href = `demandas.html?id=${t.id}`;
+      });
+    } else {
+      liderBtnWrap.innerHTML = "";
+    }
+  }
 }
 
 export function taskFormPayload() {
@@ -1415,6 +1474,8 @@ export function taskFormPayload() {
   )
     .map((input) => input.value)
     .filter(Boolean);
+
+  const demandaPayload = extrairPayloadDemandaDoForm();
 
   return {
     work_type: document.getElementById("work_type").value,
@@ -1433,6 +1494,7 @@ export function taskFormPayload() {
     modelo: document.getElementById("modelo")?.value.trim() || null,
     submodelo: document.getElementById("submodelo")?.value.trim() || null,
     project_id: document.getElementById("project_id")?.value || null,
+    ...demandaPayload,
     custom_fields: Object.fromEntries(
       Array.from(
         document.querySelectorAll("#custom-fields-container input"),

@@ -4,6 +4,7 @@ import {
   isReportOverdue,
   statusLabel,
 } from './helpers.js';
+import { fetchDemandasViagem } from './demandas.js';
 
 export async function autoUpdateTripStatus(db, tripId) {
   const trip = await db
@@ -125,6 +126,9 @@ function formatTask(task, photos = []) {
       : null,
     responsibles: responsibles,
     pending_items: task.pending_items || '',
+    eh_atividade_prioridade: Boolean(task.eh_atividade_prioridade),
+    demanda_atividade_id: task.demanda_atividade_id || null,
+    demanda_veiculo_id: task.demanda_veiculo_id || null,
     created_at: task.created_at,
     updated_at: task.updated_at,
     photos: (photos || []).map((p) => ({
@@ -149,7 +153,7 @@ function parseEquipmentChecklist(value) {
   }
 }
 
-export function formatTrip(trip, checklist = null, expenses = [], attachments = [], members = [], tasks = []) {
+export function formatTrip(trip, checklist = null, expenses = [], attachments = [], members = [], tasks = [], demandas = []) {
   const taskList = tasks || [];
   return {
     id: trip.id,
@@ -187,6 +191,7 @@ export function formatTrip(trip, checklist = null, expenses = [], attachments = 
         },
     members: (members || []).map(formatMember),
     tasks: taskList,
+    demandas: demandas || [],
     expenses: (expenses || []).map((e) => ({
       id: e.id,
       description: e.description,
@@ -212,7 +217,7 @@ export async function fetchTripFull(db, tripId, userId) {
     .first();
   if (!trip) return null;
 
-  const [checklist, expenses, attachments, membersResult, taskRowsResult] = await Promise.all([
+  const [checklist, expenses, attachments, membersResult, taskRowsResult, demandasList] = await Promise.all([
     db.prepare('SELECT * FROM trip_checklists WHERE trip_id = ?').bind(tripId).first(),
     db.prepare('SELECT * FROM expenses WHERE trip_id = ? ORDER BY id ASC').bind(tripId).all(),
     db.prepare('SELECT * FROM attachments WHERE trip_id = ? ORDER BY id ASC').bind(tripId).all(),
@@ -254,6 +259,7 @@ export async function fetchTripFull(db, tripId, userId) {
         return [];
       }
     })(),
+    fetchDemandasViagem(db, tripId),
   ]);
 
   let members = membersResult;
@@ -366,7 +372,7 @@ export async function fetchTripFull(db, tripId, userId) {
     }
   }
 
-  return formatTrip(trip, checklist, expenses.results || [], attachments.results || [], members, tasks);
+  return formatTrip(trip, checklist, expenses.results || [], attachments.results || [], members, tasks, demandasList);
 }
 
 export async function saveTripMembers(db, tripId, memberUserIds = []) {

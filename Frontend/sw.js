@@ -1,9 +1,10 @@
-const CACHE_NAME = 'travelops-shell-v9';
+const CACHE_NAME = 'travelops-shell-v14';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/login.html',
   '/viagens.html',
+  '/demandas.html',
   '/trip-new.html',
   '/trip.html',
   '/mapa-operacional.html',
@@ -21,6 +22,8 @@ const APP_SHELL = [
   '/js/trip-render.js',
   '/js/trip-history.js',
   '/js/trip-task-edit.js',
+  '/js/demandas.js',
+  '/js/demandas-page.js',
 
   '/js/location.js',
   '/js/mapa-operacional.js',
@@ -30,6 +33,44 @@ const APP_SHELL = [
   '/assets/logo-mark.svg',
   '/assets/default-avatar.svg'
 ];
+
+self.addEventListener('push', (event) => {
+  try {
+    const data = event.data?.json?.() || event.data?.text?.() || {};
+    const title = typeof data === 'string' ? data : (data.title || 'Chiptronic TravelOps');
+    const options = {
+      body: typeof data === 'string' ? '' : (data.body || data.message || 'Nova notificação.'),
+      icon: '/assets/icone.png',
+      badge: '/assets/icone.png',
+      data: typeof data === 'string' ? {} : (data.data || {}),
+      tag: typeof data === 'string' ? 'generic' : (data.tag || 'travelops-notification'),
+      renotify: true,
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (err) {
+    const title = 'Chiptronic TravelOps';
+    const options = {
+      body: 'Nova notificação recebida.',
+      icon: '/assets/icone.png',
+      badge: '/assets/icone.png',
+      tag: 'travelops-notification',
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const urlToOpen = event.notification.data?.url || '/index.html';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientsList) => {
+      for (const client of clientsList) {
+        if ('focus' in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(urlToOpen);
+    })
+  );
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then(async (cache) => {

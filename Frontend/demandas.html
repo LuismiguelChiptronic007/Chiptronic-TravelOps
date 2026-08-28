@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fornecer demandas — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <script type="module" src="js/theme.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1>Fornecer demandas</h1>
+          <p id="demandas-subtitle" class="text-muted">Carregando viagem...</p>
+        </div>
+        <a href="viagens.html" class="btn btn-secondary">Voltar para viagens</a>
+      </div>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+      <div id="demandas-page-form"></div>
+    </main>
+  </div>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/demandas-page.js"></script>
+</body>
+</html>
