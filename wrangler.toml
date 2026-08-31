@@ -22,3 +22,4 @@ migrations_dir = "migrations"
 
 [vars]
 APP_NAME = "Chiptronic TravelOps"
+APP_URL = "https://chiptronic-travel-ops.vercel.app/"

@@ -1,9 +1,57 @@
 import { Hono } from 'hono';
 import { requireUser } from './auth.js';
 import { err, json } from './helpers.js';
+import { sendEmail } from './email.js';
 
 export const notifications = new Hono();
 notifications.use('*', requireUser);
+
+export function buildNotificationEmailHtml({ title, message, link = '' }) {
+  const href = String(link || '').trim();
+  const action = href ? `<p><a href="${href}" style="color:#2563eb;">Abrir viagem</a></p>` : '';
+  return `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827;max-width:600px;margin:0 auto;">
+      <h2 style="margin-bottom:12px;">${title}</h2>
+      <p>${message}</p>
+      ${action}
+    </div>
+  `;
+}
+
+export async function getUsersEmails(db, userIds) {
+  const ids = [...new Set((userIds || []).filter((id) => Number(id) > 0))];
+  if (!ids.length) return [];
+  const placeholders = ids.map(() => '?').join(', ');
+  const { results } = await db.prepare(`SELECT id, email FROM users WHERE id IN (${placeholders})`).bind(...ids).all();
+  return (results || [])
+    .map((row) => String(row.email || '').trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export async function notifyUsersWithEmail(db, userIds, payload, env) {
+  const ids = [...new Set((userIds || []).filter((id) => Number(id) > 0))];
+  if (!ids.length) return;
+
+  await notifyUsers(db, ids, payload);
+  const emails = await getUsersEmails(db, ids);
+  if (!emails.length || !env || !env.RESEND_API_KEY) return;
+
+  const html = buildNotificationEmailHtml({
+    title: payload.title || 'Nova notificação',
+    message: payload.message || '',
+    link: payload.link || '',
+  });
+
+  await Promise.all(
+    emails.map((email) =>
+      sendEmail(env, {
+        to: email,
+        subject: payload.title || 'Nova notificação',
+        html,
+      }),
+    ),
+  );
+}
 
 function formatNotification(row) {
   return {

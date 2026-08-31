@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { requireUser } from './auth.js';
 import { err, json, getLedSector, isAdmin } from './helpers.js';
-import { notifyUsers } from './notifications.js';
+import { notifyUsersWithEmail } from './notifications.js';
 import { logActivity } from './activity.js';
 import { getAccessibleTrip } from './tasks.js';
 
@@ -219,12 +219,12 @@ demandas.post('/viagem/:viagemId', async (c) => {
     const destinatarios = [...memberIds].filter(id => id !== userId);
 
     if (destinatarios.length) {
-      await notifyUsers(c.env.DB, destinatarios, {
+      await notifyUsersWithEmail(c.env.DB, destinatarios, {
         type: 'info',
         title: 'Novas demandas de veículo',
         message: `O líder forneceu demandas para a viagem ${trip.origin} → ${trip.destination}. Acesse a viagem para ver as atividades.`,
         link: `/trip.html?id=${viagemId}#demandas`
-      });
+      }, c.env);
     }
   } catch (e) {
     console.error('Falha ao notificar integrantes sobre demanda:', e);

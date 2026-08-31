@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { hashPassword, randomToken } from './crypto.js';
 import { err, json } from './helpers.js';
+import { sendEmail, resetPasswordEmail } from './email.js';
 
 export const authPassword = new Hono();
 
@@ -15,7 +16,7 @@ authPassword.post('/forgot-password', async (c) => {
   const email = String(body.email || '').trim().toLowerCase();
   if (!email) return err('Informe o e-mail.');
 
-  const user = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
+  const user = await c.env.DB.prepare('SELECT id, email FROM users WHERE email = ?').bind(email).first();
 
   if (user) {
     const token = randomToken(24);
@@ -26,11 +27,12 @@ authPassword.post('/forgot-password', async (c) => {
       .bind(token, expires, user.id)
       .run();
 
-    return json({
-      success: true,
-      message: 'Se o e-mail existir, um link de redefinição será enviado.',
-      dev_reset_token: token,
-    });
+    const baseUrl = String(c.env.APP_URL || 'http://127.0.0.1:8787').replace(/\/$/, '');
+    const resetUrl = `${baseUrl}/forgot.html?token=${encodeURIComponent(token)}`;
+    const emailPayload = resetPasswordEmail(c.env, resetUrl);
+    c.executionCtx.waitUntil(
+      sendEmail(c.env, { to: user.email, subject: emailPayload.subject, html: emailPayload.html })
+    );
   }
 
   return json({

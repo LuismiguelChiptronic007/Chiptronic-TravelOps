@@ -12,16 +12,18 @@ forgotForm?.addEventListener('submit', async (e) => {
   hideAlert(alertEl);
   try {
     const res = await api.forgotPassword(document.getElementById('email').value.trim());
-    let msg = res.message || 'Solicitação enviada.';
-    if (res.dev_reset_token) {
-      msg += ` Token (dev): ${res.dev_reset_token}`;
-      document.getElementById('token').value = res.dev_reset_token;
-    }
+    const msg = res.message || 'Solicitação enviada.';
     showAlert(alertEl, msg, 'success');
   } catch (err) {
     showAlert(alertEl, err.message);
   }
 });
+
+const params = new URLSearchParams(window.location.search);
+const tokenFromUrl = params.get('token');
+if (tokenFromUrl && document.getElementById('token')) {
+  document.getElementById('token').value = tokenFromUrl;
+}
 
 resetForm?.addEventListener('submit', async (e) => {
   e.preventDefault();

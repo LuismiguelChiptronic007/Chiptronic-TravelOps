@@ -11,7 +11,7 @@ import {
 } from "./helpers.js";
 
 import { fetchTripFull } from "./trip_utils.js";
-import { notifyUsers } from "./notifications.js";
+import { notifyUsers, notifyUsersWithEmail } from "./notifications.js";
 import { logActivity } from "./activity.js";
 
 async function atualizarStatusDemandaAtividade(db, demandaAtividadeId, userId) {
@@ -50,7 +50,7 @@ async function atualizarStatusDemandaAtividade(db, demandaAtividadeId, userId) {
     .bind(novoStatus, demandaId).run();
 }
 
-async function notificarLiderDemandaConcluida(db, trip, atividade, userId) {
+async function notificarLiderDemandaConcluida(db, trip, atividade, userId, env) {
   const lider = await db.prepare(`
     SELECT id FROM users
     WHERE sector = ?
@@ -62,12 +62,17 @@ async function notificarLiderDemandaConcluida(db, trip, atividade, userId) {
 
   const integrante = await db.prepare('SELECT full_name FROM users WHERE id = ?')
     .bind(userId).first();
-  await notifyUsers(db, [lider.id], {
-    type: 'success',
-    title: 'Demanda de prioridade concluída',
-    message: `${integrante?.full_name || 'Um integrante'} registrou a conclusão de "${atividade.descricao || 'uma atividade'}" na viagem para ${trip.destination}.`,
-    link: `/trip.html?id=${trip.id}#demandas`,
-  });
+  await notifyUsersWithEmail(
+    db,
+    [lider.id],
+    {
+      type: 'success',
+      title: 'Demanda de prioridade concluída',
+      message: `${integrante?.full_name || 'Um integrante'} registrou a conclusão de "${atividade.descricao || 'uma atividade'}" na viagem para ${trip.destination}.`,
+      link: `/trip.html?id=${trip.id}#demandas`,
+    },
+    env,
+  );
 }
 
 export const taskRoutes = new Hono();
@@ -574,7 +579,7 @@ taskRoutes.post("/:id/tasks", async (c) => {
       `).bind(demanda_atividade_id).first();
       await atualizarStatusDemandaAtividade(c.env.DB, demanda_atividade_id, userId);
       if (atividade?.status !== 'concluida') {
-        await notificarLiderDemandaConcluida(c.env.DB, trip, atividade, userId);
+        await notificarLiderDemandaConcluida(c.env.DB, trip, atividade, userId, c.env);
       }
     } catch (statusError) {
       console.error("Falha ao atualizar status de demanda atividade:", statusError);
@@ -610,12 +615,12 @@ taskRoutes.post("/:id/tasks", async (c) => {
     const leaderIds = (leaders || []).map((r) => r.id).filter(Boolean);
     const user = c.get("user");
     if (leaderIds.length > 0) {
-      await notifyUsers(c.env.DB, leaderIds, {
+      await notifyUsersWithEmail(c.env.DB, leaderIds, {
         type: "info",
         title: "Nova tarefa registrada",
         message: `${user.full_name} adicionou uma tarefa em ${trip.destination} (${task_date}).`,
         link: `/trip.html?id=${id}`,
-      });
+      }, c.env);
     }
   } catch (e) {
     console.error("Falha ao notificar líder da setor:", e);
