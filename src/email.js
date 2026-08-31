@@ -1,4 +1,4 @@
-const DEFAULT_FROM = 'Chiptronic TravelOps <notificacoes@chiptronic.com.br>';
+const DEFAULT_FROM = 'Chiptronic TravelOps <onboarding@resend.dev>';
 
 export async function sendEmail(env, { to, subject, html }) {
   if (!env.RESEND_API_KEY) {
@@ -21,6 +21,7 @@ export async function sendEmail(env, { to, subject, html }) {
   });
 
   const text = await res.text();
+
   if (!res.ok) {
     console.error('Falha ao enviar e-mail via Resend:', res.status, text);
     return { ok: false, status: res.status, body: text };
