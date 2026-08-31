@@ -113,6 +113,7 @@ function formatTask(task, photos = []) {
     montadora: task.montadora || null,
     modelo: task.modelo || null,
     submodelo: task.submodelo || null,
+    ano: task.ano || null,
     project_id: task.project_id || null,
     project_name: task.project_name || null,
     custom_fields: task.custom_fields || {},

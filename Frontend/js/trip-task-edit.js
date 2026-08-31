@@ -1,6 +1,13 @@
 import { api, showAlert, hideAlert } from "./api.js";
 import { escapeHtml, mountShell } from "./layout.js";
 import { confirmDialog } from "./ui.js";
+import {
+  shouldShowVehicleFields,
+  shouldShowVehicleDetailFields,
+  isLunchType,
+  isTravelType,
+  filterVehicleDetailCustomFields,
+} from "./task-field-rules.js";
 
 const params = new URLSearchParams(location.search);
 const taskId = Number(params.get("task_id"));
@@ -92,11 +99,13 @@ async function fillForm() {
   document.getElementById("edit-summary").value = task.summary || "";
   document.getElementById("edit-pending-items").value =
     task.pending_items || "";
-  document.getElementById("edit-vehicle").value = task.vehicle || "";
+  document.getElementById("edit-vehicle") &&
+    (document.getElementById("edit-vehicle").value = task.vehicle || "");
   document.getElementById("edit-plate").value = task.plate || "";
   document.getElementById("edit-montadora").value = task.montadora || "";
   document.getElementById("edit-modelo").value = task.modelo || "";
   document.getElementById("edit-submodelo").value = task.submodelo || "";
+  document.getElementById("edit-ano").value = task.ano || "";
 
   fillResponsibleOptions();
   updateTaskTypeFields();
@@ -148,10 +157,10 @@ async function loadEditCustomFields() {
         : Promise.resolve({ fields: [] }),
     ]);
 
-    const fields = [
+    const fields = filterVehicleDetailCustomFields([
       ...(typeFields.fields || []).map((f) => ({ ...f, source: "type" })),
       ...(projectFields.fields || []).map((f) => ({ ...f, source: "project" })),
-    ];
+    ]);
 
     if (!fields.length) return;
 
@@ -224,8 +233,8 @@ function updateTaskTypeFields() {
     "edit-vehicle-detail-fields",
   );
 
-  vehicleFields.classList.add("hidden-fields");
-  vehicleDetailFields.classList.add("hidden-fields");
+  if (vehicleFields) vehicleFields.classList.add("hidden-fields");
+  if (vehicleDetailFields) vehicleDetailFields.classList.add("hidden-fields");
 
   const normalizedType = String(type || "")
     .trim()
@@ -233,17 +242,17 @@ function updateTaskTypeFields() {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-  const requiresVehicleDetails = [].includes(normalizedType);
-
-  if (requiresVehicleDetails) {
-    vehicleFields.classList.remove("hidden-fields");
-    vehicleDetailFields.classList.remove("hidden-fields");
-    if (vehicleFields) vehicleFields.classList.add("required-fields");
-    if (vehicleDetailFields)
-      vehicleDetailFields.classList.add("required-fields");
+  if (shouldShowVehicleDetailFields(type)) {
+    if (vehicleDetailFields) vehicleDetailFields.classList.remove("hidden-fields");
+    if (vehicleDetailFields) vehicleDetailFields.classList.add("required-fields");
   } else if (normalizedType === "analise de veiculos") {
-    vehicleFields.classList.remove("hidden-fields");
-    if (vehicleFields) vehicleFields.classList.add("required-fields");
+    if (vehicleDetailFields) vehicleDetailFields.classList.remove("hidden-fields");
+    if (vehicleDetailFields) vehicleDetailFields.classList.add("required-fields");
+  }
+
+  if (isTravelType(type) || isLunchType(type)) {
+    if (vehicleDetailFields) vehicleDetailFields.classList.add("hidden-fields");
+    if (vehicleDetailFields) vehicleDetailFields.classList.remove("required-fields");
   }
 }
 
@@ -268,11 +277,12 @@ async function saveTask() {
   const pending_items = document
     .getElementById("edit-pending-items")
     .value.trim();
-  const vehicle = document.getElementById("edit-vehicle").value.trim();
+  const vehicle = document.getElementById("edit-vehicle")?.value.trim() || "";
   const plate = document.getElementById("edit-plate").value.trim();
   const montadora = document.getElementById("edit-montadora").value.trim();
   const modelo = document.getElementById("edit-modelo").value.trim();
   const submodelo = document.getElementById("edit-submodelo").value.trim();
+  const ano = document.getElementById("edit-ano")?.value.trim() || "";
   const responsible_ids = getSelectedResponsibles();
 
   if (
@@ -301,7 +311,7 @@ async function saveTask() {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
-  const requiresVehicle = [].includes(normalizedType);
+  const requiresVehicle = shouldShowVehicleFields(work_type);
   if (
     requiresVehicle &&
     (!vehicle || !plate || !montadora || !modelo || !submodelo)
@@ -342,6 +352,7 @@ async function saveTask() {
       montadora,
       modelo,
       submodelo,
+      ano,
       project_id: document.getElementById("edit-project-id")?.value || null,
       custom_fields: customFields,
     };

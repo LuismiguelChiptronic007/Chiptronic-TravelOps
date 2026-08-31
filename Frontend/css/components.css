@@ -326,11 +326,17 @@ html[data-theme="dark"] .auth-page::after {
 .form-grid.three {
   grid-template-columns: 1fr 1fr 1fr;
 }
+.form-grid.five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
 @media (max-width: 640px) {
   .form-grid.two {
     grid-template-columns: 1fr;
   }
   .form-grid.three {
+    grid-template-columns: 1fr;
+  }
+  .form-grid.five {
     grid-template-columns: 1fr;
   }
   .user-chip .meta {

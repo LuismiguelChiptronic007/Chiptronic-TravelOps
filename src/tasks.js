@@ -305,6 +305,7 @@ taskRoutes.post("/:id/tasks", async (c) => {
   let montadora = "";
   let modelo = "";
   let submodelo = "";
+  let ano = "";
   let project_id = "";
   let customFields = {};
   let eh_atividade_prioridade = false;
@@ -330,6 +331,7 @@ taskRoutes.post("/:id/tasks", async (c) => {
     montadora = String(form.get("montadora") || "").trim();
     modelo = String(form.get("modelo") || "").trim();
     submodelo = String(form.get("submodelo") || "").trim();
+    ano = String(form.get("ano") || "").trim();
     project_id = String(form.get("project_id") || "").trim();
     customFields = parseCustomFields(form);
     eh_atividade_prioridade = String(form.get("eh_atividade_prioridade") || "") === "true" || String(form.get("eh_atividade_prioridade") || "") === "1";
@@ -362,6 +364,7 @@ taskRoutes.post("/:id/tasks", async (c) => {
     montadora = String(body.montadora || "").trim();
     modelo = String(body.modelo || "").trim();
     submodelo = String(body.submodelo || "").trim();
+    ano = String(body.ano || "").trim();
     project_id = String(body.project_id || "").trim();
     customFields = parseCustomFields(body);
     eh_atividade_prioridade = Boolean(body.eh_atividade_prioridade);
@@ -499,9 +502,9 @@ taskRoutes.post("/:id/tasks", async (c) => {
     const result = await c.env.DB.prepare(
       `INSERT INTO trip_tasks (
          trip_id, work_type, location, start_time, end_time, summary, task_date, responsible_id,
-         responsible_ids, pending_items, vehicle, plate, montadora, modelo, submodelo, project_id,
+         responsible_ids, pending_items, vehicle, plate, montadora, modelo, submodelo, ano, project_id,
          eh_atividade_prioridade, demanda_atividade_id, demanda_veiculo_id
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
       .bind(
         id,
@@ -519,6 +522,7 @@ taskRoutes.post("/:id/tasks", async (c) => {
         montadora || null,
         modelo || null,
         submodelo || null,
+        ano || null,
         project_id ? Number(project_id) : null,
         eh_atividade_prioridade ? 1 : 0,
         demanda_atividade_id,
@@ -531,8 +535,8 @@ taskRoutes.post("/:id/tasks", async (c) => {
       const result = await c.env.DB.prepare(
         `INSERT INTO trip_tasks (
            trip_id, work_type, location, start_time, end_time, summary, task_date, responsible_id,
-           responsible_ids, pending_items, vehicle, plate, montadora, modelo, submodelo, project_id
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           responsible_ids, pending_items, vehicle, plate, montadora, modelo, submodelo, ano, project_id
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
         .bind(
           id,
@@ -550,6 +554,7 @@ taskRoutes.post("/:id/tasks", async (c) => {
           montadora || null,
           modelo || null,
           submodelo || null,
+          ano || null,
           project_id ? Number(project_id) : null,
         )
         .run();
@@ -712,6 +717,7 @@ taskRoutes.put("/:id/tasks/:taskId", async (c) => {
   let montadora = task.montadora;
   let modelo = task.modelo;
   let submodelo = task.submodelo;
+  let ano = task.ano;
   let project_id = task.project_id;
   let customFields = {};
   const photoFiles = [];
@@ -735,6 +741,7 @@ taskRoutes.put("/:id/tasks/:taskId", async (c) => {
     montadora = String(form.get("montadora") || "").trim();
     modelo = String(form.get("modelo") || "").trim();
     submodelo = String(form.get("submodelo") || "").trim();
+    ano = String(form.get("ano") || "").trim();
     project_id = String(form.get("project_id") || "").trim() || project_id;
     customFields = parseCustomFields(form);
 
@@ -769,6 +776,7 @@ taskRoutes.put("/:id/tasks/:taskId", async (c) => {
     montadora = String(body.montadora || "").trim();
     modelo = String(body.modelo || "").trim();
     submodelo = String(body.submodelo || "").trim();
+    ano = String(body.ano || "").trim();
     project_id = String(body.project_id || "").trim() || project_id;
     customFields = parseCustomFields(body);
   }
@@ -897,7 +905,7 @@ taskRoutes.put("/:id/tasks/:taskId", async (c) => {
       `UPDATE trip_tasks SET
          work_type = ?, location = ?, start_time = ?, end_time = ?, summary = ?, task_date = ?, 
          responsible_id = ?, responsible_ids = ?, pending_items = ?, vehicle = ?, plate = ?, 
-         montadora = ?, modelo = ?, submodelo = ?, project_id = ?
+         montadora = ?, modelo = ?, submodelo = ?, ano = ?, project_id = ?
        WHERE id = ?`,
     )
       .bind(
@@ -915,6 +923,7 @@ taskRoutes.put("/:id/tasks/:taskId", async (c) => {
         montadora || null,
         modelo || null,
         submodelo || null,
+        ano || null,
         project_id ? Number(project_id) : null,
         taskId,
       )

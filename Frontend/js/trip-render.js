@@ -50,25 +50,25 @@ function showElement(el) {
   if (el) el.classList.remove("hidden-fields");
 }
 
-function normalizeWorkType(type) {
-  return String(type || "")
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-}
+import {
+  shouldShowVehicleFields,
+  shouldShowVehicleDetailFields,
+  isLunchType,
+  isTravelType,
+  normalizeWorkType,
+  filterVehicleDetailCustomFields,
+} from "./task-field-rules.js";
 
 function requiresVehicleFields(type) {
-  const normalized = normalizeWorkType(type);
-  return [].includes(normalized);
+  return shouldShowVehicleFields(type);
 }
 
 function requiresVehicleDetailFields(type) {
-  return requiresVehicleFields(type);
+  return shouldShowVehicleDetailFields(type);
 }
 
-function isLunchType(type) {
-  return normalizeWorkType(type) === "refeicao";
+function isTravelTypeTask(type) {
+  return isTravelType(type);
 }
 
 function updateTaskTypeFields() {
@@ -80,34 +80,43 @@ function updateTaskTypeFields() {
   const montadoraInput = document.getElementById("montadora");
   const modeloInput = document.getElementById("modelo");
   const submodeloInput = document.getElementById("submodelo");
+  const anoInput = document.getElementById("ano");
   const locationField = document.getElementById("location-field");
   const locationInput = document.getElementById("location");
   const summaryField = document.getElementById("summary-field");
   const summaryInput = document.getElementById("summary");
 
-  hideElement(vehicleFields);
-  hideElement(vehicleDetailFields);
+  if (vehicleFields) hideElement(vehicleFields);
+  if (vehicleDetailFields) hideElement(vehicleDetailFields);
   if (vehicleInput) vehicleInput.required = false;
   if (plateInput) plateInput.required = false;
   if (montadoraInput) montadoraInput.required = false;
   if (modeloInput) modeloInput.required = false;
   if (submodeloInput) submodeloInput.required = false;
+  if (anoInput) anoInput.required = false;
 
   if (requiresVehicleFields(type)) {
-    showElement(vehicleFields);
-    showElement(vehicleDetailFields);
-    if (vehicleInput) vehicleInput.required = true;
+    if (vehicleDetailFields) showElement(vehicleDetailFields);
     if (plateInput) plateInput.required = true;
     if (montadoraInput) montadoraInput.required = true;
     if (modeloInput) modeloInput.required = true;
     if (submodeloInput) submodeloInput.required = true;
+    if (anoInput) anoInput.required = false;
   } else if (type === "Análise de veículos") {
-    showElement(vehicleFields);
-    if (vehicleInput) vehicleInput.required = true;
+    if (vehicleDetailFields) showElement(vehicleDetailFields);
     if (plateInput) plateInput.required = true;
   }
 
   const lunch = isLunchType(type);
+  const travel = isTravelTypeTask(type);
+  if (travel || lunch) {
+    if (vehicleDetailFields) hideElement(vehicleDetailFields);
+    if (plateInput) plateInput.required = false;
+    if (montadoraInput) montadoraInput.required = false;
+    if (modeloInput) modeloInput.required = false;
+    if (submodeloInput) submodeloInput.required = false;
+    if (anoInput) anoInput.required = false;
+  }
 
   if (locationField)
     lunch ? hideElement(locationField) : showElement(locationField);
@@ -553,17 +562,7 @@ function openTaskModal(task) {
             <label>Responsáveis pela tarefa</label>
             <div id="edit-responsible-list" class="responsible-list"></div>
           </div>
-          <div id="edit-vehicle-fields" class="form-grid two hidden-fields">
-            <div>
-              <label for="edit-vehicle">Veículo</label>
-              <input id="edit-vehicle" placeholder="Ex: Caminhão / Van / Carreta" />
-            </div>
-            <div>
-              <label for="edit-plate">Placa</label>
-              <input id="edit-plate" placeholder="Ex: ABC-1234" />
-            </div>
-          </div>
-          <div id="edit-vehicle-detail-fields" class="form-grid three hidden-fields">
+          <div id="edit-vehicle-detail-fields" class="form-grid five hidden-fields">
             <div>
               <label for="edit-montadora">Montadora</label>
               <input id="edit-montadora" placeholder="Ex: Chevrolet" />
@@ -573,8 +572,16 @@ function openTaskModal(task) {
               <input id="edit-modelo" placeholder="Ex: S10" />
             </div>
             <div>
-              <label for="edit-submodelo">Submodelo</label>
+              <label for="edit-submodelo">Versão modelo</label>
               <input id="edit-submodelo" placeholder="Ex: LTZ 2.8" />
+            </div>
+            <div>
+              <label for="edit-plate">Placa</label>
+              <input id="edit-plate" placeholder="Ex: ABC-1234" />
+            </div>
+            <div>
+              <label for="edit-ano">Ano</label>
+              <input id="edit-ano" placeholder="Ex: 2024" />
             </div>
           </div>
           <div>
@@ -666,11 +673,13 @@ function openTaskModal(task) {
     document.getElementById("edit-summary").value = task.summary;
     document.getElementById("edit-pending-items").value =
       task.pending_items || "";
-    document.getElementById("edit-vehicle").value = task.vehicle || "";
+    const legacyVehicleInput = document.getElementById("edit-vehicle");
+    if (legacyVehicleInput) legacyVehicleInput.value = task.vehicle || "";
     document.getElementById("edit-plate").value = task.plate || "";
     document.getElementById("edit-montadora").value = task.montadora || "";
     document.getElementById("edit-modelo").value = task.modelo || "";
     document.getElementById("edit-submodelo").value = task.submodelo || "";
+    document.getElementById("edit-ano").value = task.ano || "";
 
     fillEditResponsibleOptions();
     updateEditTaskTypeFields();
@@ -789,13 +798,14 @@ function openTaskModal(task) {
         task_date: document.getElementById("edit-task-date").value,
         pending_items:
           document.getElementById("edit-pending-items").value.trim() || null,
-        vehicle: document.getElementById("edit-vehicle").value.trim() || null,
+        vehicle: document.getElementById("edit-vehicle")?.value.trim() || null,
         plate: document.getElementById("edit-plate").value.trim() || null,
         montadora:
           document.getElementById("edit-montadora").value.trim() || null,
         modelo: document.getElementById("edit-modelo").value.trim() || null,
         submodelo:
           document.getElementById("edit-submodelo").value.trim() || null,
+        ano: document.getElementById("edit-ano")?.value.trim() || null,
       };
 
       const res = await api.updateTask(trip.id, task.id, payload);
@@ -906,10 +916,10 @@ async function loadCustomFieldsForForm() {
         : Promise.resolve({ fields: [] }),
     ]);
 
-    const fields = [
+    const fields = filterVehicleDetailCustomFields([
       ...(typeFields.fields || []).map((f) => ({ ...f, source: "type" })),
       ...(projectFields.fields || []).map((f) => ({ ...f, source: "project" })),
-    ];
+    ]);
 
     if (!fields.length) return;
 
@@ -1493,6 +1503,7 @@ export function taskFormPayload() {
     montadora: document.getElementById("montadora")?.value.trim() || null,
     modelo: document.getElementById("modelo")?.value.trim() || null,
     submodelo: document.getElementById("submodelo")?.value.trim() || null,
+    ano: document.getElementById("ano")?.value.trim() || null,
     project_id: document.getElementById("project_id")?.value || null,
     ...demandaPayload,
     custom_fields: Object.fromEntries(
