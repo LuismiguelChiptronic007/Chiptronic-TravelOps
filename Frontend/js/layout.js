@@ -51,10 +51,14 @@ export async function mountShell({ active } = {}) {
   renderDrawer(user);
   bindShellEvents(user);
   refreshNotificationBadge();
+  refreshTopAnnouncement();
   api.presenceHeartbeat().catch(() => {});
 
   if (notifPollTimer) clearInterval(notifPollTimer);
-  notifPollTimer = setInterval(refreshNotificationBadge, 60000);
+  notifPollTimer = setInterval(() => {
+    refreshNotificationBadge();
+    refreshTopAnnouncement();
+  }, 60000);
   if (presencePollTimer) clearInterval(presencePollTimer);
   presencePollTimer = setInterval(() => api.presenceHeartbeat().catch(() => {}), 60000);
 
@@ -129,7 +133,11 @@ function ensureShellElements() {
         <div class="sidebar-footer" id="sidebar-footer"></div>
       </aside>
     `);
-    applySidebarCollapsedState(localStorage.getItem('cto_sidebar_collapsed') === 'true');
+
+    const storedCollapsed = localStorage.getItem('cto_sidebar_collapsed');
+    const defaultCollapsed = storedCollapsed === null ? 'true' : storedCollapsed === 'true';
+    localStorage.setItem('cto_sidebar_collapsed', String(defaultCollapsed));
+    applySidebarCollapsedState(defaultCollapsed);
   } else if (!document.getElementById('sidebar-footer')) {
     document.getElementById('sidebar')?.insertAdjacentHTML('beforeend', '<div class="sidebar-footer" id="sidebar-footer"></div>');
   }
@@ -277,23 +285,54 @@ function renderTopbar(user, active) {
         <span>${parts[1]}</span>
       </div>
     </div>
-    <div class="topbar-right">
-      <button type="button" class="icon-btn theme-top-btn" id="theme-toggle-btn" aria-label="Alternar tema" data-tooltip="Alternar tema">
-        ${getStoredTheme() === 'dark' ? '☀️' : '🌙'}
-      </button>
-      <button type="button" class="icon-btn notif-btn" id="btn-notifications" aria-label="Notificações" data-tooltip="Notificações">
-        🔔
-        <span class="notif-badge hidden" id="notif-badge">0</span>
-      </button>
-      <button type="button" class="user-profile-btn" id="btn-profile" aria-label="Abrir menu de usuário">
-        <div class="avatar pill">${avatarHtml}</div>
-        <div class="meta">
-          <strong>${escapeHtml(user.full_name)}</strong>
-          <small>${escapeHtml(user.sector)} · ${escapeHtml(user.is_sector_leader ? `Líder ${user.led_sector}` : user.position_title)}</small>
-        </div>
-      </button>
+    <div class="topbar-right-stack">
+      <div class="topbar-right">
+        <button type="button" class="icon-btn theme-top-btn" id="theme-toggle-btn" aria-label="Alternar tema" data-tooltip="Alternar tema">
+          ${getStoredTheme() === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <button type="button" class="icon-btn notif-btn" id="btn-notifications" aria-label="Notificações" data-tooltip="Notificações">
+          🔔
+          <span class="notif-badge hidden" id="notif-badge">0</span>
+        </button>
+        <button type="button" class="user-profile-btn" id="btn-profile" aria-label="Abrir menu de usuário">
+          <div class="avatar pill">${avatarHtml}</div>
+          <div class="meta">
+            <strong>${escapeHtml(user.full_name)}</strong>
+            <small>${escapeHtml(user.sector)} · ${escapeHtml(user.is_sector_leader ? `Líder ${user.led_sector}` : user.position_title)}</small>
+          </div>
+        </button>
+      </div>
+      <div id="user-top-announce" class="user-top-announce hidden" aria-live="polite">
+        <button type="button" class="user-top-announce-close" id="user-top-announce-close" aria-label="Fechar aviso">×</button>
+        <span id="user-top-announce-text">Aviso</span>
+      </div>
     </div>
   `;
+
+  const banner = document.getElementById('user-top-announce');
+  const closeBtn = document.getElementById('user-top-announce-close');
+  if (banner) {
+    banner.addEventListener('click', async () => {
+      const link = banner.dataset.link || '';
+      const id = Number(banner.dataset.notificationId || 0);
+      if (id) {
+        try { await api.markNotificationRead(id); } catch { /* ignore */ }
+      }
+      if (link) {
+        const normalized = link.startsWith('/') ? link.slice(1) : link;
+        window.location.href = normalized;
+      }
+    });
+  }
+  closeBtn?.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    const id = Number(banner?.dataset.notificationId || 0);
+    if (id) {
+      try { await api.markNotificationRead(id); } catch { /* ignore */ }
+    }
+    banner?.classList.add('hidden');
+    await refreshNotificationBadge();
+  });
 }
 
 function renderDrawer(user) {
@@ -504,6 +543,36 @@ async function refreshNotificationBadge() {
     }
   } catch {
     badge.classList.add('hidden');
+  }
+}
+
+async function refreshTopAnnouncement() {
+  const banner = document.getElementById('user-top-announce');
+  const textEl = document.getElementById('user-top-announce-text');
+  if (!banner || !textEl) return;
+
+  try {
+    const res = await api.listNotifications();
+    const items = Array.isArray(res.notifications) ? res.notifications : [];
+    const relevant = items
+      .filter((n) => !n.is_read && (n.link || '').toLowerCase().includes('trip.html'))
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+
+    if (!relevant) {
+      banner.classList.add('hidden');
+      banner.dataset.link = '';
+      banner.dataset.notificationId = '';
+      return;
+    }
+
+    textEl.textContent = relevant.message || relevant.title || 'Nova atualização';
+    banner.dataset.link = relevant.link || '';
+    banner.dataset.notificationId = String(relevant.id || '');
+    banner.classList.remove('hidden');
+  } catch {
+    banner.classList.add('hidden');
+    banner.dataset.link = '';
+    banner.dataset.notificationId = '';
   }
 }
 
