@@ -134,6 +134,12 @@
                    <button type="button" class="panel-toggle collapsed" data-target="task-fields-section" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
                  </div>
                  <div class="collapsible-content collapsed">
+                   <div>
+                     <label for="project_id">Projeto</label>
+                     <select id="project_id">
+                       <option value="">Sem projeto</option>
+                     </select>
+                   </div>
                    <div class="form-grid two">
                      <div>
                        <label for="work_type">Tipo de trabalho *</label>
@@ -145,12 +151,6 @@
                        <label for="task_date">Data da tarefa *</label>
                        <input id="task_date" type="date" required />
                      </div>
-                   </div>
-                   <div>
-                     <label for="project_id">Projeto</label>
-                     <select id="project_id">
-                       <option value="">Sem projeto</option>
-                     </select>
                    </div>
                    <div>
                      <label>Responsáveis pela tarefa</label>
