@@ -287,9 +287,6 @@ function renderTopbar(user, active) {
     </div>
     <div class="topbar-right-stack">
       <div class="topbar-right">
-        <button type="button" class="icon-btn theme-top-btn" id="theme-toggle-btn" aria-label="Alternar tema" data-tooltip="Alternar tema">
-          ${getStoredTheme() === 'dark' ? '☀️' : '🌙'}
-        </button>
         <button type="button" class="icon-btn notif-btn" id="btn-notifications" aria-label="Notificações" data-tooltip="Notificações">
           🔔
           <span class="notif-badge hidden" id="notif-badge">0</span>
@@ -359,7 +356,7 @@ function renderDrawer(user) {
       : initials(user.full_name);
   }
   if (themeBtn) {
-    themeBtn.textContent = getStoredTheme() === 'dark' ? '☀️ Tema claro' : '🌙 Tema escuro';
+    themeBtn.hidden = true;
   }
   if (adminLink) adminLink.classList.toggle('hidden', !user.is_admin);
 }
@@ -380,17 +377,8 @@ function bindShellEvents(user) {
   document.getElementById('cp-trigger')?.addEventListener('click', () => openCommandPalette());
 
   const toggleAllTheme = () => {
-    const next = toggleTheme();
-    ['drawer-theme','theme-toggle-btn'].forEach((id) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      if (id === 'drawer-theme') {
-        el.textContent = next === 'dark' ? '☀️ Tema claro' : '🌙 Tema escuro';
-      } else {
-        el.textContent = next === 'dark' ? '☀️' : '🌙';
-      }
-    });
-    showToast({ type: 'info', title: 'Tema alterado', msg: next === 'dark' ? 'Tema escuro ativado.' : 'Tema claro ativado.', duration: 2200 });
+    toggleTheme();
+    showToast({ type: 'info', title: 'Tema', msg: 'Modo claro ativo.', duration: 1800 });
   };
   document.getElementById('drawer-theme')?.addEventListener('click', toggleAllTheme);
   document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleAllTheme);
