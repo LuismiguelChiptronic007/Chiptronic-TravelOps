@@ -1,6 +1,6 @@
 import { api, formatDateBR, statusBadge, showAlert, hideAlert } from './api.js';
 import { escapeHtml, mountShell } from './layout.js';
-import { abrirModalDemandasLider } from './demandas-src.js';
+import { abrirModalDemandasLider } from './demandas.js';
 
 const body = document.getElementById('trips-body');
 const filterQ = document.getElementById('filter-q');
@@ -19,7 +19,7 @@ function isSectorLeader(user, trip) {
 
 function renderTrips(trips) {
   if (!body) return;
-
+ 
   if (!trips.length) {
     body.innerHTML = `<tr><td colspan="6" class="empty-state">Nenhuma viagem encontrada. <a href="trip-new.html">Criar a primeira</a></td></tr>`;
     return;

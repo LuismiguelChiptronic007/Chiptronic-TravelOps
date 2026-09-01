@@ -33,6 +33,14 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
   ];
   let atividadesModeloCache = [];
   let projetosCache = [];
+  let demandasExistentes = [];
+
+  try {
+    const res = await api.demandas.listarViagem(viagemId);
+    demandasExistentes = Array.isArray(res?.demandas) ? res.demandas : [];
+  } catch (e) {
+    demandasExistentes = [];
+  }
 
   const modal = fullPage
     ? document.getElementById('demandas-page-form')
@@ -50,6 +58,47 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
     const projetosHtml = projetosCache.length
       ? projetosCache.map(p => `<option value="${escapeHtml(p.name)}" ${p.name === tipoProjetoGlobal ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('')
       : '<option value="">Nenhum projeto cadastrado para o setor</option>';
+
+    const demandasJaFornecidasHtml = demandasExistentes.length
+      ? `
+        <div style="margin-top:22px;">
+          <h3 style="margin:0 0 10px; font-size:1rem;">Demandas já fornecidas para esta viagem</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            ${demandasExistentes.map((demanda) => {
+              const veiculosList = (demanda.veiculos || []).map((dv) => {
+                const atividades = (dv.atividades || []).map((a) => {
+                  const pc = prioridadeCor(a.prioridade || 1);
+                  return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:6px 0;border-top:1px solid var(--border);">
+                    <span>${escapeHtml(a.atividade_descricao || '—')}</span>
+                    <span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.72rem;font-weight:700;">P${a.prioridade || 1}</span>
+                  </div>`;
+                }).join('') || '<div class="text-muted" style="padding:6px 0;">Sem atividades.</div>';
+
+                return `
+                  <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel-bg);">
+                    <div style="font-weight:700; margin-bottom:6px;">${escapeHtml([dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || 'Veículo')}</div>
+                    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
+                      ${dv.placa ? `Placa: <strong>${escapeHtml(String(dv.placa).toUpperCase())}</strong>` : ''}
+                      ${dv.ano ? ` · Ano: <strong>${escapeHtml(dv.ano)}</strong>` : ''}
+                    </div>
+                    ${atividades}
+                  </div>`;
+              }).join('');
+
+              return `
+                <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:linear-gradient(135deg, rgba(139,92,246,0.04), rgba(59,130,246,0.03));">
+                  <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+                    <strong>${escapeHtml(demanda.tipo_projeto || 'Projeto')}</strong>
+                    ${statusDemandaBadge(demanda.status)}
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr;gap:10px;">
+                    ${veiculosList}
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>`
+      : '<div class="empty-state" style="margin-top:18px;">Nenhuma demanda fornecida ainda para esta viagem.</div>';
 
     modal.innerHTML = `
       <div class="${fullPage ? 'panel demandas-form-panel' : 'modal-content'}">
@@ -70,6 +119,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
             <button type="button" class="btn btn-secondary" id="btn-add-veiculo">+ Adicionar veículo</button>
             <button type="button" class="btn btn-secondary" id="btn-duplicar-ultimo" ${veiculos.length === 0 ? 'disabled' : ''}>⎘ Duplicar veículo anterior</button>
           </div>
+          ${demandasJaFornecidasHtml}
         </div>
         <div class="${fullPage ? 'form-actions' : 'modal-footer'}">
           <button type="button" class="btn btn-secondary" id="btn-cancelar-demanda">Cancelar</button>
@@ -263,6 +313,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
 export function renderQuadroDemandasIntegrante(container, demandas, tripId, { user, onStatusChange } = {}) {
   if (!container) return;
   container.id = 'demandas';
+  container.innerHTML = '';
 
   const todas = Array.isArray(demandas) ? demandas : [];
   if (!todas.length) {
@@ -357,104 +408,240 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
 
 }
 
-export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange } = {}) {
-  if (!formEl || !trip) return;
-  if (formEl.querySelector('#demanda-prioridade-wrap')) return;
-
-  const demandas = trip.demandas || [];
-  const demandasFlat = [];
-  for (const d of demandas) {
+function flattenAtividadesPendentes(demandas) {
+  const rows = [];
+  const all = Array.isArray(demandas) ? demandas : [];
+  for (const d of all) {
     for (const dv of d.veiculos || []) {
-      const chave = `${dv.id}`;
-      if (!demandasFlat.some(x => x.veiculoId === dv.id)) {
-        demandasFlat.push({
-          veiculoId: dv.id,
-          demandaId: d.id,
-          tipoProjeto: d.tipo_projeto,
-          montadora: dv.montadora,
-          modelo: dv.modelo,
-          versao: dv.versao_modelo,
-          ano: dv.ano,
-          placa: dv.placa,
-          atividades: (dv.atividades || []).filter(a => a.status !== 'concluida')
-        });
+      for (const a of dv.atividades || []) {
+        if (a.status && a.status !== 'concluida') {
+          rows.push({
+            atividadeId: a.id,
+            demandaId: d.id,
+            veiculoId: dv.id,
+            tipoProjeto: d.tipo_projeto || '',
+            montadora: dv.montadora || '',
+            modelo: dv.modelo || '',
+            versaoModelo: dv.versao_modelo || '',
+            ano: dv.ano || '',
+            placa: dv.placa || '',
+            prioridade: Number(a.prioridade || 1),
+            atividadeDescricao: a.atividade_descricao || '',
+            status: a.status || 'pendente',
+          });
+        }
       }
     }
   }
+  return rows.sort((a, b) => a.prioridade - b.prioridade);
+}
 
-  const temDemandas = demandasFlat.some(x => x.atividades.length > 0);
+export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange } = {}) {
+  if (!formEl || !trip) return;
+  const antigo = formEl.querySelector('#demanda-prioridade-wrap');
+  if (antigo) antigo.remove();
+
+  const demandas = trip.demandas || [];
+  const rows = flattenAtividadesPendentes(demandas);
+  const temDemandas = rows.length > 0;
+
+  const projetosUnicos = Array.from(new Set(rows.map(r => r.tipoProjeto).filter(Boolean))).sort();
+  const modelosUnicos = Array.from(new Set(rows.map(r => r.modelo).filter(Boolean))).sort();
+
+  let filtrosAtuais = { filtroPri: 'todas', filtroModelo: '', filtroProjeto: '' };
 
   const wrap = document.createElement('div');
   wrap.id = 'demanda-prioridade-wrap';
+
+  const prioridadeOpts = `
+    <option value="todas">Todas as prioridades</option>
+    <option value="1">P1 — Crítica</option>
+    <option value="2">P2 — Média</option>
+    <option value="3plus">P3+ — Normal</option>`;
+  const projetoOpts = [`<option value="">Todos os projetos</option>`, ...projetosUnicos.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`)].join('');
+  const modeloOpts = [`<option value="">Todos os modelos</option>`, ...modelosUnicos.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`)].join('');
+
   wrap.innerHTML = `
     <div style="border:1px dashed var(--border);border-radius:12px;padding:14px;margin-bottom:14px;background:linear-gradient(135deg, rgba(139,92,246,0.06), rgba(59,130,246,0.04));">
       <label style="font-weight:600;display:block;margin-bottom:8px;">Tipo de atividade que está registrando</label>
       <div style="display:flex;flex-wrap:wrap;gap:10px;">
         <label style="display:inline-flex;gap:6px;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background:var(--panel-bg);">
-          <input type="radio" name="demanda_tipo_ativ" value="normal" checked /> Atividade normal realizada
+          <input type="radio" name="demanda_tipo_ativ" value="normal" ${temDemandas ? '' : 'checked'} /> Atividade normal realizada
         </label>
         <label style="display:inline-flex;gap:6px;align-items:center;padding:8px 12px;border:1px solid var(--border);border-radius:10px;cursor:pointer;background:var(--panel-bg);" ${!temDemandas ? 'opacity:0.5;pointer-events:none;' : ''}>
-          <input type="radio" name="demanda_tipo_ativ" value="prioridade" ${!temDemandas ? 'disabled' : ''} /> Atividade de prioridade (demanda do líder)
+          <input type="radio" name="demanda_tipo_ativ" value="prioridade" ${temDemandas ? 'checked' : 'disabled'} /> Atividade de prioridade (demanda do líder)
         </label>
       </div>
       ${!temDemandas ? '<div class="text-muted" style="font-size:0.8rem;margin-top:6px;">Não há demandas pendentes para esta viagem.</div>' : ''}
-      <div id="demanda-campos-veiculo-ativ" class="hidden-fields" style="margin-top:12px;">
-        <div class="form-grid two">
-          <div>
-            <label for="demanda_veiculo_select">Selecione o veículo da demanda</label>
-            <select id="demanda_veiculo_select">
-              <option value="">Selecione…</option>
-              ${demandasFlat.filter(v => v.atividades.length).map(v => {
-                const label = [v.montadora, v.modelo, v.versao].filter(Boolean).join(' · ') + (v.placa ? ` — Placa: ${v.placa.toUpperCase()}` : '');
-                return `<option value="${v.veiculoId}">[${escapeHtml(v.tipoProjeto)}] ${escapeHtml(label)}</option>`;
-              }).join('')}
-            </select>
+      <div id="demanda-campos-veiculo-ativ" ${temDemandas ? '' : 'class="hidden-fields"'} style="margin-top:12px;">
+        <div class="text-muted" style="font-size:0.85rem;margin-bottom:6px;">Selecione abaixo as atividades de prioridade realizadas. Você pode marcar mais de uma, se necessário.</div>
+        ${temDemandas ? `
+        <div class="demanda-grid-container" style="margin-top:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--panel-bg);">
+          <div style="padding:12px;border-bottom:1px solid var(--border);background:linear-gradient(135deg, rgba(139,92,246,0.06), rgba(59,130,246,0.04));">
+            <div class="form-grid three" style="gap:10px;">
+              <div>
+                <label for="demanda_filtro_pri">Filtro por prioridade</label>
+                <select id="demanda_filtro_pri">${prioridadeOpts}</select>
+              </div>
+              <div>
+                <label for="demanda_filtro_mod">Filtro por modelo</label>
+                <select id="demanda_filtro_mod">${modeloOpts}</select>
+              </div>
+              <div>
+                <label for="demanda_filtro_proj">Filtro por projeto</label>
+                <select id="demanda_filtro_proj">${projetoOpts}</select>
+              </div>
+            </div>
           </div>
-          <div>
-            <label for="demanda_atividade_select">Atividade pendente</label>
-            <select id="demanda_atividade_select" disabled>
-              <option value="">Primeiro escolha o veículo…</option>
-            </select>
+          <div style="overflow-x:auto;">
+            <table class="data" style="width:100%;margin:0;">
+              <thead>
+                <tr>
+                  <th style="width:40px;"></th>
+                  <th>Montadora</th>
+                  <th>Modelo</th>
+                  <th>Versão modelo</th>
+                  <th>Ano</th>
+                  <th>Projeto</th>
+                  <th style="width:70px;">Prioridade</th>
+                  <th>Atividade</th>
+                </tr>
+              </thead>
+              <tbody id="demanda-grid-body"></tbody>
+            </table>
           </div>
-        </div>
+        </div>` : ''}
       </div>
     </div>`;
+
+  wrap.dataset.ultimaAtivId = '';
+  wrap.dataset.ultimoVeicId = '';
+
+  function renderGridApenasTabela() {
+    const { filtroPri, filtroModelo, filtroProjeto } = filtrosAtuais;
+    const filtradas = rows.filter(r => {
+      const okPri =
+        filtroPri === 'todas' ||
+        String(r.prioridade) === String(filtroPri) ||
+        (filtroPri === '3plus' && r.prioridade >= 3);
+      const okMod = !filtroModelo ||
+        (r.modelo || '').toLowerCase() === String(filtroModelo).toLowerCase() ||
+        (r.modelo || '').toLowerCase().includes(String(filtroModelo).toLowerCase());
+      const okProj = !filtroProjeto || String(r.tipoProjeto || '') === String(filtroProjeto);
+      return okPri && okMod && okProj;
+    });
+
+    const tbody = wrap.querySelector('#demanda-grid-body');
+    if (!tbody) return;
+
+    if (!filtradas.length) {
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Nenhuma atividade pendente encontrada com esses filtros.</td></tr>`;
+      return;
+    }
+
+    const ultAtv = String(wrap.dataset.ultimaAtivId || '');
+    tbody.innerHTML = filtradas.map(r => {
+      const pc = prioridadeCor(r.prioridade);
+      const isSel = String(r.atividadeId) === ultAtv;
+      return `
+        <tr data-ativ="${r.atividadeId}" data-veiculo="${r.veiculoId}">
+          <td class="text-center" style="width:40px;">
+            <input type="checkbox" name="demanda_ativ_cb" value="${r.atividadeId}" data-veiculo="${r.veiculoId}" ${isSel ? 'checked' : ''} />
+          </td>
+          <td>${escapeHtml(r.montadora) || '—'}</td>
+          <td>${escapeHtml(r.modelo) || '—'}</td>
+          <td>${escapeHtml(r.versaoModelo) || '—'}</td>
+          <td>${escapeHtml(r.ano) || '—'}</td>
+          <td>${escapeHtml(r.tipoProjeto) || '—'}</td>
+          <td>
+            <span style="display:inline-flex;padding:2px 10px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.78rem;font-weight:700;">${pc.label}</span>
+          </td>
+          <td>${escapeHtml(r.atividadeDescricao) || '—'}</td>
+        </tr>`;
+    }).join('');
+
+    bindGridCheckboxes();
+  }
+
+  function bindFiltrosUmaVez() {
+    const priEl = wrap.querySelector('#demanda_filtro_pri');
+    const modEl = wrap.querySelector('#demanda_filtro_mod');
+    const projEl = wrap.querySelector('#demanda_filtro_proj');
+    const handler = () => {
+      filtrosAtuais = {
+        filtroPri: priEl?.value || 'todas',
+        filtroModelo: modEl?.value || '',
+        filtroProjeto: projEl?.value || '',
+      };
+      renderGridApenasTabela();
+    };
+    priEl?.addEventListener('change', handler);
+    modEl?.addEventListener('change', handler);
+    projEl?.addEventListener('change', handler);
+  }
+
+  function bindGridCheckboxes() {
+    wrap.querySelectorAll('input[name="demanda_ativ_cb"]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const selecionados = [...wrap.querySelectorAll('input[name="demanda_ativ_cb"]:checked')];
+        const atividadeIds = selecionados.map(item => String(item.value || '')).filter(Boolean);
+        const veiculoIds = selecionados.map(item => String(item.dataset?.veiculo || '')).filter(Boolean);
+
+        if (atividadeIds.length) {
+          wrap.dataset.ultimaAtivId = atividadeIds.join(',');
+          wrap.dataset.ultimoVeicId = veiculoIds.join(',');
+        } else {
+          wrap.dataset.ultimaAtivId = '';
+          wrap.dataset.ultimoVeicId = '';
+        }
+
+        if (typeof onChange === 'function') onChange();
+      });
+    });
+  }
 
   const summaryField = formEl.querySelector('#summary-field');
   if (summaryField) summaryField.parentNode.insertBefore(wrap, summaryField);
   else formEl.appendChild(wrap);
 
+  if (temDemandas) {
+    bindFiltrosUmaVez();
+    renderGridApenasTabela();
+  }
+
   wrap.querySelectorAll('input[name="demanda_tipo_ativ"]').forEach(r => {
     r.addEventListener('change', () => {
       const tipo = wrap.querySelector('input[name="demanda_tipo_ativ"]:checked')?.value;
       const campos = document.getElementById('demanda-campos-veiculo-ativ');
-      if (tipo === 'prioridade') campos.classList.remove('hidden-fields');
-      else campos.classList.add('hidden-fields');
+      if (tipo === 'prioridade') campos?.classList.remove('hidden-fields');
+      else {
+        campos?.classList.add('hidden-fields');
+        wrap.dataset.ultimaAtivId = '';
+        wrap.dataset.ultimoVeicId = '';
+        wrap.querySelectorAll('input[name="demanda_ativ_cb"]').forEach(cb => (cb.checked = false));
+      }
       if (typeof onChange === 'function') onChange();
     });
-  });
-
-  document.getElementById('demanda_veiculo_select')?.addEventListener('change', (e) => {
-    const vid = Number(e.target.value || 0);
-    const selAtiv = document.getElementById('demanda_atividade_select');
-    if (!selAtiv) return;
-    selAtiv.disabled = !vid;
-    if (!vid) { selAtiv.innerHTML = '<option value="">Primeiro escolha o veículo…</option>'; return; }
-    const veic = demandasFlat.find(v => v.veiculoId === vid);
-    if (!veic) { selAtiv.innerHTML = '<option value="">Nenhuma atividade</option>'; return; }
-    const opts = veic.atividades.map(a => {
-      const pc = prioridadeCor(a.prioridade);
-      return `<option value="${a.id}" data-veiculo="${veic.veiculoId}">[P${a.prioridade}] ${escapeHtml(a.atividade_descricao || '')}</option>`;
-    }).join('');
-    selAtiv.innerHTML = `<option value="">Selecione a atividade…</option>${opts}`;
   });
 }
 
 export function extrairPayloadDemandaDoForm() {
+  const wrap = document.getElementById('demanda-prioridade-wrap');
   const tipo = document.querySelector('input[name="demanda_tipo_ativ"]:checked')?.value;
   const ehPrioridade = tipo === 'prioridade';
-  const atividadeId = Number(document.getElementById('demanda_atividade_select')?.value || 0);
-  const veiculoId = Number(document.getElementById('demanda_veiculo_select')?.value || 0);
+  let atividadeId = 0;
+  let veiculoId = 0;
+  const cbSel = document.querySelectorAll('input[name="demanda_ativ_cb"]:checked');
+  const firstSelected = cbSel && cbSel.length ? cbSel[0] : null;
+  if (firstSelected) {
+    atividadeId = Number(firstSelected.value || 0);
+    veiculoId = Number(firstSelected.dataset?.veiculo || 0);
+  } else if (wrap) {
+    const ids = String(wrap.dataset?.ultimaAtivId || '').split(',').filter(Boolean);
+    const veicIds = String(wrap.dataset?.ultimoVeicId || '').split(',').filter(Boolean);
+    atividadeId = Number(ids[0] || 0);
+    veiculoId = Number(veicIds[0] || 0);
+  }
   return {
     eh_atividade_prioridade: ehPrioridade,
     demanda_atividade_id: ehPrioridade && atividadeId > 0 ? atividadeId : null,

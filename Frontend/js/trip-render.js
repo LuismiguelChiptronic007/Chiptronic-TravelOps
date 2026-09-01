@@ -7,12 +7,22 @@ import {
 } from "./api.js";
 
 import { escapeHtml } from "./layout.js";
+
+import {
+  shouldShowVehicleFields,
+  shouldShowVehicleDetailFields,
+  isLunchType,
+  isTravelType,
+  normalizeWorkType,
+  filterVehicleDetailCustomFields,
+} from "./task-field-rules.js";
+
 import {
   renderQuadroDemandasIntegrante,
   inserirCampoAtividadePrioridadeNoForm,
   extrairPayloadDemandaDoForm,
   abrirModalDemandasLider,
-} from "./demandas-src.js";
+} from "./demandas.js";
 
 let lastTaskDate = "";
 let selectedTripDate = "";
@@ -49,15 +59,6 @@ function hideElement(el) {
 function showElement(el) {
   if (el) el.classList.remove("hidden-fields");
 }
-
-import {
-  shouldShowVehicleFields,
-  shouldShowVehicleDetailFields,
-  isLunchType,
-  isTravelType,
-  normalizeWorkType,
-  filterVehicleDetailCustomFields,
-} from "./task-field-rules.js";
 
 function requiresVehicleFields(type) {
   return shouldShowVehicleFields(type);
@@ -1441,25 +1442,26 @@ export function renderTrip(t) {
   const alertEl = document.getElementById("alert");
   const taskForm = document.getElementById("task-form");
   if (taskForm) {
-    const anchor = document.getElementById("demanda-prioridade-anchor");
-    if (anchor) {
-      const tempWrap = document.createElement("div");
-      anchor.parentNode.insertBefore(tempWrap, anchor);
-      tempWrap.remove();
-    }
+    const campoExistente = taskForm.querySelector("#demanda-prioridade-wrap");
+    if (campoExistente) campoExistente.remove();
     inserirCampoAtividadePrioridadeNoForm(taskForm, t, {});
   }
 
   const liderBtnWrap = document.getElementById("btn-demanda-lider-wrap");
   if (liderBtnWrap) {
     const u = window.__currentUser || {};
-    const position = String(u.position_title || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    const isLeader = position === "lider" && u.sector === t.sector;
-    if (isLeader) {
+    const ehLider = Boolean(
+      u?.is_sector_leader ||
+        u?.is_admin ||
+        u?.is_admin_master ||
+        (String(u.position_title || "")
+          .trim()
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "") === "lider" &&
+          u.sector === t.sector)
+    );
+    if (ehLider) {
       liderBtnWrap.innerHTML = `
         <button type="button" class="btn btn-success" id="btn-fornecer-demandas-lider" style="width:100%;">
           🚗 Fornecer / Gerenciar demandas para esta viagem

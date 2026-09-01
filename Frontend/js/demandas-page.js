@@ -1,6 +1,6 @@
 import { api, showAlert } from './api.js';
 import { mountShell } from './layout.js';
-import { abrirModalDemandasLider } from './demandas-src.js';
+import { abrirModalDemandasLider } from './demandas.js';
 
 const tripId = Number(new URLSearchParams(location.search).get('id'));
 const alertEl = document.getElementById('alert');
