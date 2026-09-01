@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS demandas (
   status TEXT NOT NULL DEFAULT 'pendente',
   criado_por INTEGER NOT NULL,
   criado_em DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (viagem_id) REFERENCES trips(id),
+  FOREIGN KEY (viagem_id) REFERENCES trips(id) ON DELETE CASCADE,
   FOREIGN KEY (criado_por) REFERENCES users(id)
 );
 
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS demanda_veiculos (
   versao_modelo TEXT,
   ano TEXT,
   placa TEXT,
-  FOREIGN KEY (demanda_id) REFERENCES demandas(id)
+  FOREIGN KEY (demanda_id) REFERENCES demandas(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS demanda_atividades (
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS demanda_atividades (
   status TEXT NOT NULL DEFAULT 'pendente',
   concluida_por INTEGER,
   concluida_em DATETIME,
-  FOREIGN KEY (demanda_veiculo_id) REFERENCES demanda_veiculos(id),
+  FOREIGN KEY (demanda_veiculo_id) REFERENCES demanda_veiculos(id) ON DELETE CASCADE,
   FOREIGN KEY (atividade_modelo_id) REFERENCES atividades_modelo(id),
   FOREIGN KEY (concluida_por) REFERENCES users(id)
 );

@@ -672,6 +672,21 @@ trips.delete("/:id", async (c) => {
   await c.env.DB.prepare("DELETE FROM trip_members WHERE trip_id = ?")
     .bind(id)
     .run();
+
+  await c.env.DB.prepare(
+    "DELETE FROM demanda_atividades WHERE demanda_veiculo_id IN (SELECT id FROM demanda_veiculos WHERE demanda_id IN (SELECT id FROM demandas WHERE viagem_id = ?))",
+  )
+    .bind(id)
+    .run();
+  await c.env.DB.prepare(
+    "DELETE FROM demanda_veiculos WHERE demanda_id IN (SELECT id FROM demandas WHERE viagem_id = ?)",
+  )
+    .bind(id)
+    .run();
+  await c.env.DB.prepare("DELETE FROM demandas WHERE viagem_id = ?")
+    .bind(id)
+    .run();
+
   await c.env.DB.prepare("DELETE FROM trips WHERE id = ?").bind(id).run();
 
   return json({ success: true });
