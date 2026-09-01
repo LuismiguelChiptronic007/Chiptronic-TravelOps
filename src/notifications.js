@@ -30,11 +30,33 @@ export async function getUsersEmails(db, userIds) {
 
 export async function notifyUsersWithEmail(db, userIds, payload, env) {
   const ids = [...new Set((userIds || []).filter((id) => Number(id) > 0))];
-  if (!ids.length) return;
+
+  console.log('[EMAIL DEBUG] IDs recebidos:', JSON.stringify(ids));
+
+  if (!ids.length) {
+    console.log('[EMAIL DEBUG] Nenhum usuário para notificar.');
+    return;
+  }
 
   await notifyUsers(db, ids, payload);
+
+  console.log('[EMAIL DEBUG] Notificação in-app criada.');
+
   const emails = await getUsersEmails(db, ids);
-  if (!emails.length || !env || !env.RESEND_API_KEY) return;
+
+  console.log('[EMAIL DEBUG] E-mails encontrados:', JSON.stringify(emails));
+
+  if (!emails.length) {
+    console.log('[EMAIL DEBUG] Nenhum e-mail encontrado.');
+    return;
+  }
+
+  if (!env?.RESEND_API_KEY) {
+    console.log('[EMAIL DEBUG] RESEND_API_KEY não disponível.');
+    return;
+  }
+
+  console.log('[EMAIL DEBUG] RESEND_API_KEY disponível.');
 
   const html = buildNotificationEmailHtml({
     title: payload.title || 'Nova notificação',
@@ -42,15 +64,20 @@ export async function notifyUsersWithEmail(db, userIds, payload, env) {
     link: payload.link || '',
   });
 
-  await Promise.all(
-    emails.map((email) =>
-      sendEmail(env, {
-        to: email,
-        subject: payload.title || 'Nova notificação',
-        html,
-      }),
-    ),
-  );
+  for (const email of emails) {
+    console.log('[EMAIL DEBUG] Tentando enviar para:', email);
+
+    const result = await sendEmail(env, {
+      to: email,
+      subject: payload.title || 'Nova notificação',
+      html,
+    });
+
+    console.log(
+      '[EMAIL DEBUG] Resultado do Resend:',
+      JSON.stringify(result)
+    );
+  }
 }
 
 function formatNotification(row) {

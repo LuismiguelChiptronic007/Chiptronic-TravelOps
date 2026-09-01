@@ -287,7 +287,7 @@ trips.get("/users-for-members", async (c) => {
     const like = `%${q}%`;
     binds.push(like, like, like, like);
   }
-  sql += " ORDER BY full_name ASC LIMIT 100";
+  sql += " ORDER BY full_name ASC";
 
   const { results } = await c.env.DB.prepare(sql)
     .bind(...binds)
@@ -387,7 +387,16 @@ trips.post("/", async (c) => {
     )
     .run();
 
-  const tripId = result.meta.last_row_id;
+  const tripId = Number(result.meta.last_row_id);
+  if (!tripId || !Number.isInteger(tripId) || tripId <= 0) {
+    return err("Não foi possível criar a viagem.", 500);
+  }
+
+  const tripExists = await c.env.DB.prepare('SELECT 1 FROM trips WHERE id = ? LIMIT 1').bind(tripId).first();
+  if (!tripExists) {
+    return err("Viagem não encontrada após criação.", 500);
+  }
+
   await logActivity(c.env.DB, {
     tripId,
     userId: user.id,

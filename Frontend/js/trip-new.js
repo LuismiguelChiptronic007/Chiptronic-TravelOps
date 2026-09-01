@@ -158,15 +158,11 @@ function renderMemberCheckboxes() {
   membersCheckboxes.innerHTML = availableUsers
     .map(
       (u) => `
-    <label class="member-checkbox">
+    <label class="member-checkbox compact-row">
       <input type="checkbox" value="${u.id}" ${selectedMembers.has(Number(u.id)) ? "checked" : ""}>
-      <span class="member-checkbox-info">
+      <span class="member-checkbox-info compact-info">
         <strong>${escapeHtml(u.full_name)}</strong>
-        <small>
-          Setor: ${escapeHtml(u.sector || "—")}
-          · Responsável: ${escapeHtml(u.manager_name || "Não informado")}
-          ${u.position_title ? ` · ${escapeHtml(u.position_title)}` : ""}
-        </small>
+        <small>${escapeHtml(u.sector || "—")}</small>
       </span>
     </label>`,
     )

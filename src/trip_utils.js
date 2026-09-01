@@ -377,26 +377,39 @@ export async function fetchTripFull(db, tripId, userId) {
 }
 
 export async function saveTripMembers(db, tripId, memberUserIds = []) {
+  const tripIdNumber = Number(tripId);
+  if (!Number.isInteger(tripIdNumber) || tripIdNumber <= 0) return;
+
+  const tripExists = await db.prepare('SELECT 1 FROM trips WHERE id = ? LIMIT 1').bind(tripIdNumber).first();
+  if (!tripExists) return;
+
   const ids = [...new Set((memberUserIds || []).map((id) => Number(id)).filter((id) => id > 0))];
-
-  await db.prepare('DELETE FROM trip_members WHERE trip_id = ?').bind(tripId).run();
-
-  if (!ids.length) return;
+  if (!ids.length) {
+    await db.prepare('DELETE FROM trip_members WHERE trip_id = ?').bind(tripIdNumber).run();
+    return;
+  }
 
   const placeholders = ids.map(() => '?').join(',');
   const { results: users } = await db
     .prepare(`SELECT id, full_name, sector, manager_name FROM users WHERE id IN (${placeholders})`)
     .bind(...ids)
     .all();
-  const userMap = new Map((users || []).map((u) => [u.id, u]));
 
-  const rows = [];
-  for (const userId of ids) {
-    const user = userMap.get(userId);
-    if (!user) continue;
-    rows.push([tripId, user.id, user.full_name, user.sector || null, user.manager_name || null]);
+  const validUsers = (users || []).filter((u) => Number(u.id) > 0);
+  if (!validUsers.length) {
+    await db.prepare('DELETE FROM trip_members WHERE trip_id = ?').bind(tripIdNumber).run();
+    return;
   }
-  if (!rows.length) return;
+
+  const rows = validUsers.map((user) => [
+    tripIdNumber,
+    Number(user.id),
+    user.full_name,
+    user.sector || null,
+    user.manager_name || null,
+  ]);
+
+  await db.prepare('DELETE FROM trip_members WHERE trip_id = ?').bind(tripIdNumber).run();
 
   const valuePlaceholders = rows.map(() => '(?, ?, ?, ?, ?)').join(', ');
   const flatBinds = rows.flat();
