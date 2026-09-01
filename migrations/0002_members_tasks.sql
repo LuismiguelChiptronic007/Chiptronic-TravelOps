@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS trip_tasks (
   logs_realizados TEXT,
   sistemas_logados TEXT,
   nome_sistemas_logados TEXT,
+  montadora TEXT,
+  modelo TEXT,
+  submodelo TEXT,
+  ano TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (trip_id) REFERENCES trips(id) ON DELETE CASCADE

@@ -242,6 +242,88 @@ demandas.post('/viagem/:viagemId', async (c) => {
   return json({ success: true, demandas: lista }, 201);
 });
 
+demandas.put('/veiculo/:veiculoId', async (c) => {
+  const veiculoId = Number(c.req.param('veiculoId'));
+  const userId = c.get('userId');
+  const viewer = c.get('user');
+
+  const veiculo = await c.env.DB.prepare(`
+    SELECT dv.*, d.viagem_id, d.tipo_projeto, d.criado_por
+    FROM demanda_veiculos dv
+    INNER JOIN demandas d ON d.id = dv.demanda_id
+    WHERE dv.id = ?
+  `).bind(veiculoId).first();
+
+  if (!veiculo) return err('Veículo de demanda não encontrado.', 404);
+
+  const trip = await getAccessibleTrip(c, Number(veiculo.viagem_id));
+  if (!trip) return err('Viagem não encontrada.', 404);
+
+  const ledSector = getLedSector(viewer);
+  const isLeader = Boolean(ledSector && trip.sector === ledSector) || isAdmin(viewer);
+  if (!isLeader) return err('Apenas líderes podem alterar as demandas desta viagem.', 403);
+
+  let body;
+  try { body = await c.req.json(); } catch { return err('JSON inválido.'); }
+
+  const veiculos = Array.isArray(body.veiculos) ? body.veiculos : [body];
+  const payloadVeiculo = veiculos[0] || {};
+  const montadora = String(payloadVeiculo.montadora || veiculo.montadora || '').trim();
+  const modelo = String(payloadVeiculo.modelo || veiculo.modelo || '').trim();
+  const versaoModelo = String(payloadVeiculo.versao_modelo || veiculo.versao_modelo || '').trim();
+  const ano = String(payloadVeiculo.ano || veiculo.ano || '').trim();
+  const placaBruta = String(payloadVeiculo.placa || veiculo.placa || '').trim();
+  const placa = formatarPlaca(placaBruta) || null;
+
+  if (!montadora) return err('Informe a montadora do veículo.');
+  if (!modelo) return err('Informe o modelo do veículo.');
+  if (placaBruta && !validarPlaca(placaBruta)) {
+    return err('Placa inválida (use AAA-0000 ou AAA0A00).');
+  }
+
+  const atividades = Array.isArray(payloadVeiculo.atividades) ? payloadVeiculo.atividades : [];
+  if (!atividades.length) return err('Adicione pelo menos uma atividade para este veículo.');
+
+  for (const [aidx, a] of atividades.entries()) {
+    const amId = Number(a.atividade_modelo_id || 0);
+    const prioridade = Number(a.prioridade || 0);
+    if (!amId) return err(`Atividade ${aidx + 1}: selecione a atividade.`);
+    if (!prioridade || prioridade < 1) return err(`Atividade ${aidx + 1}: prioridade inválida.`);
+  }
+
+  await c.env.DB.prepare(`
+    UPDATE demanda_veiculos
+    SET montadora = ?, modelo = ?, versao_modelo = ?, ano = ?, placa = ?
+    WHERE id = ?
+  `).bind(montadora, modelo, versaoModelo || null, ano || null, placa, veiculoId).run();
+
+  const tipoProjeto = String(body.tipo_projeto || veiculo.tipo_projeto || '').trim();
+  if (tipoProjeto) {
+    await c.env.DB.prepare('UPDATE demandas SET tipo_projeto = ? WHERE id = ?')
+      .bind(tipoProjeto, veiculo.demanda_id)
+      .run();
+  }
+
+  for (const a of atividades) {
+    const amId = Number(a.atividade_modelo_id || 0);
+    const prioridade = Number(a.prioridade || 1);
+    await c.env.DB.prepare(
+      `INSERT INTO demanda_atividades (demanda_veiculo_id, atividade_modelo_id, prioridade, status) VALUES (?, ?, ?, 'pendente')`
+    ).bind(veiculoId, amId, prioridade).run();
+  }
+
+  await logActivity(c.env.DB, {
+    tripId: Number(veiculo.viagem_id),
+    userId,
+    action: 'demanda_veiculo_atualizada',
+    summary: `Adicionou atividades ao veículo de demanda ${montadora} ${modelo}.`,
+    details: { veiculo_id: veiculoId, atividades_qtd: atividades.length }
+  });
+
+  const lista = await fetchDemandasViagem(c.env.DB, Number(veiculo.viagem_id));
+  return json({ success: true, demandas: lista }, 200);
+});
+
 demandas.put('/atividade/:atividadeId/status', async (c) => {
   return err('A demanda deve ser concluída ao registrar a atividade dentro da viagem.', 410);
 

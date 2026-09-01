@@ -1,0 +1,1 @@
+ALTER TABLE trip_tasks ADD COLUMN ano TEXT;

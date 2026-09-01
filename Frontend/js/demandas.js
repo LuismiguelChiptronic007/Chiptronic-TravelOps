@@ -42,11 +42,16 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
     demandasExistentes = [];
   }
 
+  let veiculoEdicaoId = null;
   const modal = fullPage
     ? document.getElementById('demandas-page-form')
     : document.createElement('div');
   if (!modal) return;
-  const closeForm = () => fullPage ? window.history.back() : modal.remove();
+  const closeForm = () => {
+    veiculoEdicaoId = null;
+    if (fullPage) window.history.back();
+    else modal.remove();
+  };
   if (!fullPage) {
     modal.className = 'modal-overlay';
     modal.id = 'demanda-modal';
@@ -76,7 +81,10 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
 
                 return `
                   <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel-bg);">
-                    <div style="font-weight:700; margin-bottom:6px;">${escapeHtml([dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || 'Veículo')}</div>
+                    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+                      <div style="font-weight:700;">${escapeHtml([dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || 'Veículo')}</div>
+                      <button type="button" class="btn btn-secondary btn-sm btn-editar-veiculo" data-veiculo-id="${dv.id}">Editar veículo</button>
+                    </div>
                     <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
                       ${dv.placa ? `Placa: <strong>${escapeHtml(String(dv.placa).toUpperCase())}</strong>` : ''}
                       ${dv.ano ? ` · Ano: <strong>${escapeHtml(dv.ano)}</strong>` : ''}
@@ -89,7 +97,9 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
                 <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:linear-gradient(135deg, rgba(139,92,246,0.04), rgba(59,130,246,0.03));">
                   <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
                     <strong>${escapeHtml(demanda.tipo_projeto || 'Projeto')}</strong>
-                    ${statusDemandaBadge(demanda.status)}
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                      ${statusDemandaBadge(demanda.status)}
+                    </div>
                   </div>
                   <div style="display:grid;grid-template-columns:1fr;gap:10px;">
                     ${veiculosList}
@@ -162,6 +172,26 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
 
     modal.querySelector('#btn-cancelar-demanda').addEventListener('click', closeForm);
     modal.querySelector('#btn-salvar-demanda').addEventListener('click', salvar);
+    modal.querySelectorAll('.btn-editar-veiculo').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const veiculoId = Number(btn.dataset.veiculoId || 0);
+        const veiculo = demandasExistentes.flatMap(d => (d.veiculos || [])).find(v => Number(v.id) === veiculoId);
+        const demanda = demandasExistentes.find(d => (d.veiculos || []).some(v => Number(v.id) === veiculoId));
+        if (!veiculo || !demanda) return;
+
+        veiculoEdicaoId = veiculoId;
+        veiculos = [{
+          montadora: veiculo.montadora || '',
+          modelo: veiculo.modelo || '',
+          versao_modelo: veiculo.versao_modelo || '',
+          ano: veiculo.ano || '',
+          placa: veiculo.placa || '',
+          tipo_projeto: demanda.tipo_projeto || '',
+          atividades: []
+        }];
+        render();
+      });
+    });
 
     bindVeiculoInputs();
   }
@@ -284,8 +314,15 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
       }))
     };
     try {
-      const res = await api.demandas.criarViagem(viagemId, payload);
-      if (alertEl) showAlert(alertEl, 'Demandas salvas com sucesso! Os integrantes foram notificados.', 'success');
+      let res;
+      if (veiculoEdicaoId) {
+        res = await api.demandas.editarVeiculo(veiculoEdicaoId, payload);
+        if (alertEl) showAlert(alertEl, 'Mais demandas adicionadas ao veículo com sucesso.', 'success');
+      } else {
+        res = await api.demandas.criarViagem(viagemId, payload);
+        if (alertEl) showAlert(alertEl, 'Demandas salvas com sucesso! Os integrantes foram notificados.', 'success');
+      }
+      veiculoEdicaoId = null;
       closeForm();
       if (typeof onCriada === 'function') onCriada(res.demandas || []);
     } catch (err) {

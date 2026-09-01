@@ -1,7 +1,5 @@
--- Adiciona suporte para múltiplos responsáveis e campos de montadora/modelo/submodelo em tarefas
+-- Legacy compatibility migration.
+-- Os campos de responsável, montadora, modelo, submodelo e ano já devem
+-- existir na tabela trip_tasks após a base inicial e migrações seguintes.
 PRAGMA foreign_keys = ON;
-
-ALTER TABLE trip_tasks ADD COLUMN responsible_ids TEXT;
-ALTER TABLE trip_tasks ADD COLUMN montadora TEXT;
-ALTER TABLE trip_tasks ADD COLUMN modelo TEXT;
-ALTER TABLE trip_tasks ADD COLUMN submodelo TEXT;
+SELECT 1;

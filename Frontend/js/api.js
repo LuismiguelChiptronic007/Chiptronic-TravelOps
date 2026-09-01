@@ -425,6 +425,8 @@ export const api = {
       request(`/demandas/viagem/${viagemId}`),
     criarViagem: (viagemId, body) =>
       request(`/demandas/viagem/${viagemId}`, { method: 'POST', json: body }),
+    editarVeiculo: (veiculoId, body) =>
+      request(`/demandas/veiculo/${veiculoId}`, { method: 'PUT', json: body }),
     atualizarStatusAtividade: (atividadeId, status, tripId) =>
       request(`/demandas/atividade/${atividadeId}/status?trip_id=${tripId || ''}`, {
         method: 'PUT',
