@@ -19,6 +19,7 @@ const pageSubtitle = document.querySelector(".page-header p");
 const equipmentItems = document.getElementById("equipment-items");
 const equipmentName = document.getElementById("equipment-name");
 const addEquipmentBtn = document.getElementById("btn-add-equipment");
+const memberSectorFilter = document.getElementById("member-sector-filter");
 
 const originInput = document.getElementById("origin");
 const destinationInput = document.getElementById("destination");
@@ -31,6 +32,13 @@ let availableUsers = [];
 let currentTrip = null;
 let currentUser = null;
 let equipmentChecklist = [];
+let selectedMemberSector = "";
+
+function getVisibleUsers() {
+  const sector = String(selectedMemberSector || "").trim();
+  if (!sector) return availableUsers;
+  return availableUsers.filter((user) => String(user.sector || "").trim() === sector);
+}
 
 async function refreshAvailableUsers() {
   const startDate = startDateInput?.value || "";
@@ -150,19 +158,19 @@ function setSelectedMembersFromTrip(members = []) {
 
 function renderMemberCheckboxes() {
   if (!membersCheckboxes) return;
-  if (!availableUsers.length) {
+  const visibleUsers = getVisibleUsers();
+  if (!visibleUsers.length) {
     membersCheckboxes.innerHTML =
-      '<div class="empty-state">Nenhum integrante disponível</div>';
+      '<div class="empty-state">Nenhum integrante disponível para este setor.</div>';
     return;
   }
-  membersCheckboxes.innerHTML = availableUsers
+  membersCheckboxes.innerHTML = visibleUsers
     .map(
       (u) => `
     <label class="member-checkbox compact-row">
       <input type="checkbox" value="${u.id}" ${selectedMembers.has(Number(u.id)) ? "checked" : ""}>
       <span class="member-checkbox-info compact-info">
         <strong>${escapeHtml(u.full_name)}</strong>
-        <small>${escapeHtml(u.sector || "—")}</small>
       </span>
     </label>`,
     )
@@ -179,12 +187,26 @@ async function init() {
       api.usersForMembers(),
     ]);
 
-    for (const s of sectorsRes.sectors || []) {
+    const sectorOptions = Array.from(new Set([...(sectorsRes.sectors || []), currentUser?.sector || ""]))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+
+    for (const s of sectorOptions) {
       const opt = document.createElement("option");
       opt.value = s;
       opt.textContent = s;
       if (s === currentUser.sector) opt.selected = true;
       sectorSelect.appendChild(opt);
+
+      const filterOpt = document.createElement("option");
+      filterOpt.value = s;
+      filterOpt.textContent = s;
+      memberSectorFilter.appendChild(filterOpt);
+    }
+
+    selectedMemberSector = String(currentUser?.sector || "").trim();
+    if (memberSectorFilter) {
+      memberSectorFilter.value = selectedMemberSector;
     }
 
     availableUsers = usersRes.users || [];
@@ -227,6 +249,10 @@ async function init() {
         document.getElementById("priority").value = currentTrip.priority || "normal";
         if (sectorSelect && currentTrip.sector)
           sectorSelect.value = currentTrip.sector;
+        if (memberSectorFilter && currentTrip.sector) {
+          selectedMemberSector = String(currentTrip.sector || "").trim();
+          memberSectorFilter.value = selectedMemberSector;
+        }
         setSelectedMembersFromTrip(currentTrip.members || []);
         equipmentChecklist = currentTrip.checklist?.equipment_checklist || [];
         renderEquipmentChecklist();
@@ -271,6 +297,11 @@ endDateInput?.addEventListener("change", refreshAvailableUsers);
 originInput?.addEventListener("input", () => renderCitySuggestions(originInput));
 destinationInput?.addEventListener("input", () => renderCitySuggestions(destinationInput));
 
+
+memberSectorFilter?.addEventListener("change", () => {
+  selectedMemberSector = String(memberSectorFilter.value || "").trim();
+  renderMemberCheckboxes();
+});
 
 membersCheckboxes?.addEventListener("change", (e) => {
   const checkbox = e.target.closest('input[type="checkbox"]');

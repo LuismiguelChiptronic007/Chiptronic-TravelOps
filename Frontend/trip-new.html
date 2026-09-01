@@ -117,11 +117,24 @@
               </div>
 
               <div class="members-section">
-                <label>Integrantes da viagem</label>
+                <div class="section-heading">
+                  <div>
+                    <label>Integrantes da viagem</label>
+                    <p class="field-hint mb-1">
+                      Selecione a equipe e marque os usuários que participarão da viagem.
+                    </p>
+                  </div>
+                </div>
 
-                <p class="field-hint mb-1">
-                  Marque os usuários que participarão da viagem.
-                </p>
+                <div class="form-grid two" style="margin-bottom: 12px;">
+                  <div>
+                    <label for="member-sector-filter">Setor da equipe</label>
+                    <select id="member-sector-filter">
+                      <option value="">Todos os setores</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div id="members-checkboxes" class="members-checkboxes">
                   <div class="empty-state">Carregando integrantes…</div>
                 </div>
