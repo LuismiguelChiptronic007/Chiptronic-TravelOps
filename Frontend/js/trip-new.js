@@ -181,6 +181,10 @@ async function init() {
   currentUser = await mountShell({ active: "new" });
   if (!currentUser) return;
 
+  if (originInput && !isEditing) {
+    originInput.value = "Piraju - SP";
+  }
+
   try {
     const [sectorsRes, usersRes] = await Promise.all([
       api.sectors(),
@@ -332,7 +336,7 @@ form?.addEventListener("submit", async (e) => {
   hideAlert(alertEl);
   btn.disabled = true;
 
-  const origin = findCity(originInput?.value);
+  const origin = "Piraju - SP";
   const destination = findCity(destinationInput?.value);
   if (!origin || !destination) {
     showAlert(

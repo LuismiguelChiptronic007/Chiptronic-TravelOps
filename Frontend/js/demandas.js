@@ -33,13 +33,22 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
   ];
   let atividadesModeloCache = [];
   let projetosCache = [];
+  let workTypesCache = [];
   let demandasExistentes = [];
+  let tipoTrabalhoSelecionado = '';
 
   try {
     const res = await api.demandas.listarViagem(viagemId);
     demandasExistentes = Array.isArray(res?.demandas) ? res.demandas : [];
   } catch (e) {
     demandasExistentes = [];
+  }
+
+  try {
+    const workTypesRes = await api.leaderWorkTypes.list();
+    workTypesCache = Array.isArray(workTypesRes?.work_types) ? workTypesRes.work_types : [];
+  } catch (e) {
+    workTypesCache = [];
   }
 
   let veiculoEdicaoId = null;
@@ -60,9 +69,13 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
   function render() {
     const veiculosHtml = veiculos.map((v, idx) => renderVeiculoCard(v, idx)).join('');
     const tipoProjetoGlobal = veiculos[0]?.tipo_projeto || '';
+    const tipoTrabalhoGlobal = tipoTrabalhoSelecionado;
     const projetosHtml = projetosCache.length
       ? projetosCache.map(p => `<option value="${escapeHtml(p.name)}" ${p.name === tipoProjetoGlobal ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('')
       : '<option value="">Nenhum projeto cadastrado para o setor</option>';
+    const workTypesHtml = workTypesCache.length
+      ? workTypesCache.map(wt => `<option value="${escapeHtml(wt.name)}" ${wt.name === tipoTrabalhoGlobal ? 'selected' : ''}>${escapeHtml(wt.name)}</option>`).join('')
+      : '<option value="">Nenhum tipo de trabalho cadastrado</option>';
 
     const demandasJaFornecidasHtml = demandasExistentes.length
       ? `
@@ -117,6 +130,13 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
           <button type="button" class="${fullPage ? 'btn btn-secondary' : 'modal-close'}" aria-label="Fechar">${fullPage ? 'Voltar' : '&times;'}</button>
         </div>
         <div class="${fullPage ? 'panel-body' : 'modal-body'}">
+          <div style="margin-bottom: 12px;">
+            <label for="demanda-tipo-trabalho">Tipo de trabalho</label>
+            <select id="demanda-tipo-trabalho" ${workTypesCache.length ? '' : 'disabled'}>
+              <option value="">Selecione um tipo de trabalho...</option>
+              ${workTypesHtml}
+            </select>
+          </div>
           <div style="margin-bottom: 16px;">
             <label for="demanda-tipo-projeto">Tipo de projeto (todos os veículos)</label>
             <select id="demanda-tipo-projeto" ${projetosCache.length ? '' : 'disabled'}>
@@ -143,6 +163,10 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
     modal.querySelector('#demanda-tipo-projeto').addEventListener('change', (e) => {
       const val = e.target.value;
       veiculos.forEach(v => v.tipo_projeto = val);
+    });
+
+    modal.querySelector('#demanda-tipo-trabalho')?.addEventListener('change', (e) => {
+      tipoTrabalhoSelecionado = e.target.value.trim();
     });
 
     modal.querySelector('#btn-add-veiculo').addEventListener('click', () => {
@@ -189,6 +213,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
           tipo_projeto: demanda.tipo_projeto || '',
           atividades: []
         }];
+        tipoTrabalhoSelecionado = demanda.tipo_trabalho || demanda.demanda_tipo_trabalho || '';
         render();
       });
     });
@@ -291,6 +316,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
 
   async function salvar() {
     const tipo_projeto = (modal.querySelector('#demanda-tipo-projeto').value || '').trim();
+    const tipo_trabalho = (modal.querySelector('#demanda-tipo-trabalho')?.value || tipoTrabalhoSelecionado || '').trim();
     if (!tipo_projeto) {
       const message = projetosCache.length
         ? 'Selecione o tipo de projeto.'
@@ -301,6 +327,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
     }
     const payload = {
       tipo_projeto,
+      tipo_trabalho,
       veiculos: veiculos.map(v => ({
         montadora: v.montadora.trim(),
         modelo: v.modelo.trim(),
@@ -352,7 +379,8 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
   container.id = 'demandas';
   container.innerHTML = '';
 
-  const todas = Array.isArray(demandas) ? demandas : [];
+  const todas = (Array.isArray(demandas) ? demandas : [])
+    .filter((demanda) => Array.isArray(demanda.veiculos) && demanda.veiculos.length > 0);
   if (!todas.length) {
     container.innerHTML = `
       <div class="panel" style="margin-top:0;">
@@ -456,7 +484,9 @@ function flattenAtividadesPendentes(demandas) {
             atividadeId: a.id,
             demandaId: d.id,
             veiculoId: dv.id,
-            tipoProjeto: d.tipo_projeto || '',
+            tipoProjeto: d.tipo_projeto || d.tipoProjeto || '',
+            tipoTrabalho: String(d.tipo_trabalho || '').trim(),
+            atividadeDescricao: a.atividade_descricao || '',
             montadora: dv.montadora || '',
             modelo: dv.modelo || '',
             versaoModelo: dv.versao_modelo || '',
@@ -484,8 +514,9 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
 
   const projetosUnicos = Array.from(new Set(rows.map(r => r.tipoProjeto).filter(Boolean))).sort();
   const modelosUnicos = Array.from(new Set(rows.map(r => r.modelo).filter(Boolean))).sort();
+  const tiposTrabalhoUnicos = Array.from(new Set(rows.map(r => r.tipoTrabalho).filter(Boolean))).sort();
 
-  let filtrosAtuais = { filtroPri: 'todas', filtroModelo: '', filtroProjeto: '' };
+  let filtrosAtuais = { filtroPri: 'todas', filtroModelo: '', filtroProjeto: '', filtroTipoTrabalho: '' };
 
   const wrap = document.createElement('div');
   wrap.id = 'demanda-prioridade-wrap';
@@ -497,6 +528,7 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
     <option value="3plus">P3+ — Normal</option>`;
   const projetoOpts = [`<option value="">Todos os projetos</option>`, ...projetosUnicos.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`)].join('');
   const modeloOpts = [`<option value="">Todos os modelos</option>`, ...modelosUnicos.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`)].join('');
+  const tipoTrabalhoOpts = [`<option value="">Todos os tipos de trabalho</option>`, ...tiposTrabalhoUnicos.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`)].join('');
 
   wrap.innerHTML = `
     <div style="border:1px dashed var(--border);border-radius:12px;padding:14px;margin-bottom:14px;background:linear-gradient(135deg, rgba(139,92,246,0.06), rgba(59,130,246,0.04));">
@@ -515,18 +547,22 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
         ${temDemandas ? `
         <div class="demanda-grid-container" style="margin-top:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--panel-bg);">
           <div style="padding:12px;border-bottom:1px solid var(--border);background:linear-gradient(135deg, rgba(139,92,246,0.06), rgba(59,130,246,0.04));">
-            <div class="form-grid three" style="gap:10px;">
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;align-items:end;">
               <div>
-                <label for="demanda_filtro_pri">Filtro por prioridade</label>
-                <select id="demanda_filtro_pri">${prioridadeOpts}</select>
+                <label for="demanda_filtro_pri" style="display:block;margin-bottom:4px;font-size:0.8rem;">Filtro por prioridade</label>
+                <select id="demanda_filtro_pri" style="width:100%;min-height:32px;">${prioridadeOpts}</select>
               </div>
               <div>
-                <label for="demanda_filtro_mod">Filtro por modelo</label>
-                <select id="demanda_filtro_mod">${modeloOpts}</select>
+                <label for="demanda_filtro_tipo" style="display:block;margin-bottom:4px;font-size:0.8rem;">Filtro por tipo de trabalho</label>
+                <select id="demanda_filtro_tipo" style="width:100%;min-height:32px;">${tipoTrabalhoOpts}</select>
               </div>
               <div>
-                <label for="demanda_filtro_proj">Filtro por projeto</label>
-                <select id="demanda_filtro_proj">${projetoOpts}</select>
+                <label for="demanda_filtro_mod" style="display:block;margin-bottom:4px;font-size:0.8rem;">Filtro por modelo</label>
+                <select id="demanda_filtro_mod" style="width:100%;min-height:32px;">${modeloOpts}</select>
+              </div>
+              <div>
+                <label for="demanda_filtro_proj" style="display:block;margin-bottom:4px;font-size:0.8rem;">Filtro por projeto</label>
+                <select id="demanda_filtro_proj" style="width:100%;min-height:32px;">${projetoOpts}</select>
               </div>
             </div>
           </div>
@@ -540,8 +576,9 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
                   <th>Versão modelo</th>
                   <th>Ano</th>
                   <th>Projeto</th>
-                  <th style="width:70px;">Prioridade</th>
                   <th>Atividade</th>
+                  <th style="width:70px;">Prioridade</th>
+                  <th>Tipo de trabalho</th>
                 </tr>
               </thead>
               <tbody id="demanda-grid-body"></tbody>
@@ -555,24 +592,25 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
   wrap.dataset.ultimoVeicId = '';
 
   function renderGridApenasTabela() {
-    const { filtroPri, filtroModelo, filtroProjeto } = filtrosAtuais;
+    const { filtroPri, filtroModelo, filtroProjeto, filtroTipoTrabalho } = filtrosAtuais;
     const filtradas = rows.filter(r => {
       const okPri =
         filtroPri === 'todas' ||
         String(r.prioridade) === String(filtroPri) ||
         (filtroPri === '3plus' && r.prioridade >= 3);
+      const okTipoTrabalho = !filtroTipoTrabalho || String(r.tipoTrabalho || '') === String(filtroTipoTrabalho);
       const okMod = !filtroModelo ||
         (r.modelo || '').toLowerCase() === String(filtroModelo).toLowerCase() ||
         (r.modelo || '').toLowerCase().includes(String(filtroModelo).toLowerCase());
       const okProj = !filtroProjeto || String(r.tipoProjeto || '') === String(filtroProjeto);
-      return okPri && okMod && okProj;
+      return okPri && okTipoTrabalho && okMod && okProj;
     });
 
     const tbody = wrap.querySelector('#demanda-grid-body');
     if (!tbody) return;
 
     if (!filtradas.length) {
-      tbody.innerHTML = `<tr><td colspan="8" class="empty-state">Nenhuma atividade pendente encontrada com esses filtros.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Nenhuma atividade pendente encontrada com esses filtros.</td></tr>`;
       return;
     }
 
@@ -590,10 +628,11 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
           <td>${escapeHtml(r.versaoModelo) || '—'}</td>
           <td>${escapeHtml(r.ano) || '—'}</td>
           <td>${escapeHtml(r.tipoProjeto) || '—'}</td>
+          <td>${escapeHtml(r.atividadeDescricao) || '—'}</td>
           <td>
             <span style="display:inline-flex;padding:2px 10px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.78rem;font-weight:700;">${pc.label}</span>
           </td>
-          <td>${escapeHtml(r.atividadeDescricao) || '—'}</td>
+          <td>${escapeHtml(r.tipoTrabalho) || '—'}</td>
         </tr>`;
     }).join('');
 
@@ -602,17 +641,20 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
 
   function bindFiltrosUmaVez() {
     const priEl = wrap.querySelector('#demanda_filtro_pri');
+    const tipoEl = wrap.querySelector('#demanda_filtro_tipo');
     const modEl = wrap.querySelector('#demanda_filtro_mod');
     const projEl = wrap.querySelector('#demanda_filtro_proj');
     const handler = () => {
       filtrosAtuais = {
         filtroPri: priEl?.value || 'todas',
+        filtroTipoTrabalho: tipoEl?.value || '',
         filtroModelo: modEl?.value || '',
         filtroProjeto: projEl?.value || '',
       };
       renderGridApenasTabela();
     };
     priEl?.addEventListener('change', handler);
+    tipoEl?.addEventListener('change', handler);
     modEl?.addEventListener('change', handler);
     projEl?.addEventListener('change', handler);
   }
@@ -623,6 +665,9 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
         const selecionados = [...wrap.querySelectorAll('input[name="demanda_ativ_cb"]:checked')];
         const atividadeIds = selecionados.map(item => String(item.value || '')).filter(Boolean);
         const veiculoIds = selecionados.map(item => String(item.dataset?.veiculo || '')).filter(Boolean);
+        const atividadesSelecionadas = atividadeIds
+          .map(id => rows.find(row => String(row.atividadeId) === id))
+          .filter(Boolean);
 
         if (atividadeIds.length) {
           wrap.dataset.ultimaAtivId = atividadeIds.join(',');
@@ -632,7 +677,7 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
           wrap.dataset.ultimoVeicId = '';
         }
 
-        if (typeof onChange === 'function') onChange();
+        if (typeof onChange === 'function') onChange(atividadesSelecionadas);
       });
     });
   }

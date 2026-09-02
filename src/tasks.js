@@ -1089,6 +1089,9 @@ taskRoutes.get("/:id/tasks/:taskId", async (c) => {
     }));
 
   const primaryResponsible = responsibles[0] || null;
+  const responsibleLabel = responsibles.length
+    ? responsibles.map((responsible) => responsible.full_name || "—").join(", ")
+    : null;
 
   const formattedTask = {
     id: task.id,
@@ -1112,7 +1115,7 @@ taskRoutes.get("/:id/tasks/:taskId", async (c) => {
     responsible: primaryResponsible
       ? {
           id: primaryResponsible.id,
-          full_name: primaryResponsible.full_name,
+          full_name: responsibleLabel,
           employee_id: primaryResponsible.employee_id || null,
           position_title: primaryResponsible.position_title || null,
         }

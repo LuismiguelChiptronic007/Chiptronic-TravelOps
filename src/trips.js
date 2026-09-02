@@ -58,9 +58,33 @@ async function geocodeCity(city) {
   }
 }
 
+function normalizeTripCityString(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+
+  const normalized = text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s*[-–—]\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) return "";
+
+  const lower = normalized.toLowerCase();
+  if (lower === "piraju sp" || lower === "piraju-sp" || lower === "piraju") {
+    return "Piraju - SP";
+  }
+
+  return text.trim();
+}
+
 async function geocodeTripCities(origin, destination) {
-  const originCoords = await geocodeCity(origin);
-  const destinationCoords = await geocodeCity(destination);
+  const canonicalOrigin = normalizeTripCityString(origin || "Piraju - SP") || "Piraju - SP";
+  const canonicalDestination = normalizeTripCityString(destination || "") || destination || "Piraju - SP";
+
+  const originCoords = await geocodeCity(canonicalOrigin);
+  const destinationCoords = await geocodeCity(canonicalDestination);
   return {
     origin_lat: originCoords?.latitude ?? null,
     origin_lng: originCoords?.longitude ?? null,
@@ -317,8 +341,8 @@ trips.post("/", async (c) => {
     return err("JSON inválido.");
   }
 
-  const origin = String(body.origin || "").trim();
-  const destination = String(body.destination || "").trim();
+  const origin = normalizeTripCityString(body.origin || "Piraju - SP") || "Piraju - SP";
+  const destination = normalizeTripCityString(body.destination || "") || "Piraju - SP";
   const start_date = String(body.start_date || "").trim();
   const end_date = String(body.end_date || "").trim();
   const reason = String(body.reason || "").trim();
@@ -506,8 +530,8 @@ trips.put("/:id", async (c) => {
     return err("JSON inválido.");
   }
 
-  const origin = String(body.origin ?? trip.origin).trim();
-  const destination = String(body.destination ?? trip.destination).trim();
+  const origin = normalizeTripCityString(body.origin ?? trip.origin ?? "Piraju - SP") || "Piraju - SP";
+  const destination = normalizeTripCityString(body.destination ?? trip.destination ?? "") || "Piraju - SP";
   const start_date = String(body.start_date ?? trip.start_date).trim();
   const end_date = String(body.end_date ?? trip.end_date).trim();
   const reason = String(body.reason ?? trip.reason).trim();

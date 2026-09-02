@@ -970,6 +970,28 @@ export function fillProjects(projects) {
   if (current) sel.value = current;
 }
 
+function preencherCamposPelaDemanda(atividadesSelecionadas = []) {
+  const demanda = atividadesSelecionadas[0];
+  if (!demanda) return;
+
+  const workTypeSelect = document.getElementById("work_type");
+  const projectSelect = document.getElementById("project_id");
+
+  if (workTypeSelect && demanda.tipoTrabalho) {
+    const workTypeOption = [...workTypeSelect.options].find(
+      (option) => option.value.trim().toLowerCase() === demanda.tipoTrabalho.trim().toLowerCase(),
+    );
+    if (workTypeOption) workTypeSelect.value = workTypeOption.value;
+  }
+
+  if (projectSelect && demanda.tipoProjeto) {
+    const projectOption = [...projectSelect.options].find(
+      (option) => option.textContent.trim().toLowerCase() === demanda.tipoProjeto.trim().toLowerCase(),
+    );
+    if (projectOption) projectSelect.value = projectOption.value;
+  }
+}
+
 async function loadProjects(opts = {}) {
   try {
     const data = await api.projects(opts);
@@ -1444,7 +1466,9 @@ export function renderTrip(t) {
   if (taskForm) {
     const campoExistente = taskForm.querySelector("#demanda-prioridade-wrap");
     if (campoExistente) campoExistente.remove();
-    inserirCampoAtividadePrioridadeNoForm(taskForm, t, {});
+    inserirCampoAtividadePrioridadeNoForm(taskForm, t, {
+      onChange: preencherCamposPelaDemanda,
+    });
   }
 
   const liderBtnWrap = document.getElementById("btn-demanda-lider-wrap");

@@ -51,8 +51,34 @@ async function atualizarStatusDemanda(db, demandaId) {
 
 export async function fetchDemandasViagem(db, viagemId) {
   try {
+    const { results: demandasSemVeiculos } = await db.prepare(`
+      SELECT d.id
+      FROM demandas d
+      WHERE d.viagem_id = ?
+        AND NOT EXISTS (
+          SELECT 1 FROM demanda_veiculos dv WHERE dv.demanda_id = d.id
+        )
+    `).bind(viagemId).all();
+
+    const idsOrfaos = (demandasSemVeiculos || []).map((demanda) => Number(demanda.id)).filter(Boolean);
+    if (idsOrfaos.length) {
+      const placeholders = idsOrfaos.map(() => '?').join(',');
+      await db.batch([
+        db.prepare(`
+          DELETE FROM demanda_atividades
+          WHERE demanda_veiculo_id IN (
+            SELECT id FROM demanda_veiculos WHERE demanda_id IN (${placeholders})
+          )
+        `).bind(...idsOrfaos),
+        db.prepare(`DELETE FROM demanda_veiculos WHERE demanda_id IN (${placeholders})`).bind(...idsOrfaos),
+        db.prepare(`DELETE FROM demandas WHERE id IN (${placeholders})`).bind(...idsOrfaos),
+      ]);
+    }
+
     const { results: demandasRows } = await db.prepare(`
-      SELECT d.*, u.full_name AS criado_nome
+      SELECT d.id, d.viagem_id, d.tipo_projeto, d.tipo_trabalho,
+             d.status, d.criado_por, d.criado_em,
+             u.full_name AS criado_nome
       FROM demandas d
       LEFT JOIN users u ON u.id = d.criado_por
       WHERE d.viagem_id = ?
@@ -85,6 +111,7 @@ export async function fetchDemandasViagem(db, viagemId) {
 
       demandasFormatadas.push({
         ...d,
+        tipo_trabalho: String(d.tipo_trabalho || '').trim(),
         veiculos
       });
     }
@@ -154,9 +181,11 @@ demandas.post('/viagem/:viagemId', async (c) => {
   try { body = await c.req.json(); } catch { return err('JSON inválido.'); }
 
   const tipo_projeto = String(body.tipo_projeto || '').trim();
+  const tipo_trabalho = String(body.tipo_trabalho || '').trim();
   const veiculos = Array.isArray(body.veiculos) ? body.veiculos : [];
 
   if (!tipo_projeto) return err('Informe o tipo de projeto.');
+  if (!tipo_trabalho) return err('Informe o tipo de trabalho.');
   if (!veiculos.length) return err('Adicione pelo menos um veículo.');
 
   for (const [idx, v] of veiculos.entries()) {
@@ -179,8 +208,8 @@ demandas.post('/viagem/:viagemId', async (c) => {
   }
 
   const resultDemanda = await c.env.DB.prepare(
-    `INSERT INTO demandas (viagem_id, tipo_projeto, status, criado_por) VALUES (?, ?, 'pendente', ?)`
-  ).bind(viagemId, tipo_projeto, userId).run();
+    `INSERT INTO demandas (viagem_id, tipo_projeto, tipo_trabalho, status, criado_por) VALUES (?, ?, ?, 'pendente', ?)`
+  ).bind(viagemId, tipo_projeto, tipo_trabalho, userId).run();
   const demandaId = resultDemanda.meta.last_row_id;
 
   for (const v of veiculos) {
@@ -298,9 +327,15 @@ demandas.put('/veiculo/:veiculoId', async (c) => {
   `).bind(montadora, modelo, versaoModelo || null, ano || null, placa, veiculoId).run();
 
   const tipoProjeto = String(body.tipo_projeto || veiculo.tipo_projeto || '').trim();
+  const tipoTrabalho = String(body.tipo_trabalho || '').trim();
   if (tipoProjeto) {
     await c.env.DB.prepare('UPDATE demandas SET tipo_projeto = ? WHERE id = ?')
       .bind(tipoProjeto, veiculo.demanda_id)
+      .run();
+  }
+  if (tipoTrabalho) {
+    await c.env.DB.prepare('UPDATE demandas SET tipo_trabalho = ? WHERE id = ?')
+      .bind(tipoTrabalho, veiculo.demanda_id)
       .run();
   }
 

@@ -226,8 +226,21 @@ function normalizeCity(value) {
   return String(value || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
+    .replace(/\s*[-–—]\s*/g, " ")
     .replace(/\s+/g, " ")
+    .replace(/\bsao\b/gi, "sao")
+    .toLowerCase()
+    .trim();
+}
+
+function canonicalBrazilianCityName(name, state) {
+  const cleanedName = String(name || "").trim();
+  const cleanedState = String(state || "").trim();
+  if (!cleanedName || !cleanedState) return null;
+
+  const formatted = `${cleanedName} - ${cleanedState}`;
+  return formatted
+    .replace(/\s{2,}/g, " ")
     .trim();
 }
 
@@ -250,15 +263,18 @@ function formatInternationalCity(value) {
 }
 
 export function findCity(value) {
-  const normalized = normalizeCity(value);
+  const raw = String(value || "").trim();
+  if (!raw || /^\d+$/.test(raw)) return null;
+
+  const normalized = normalizeCity(raw);
   if (!normalized) return null;
 
   for (const [name, state] of BR_CITIES) {
-    const city = formatCityName(name, state);
-    if (normalizeCity(city) === normalized) return city;
+    const city = canonicalBrazilianCityName(name, state);
+    if (city && normalizeCity(city) === normalized) return city;
   }
 
-  return formatInternationalCity(value);
+  return raw;
 }
 
 export function searchCities(query, max = 8) {

@@ -1,4 +1,5 @@
 import { api, hideAlert, showAlert } from "./api.js";
+import { renderQuadroDemandasIntegrante } from "./demandas.js";
 import { mountShell } from "./layout.js";
 import {
   fillWorkTypes,
@@ -126,6 +127,43 @@ function setupLocationMonitor(trip) {
 }
 
 
+function applyDemandCompletionOptimisticUpdate(trip, payload) {
+  if (!trip || !payload || !payload.demanda_atividade_id) return trip;
+
+  const nextTrip = JSON.parse(JSON.stringify(trip || {}));
+  const atividadeId = Number(payload.demanda_atividade_id);
+  let updated = false;
+
+  for (const demanda of nextTrip.demandas || []) {
+    for (const veiculo of demanda.veiculos || []) {
+      for (const atividade of veiculo.atividades || []) {
+        if (Number(atividade.id) !== atividadeId) continue;
+
+        atividade.status = 'concluida';
+        atividade.concluida_nome = window.__currentUser?.full_name || 'Você';
+        atividade.concluida_em = new Date().toISOString();
+        updated = true;
+
+        const todas = (veiculo.atividades || []).map((item) => item.status);
+        const concluidas = todas.filter((status) => status === 'concluida').length;
+        const total = todas.length || 1;
+        demanda.status = concluidas >= total ? 'concluida' : 'em_andamento';
+      }
+    }
+  }
+
+  if (updated) {
+    const demandasContainer = document.getElementById("demandas-panel-container");
+    if (demandasContainer) {
+      renderQuadroDemandasIntegrante(demandasContainer, nextTrip.demandas || [], nextTrip.id, {
+        user: window.__currentUser || null,
+      });
+    }
+  }
+
+  return nextTrip;
+}
+
 async function init() {
   if (!tripId) {
     window.location.href = "index.html";
@@ -186,13 +224,19 @@ document.getElementById("task-form")?.addEventListener("submit", async (e) => {
     }
 
     const res = await api.addTask(tripId, payload);
-    renderTrip(res.trip);
+    const optimisticTrip = applyDemandCompletionOptimisticUpdate(window.__currentTrip, payload);
+    if (optimisticTrip && optimisticTrip !== window.__currentTrip) {
+      window.__currentTrip = optimisticTrip;
+    }
+    const freshTripRes = await api.getTrip(tripId);
+    const freshTrip = freshTripRes?.trip || optimisticTrip || res.trip;
+    window.__currentTrip = freshTrip;
+    renderTrip(freshTrip);
     setupPanelToggles();
-    prepareTaskForm(res.trip, { keepDate: true });
+    prepareTaskForm(freshTrip, { keepDate: true });
     showAlert(alertEl, "Tarefa salva com sucesso.", "success");
 
-
-    const taskId = res.task_id || (res.trip?.tasks || []).slice(-1)[0]?.id || null;
+    const taskId = res.task_id || (freshTrip?.tasks || []).slice(-1)[0]?.id || null;
     if (taskId && getLocationConsent(tripId) === true) {
       registrarCheckinTrabalho(taskId, { viagemId: tripId, silent: true })
         .then((r) => {

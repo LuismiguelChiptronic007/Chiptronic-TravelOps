@@ -264,7 +264,8 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
   if (!container) return;
   container.id = 'demandas';
 
-  const todas = Array.isArray(demandas) ? demandas : [];
+  const todas = (Array.isArray(demandas) ? demandas : [])
+    .filter((demanda) => Array.isArray(demanda.veiculos) && demanda.veiculos.length > 0);
   if (!todas.length) {
     container.innerHTML = `
       <div class="panel" style="margin-top:0;">
@@ -370,7 +371,8 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
         demandasFlat.push({
           veiculoId: dv.id,
           demandaId: d.id,
-          tipoProjeto: d.tipo_projeto,
+          tipoProjeto: d.tipo_projeto || d.tipoProjeto || '',
+          tipoTrabalho: String(d.tipo_trabalho || '').trim(),
           montadora: dv.montadora,
           modelo: dv.modelo,
           versao: dv.versao_modelo,

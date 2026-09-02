@@ -741,7 +741,7 @@ img { max-width: 100%; display: block; }
 .avatar.md { width: 56px; height: 56px; font-size: 1.15rem; background: var(--gradient-2); }
 
 .container {
-  width: min(1200px, 100% - 2.5rem);
+  width: calc(100% - 2.5rem);
   margin: 0 auto;
   padding: 1.75rem 0 3rem;
 }
@@ -1684,7 +1684,7 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
     --topbar-h: 64px;
   }
   .container {
-    width: min(100% - 2rem, 1160px);
+    width: calc(100% - 2rem);
     padding: 1.5rem 0 2.5rem;
   }
   html, body { font-size: 14.5px; }
@@ -1717,7 +1717,7 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
     --radius-lg: 18px;
   }
   .container {
-    width: min(100% - 1.75rem, 1080px);
+    width: calc(100% - 1.75rem);
     padding: 1.35rem 0 2.25rem;
   }
   html, body { font-size: 14px; line-height: 1.55; }
@@ -1766,7 +1766,7 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
     --sidebar-w: 192px;
   }
   .container {
-    width: min(100% - 1.5rem, 1000px);
+    width: calc(100% - 1.5rem);
     padding: 1.2rem 0 2rem;
   }
   .cards.cards-4 {
@@ -1866,7 +1866,7 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
     --sidebar-icon-size: 29px;
     --topbar-h: 76px;
   }
-  .container { width: min(1320px, 100% - 3rem); }
+  .container { width: calc(100% - 3rem); }
   html, body { font-size: 15.5px; }
 }
 
@@ -2114,7 +2114,7 @@ body.demandas-page .app-shell.demandas-mobile-layout {
 }
 
 body.demandas-page main.container {
-  width: min(1200px, calc(100% - 2.5rem));
+  width: calc(100% - 2.5rem);
   max-width: calc(100% - 2.5rem);
   margin-left: auto;
   margin-right: auto;
