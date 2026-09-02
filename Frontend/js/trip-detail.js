@@ -132,6 +132,15 @@ function applyDemandCompletionOptimisticUpdate(trip, payload) {
 
   const nextTrip = JSON.parse(JSON.stringify(trip || {}));
   const atividadeId = Number(payload.demanda_atividade_id);
+  const selectedResponsibleIds = Array.isArray(payload.responsible_ids)
+    ? payload.responsible_ids.map(Number).filter(Boolean)
+    : [];
+  const selectedResponsibleNames = selectedResponsibleIds
+    .map((id) => (nextTrip.members || []).find((member) => Number(member.user_id || member.id) === id)?.full_name)
+    .filter(Boolean);
+  const completionLabel = selectedResponsibleNames.length
+    ? selectedResponsibleNames.join(', ')
+    : window.__currentUser?.full_name || 'Você';
   let updated = false;
 
   for (const demanda of nextTrip.demandas || []) {
@@ -140,7 +149,7 @@ function applyDemandCompletionOptimisticUpdate(trip, payload) {
         if (Number(atividade.id) !== atividadeId) continue;
 
         atividade.status = 'concluida';
-        atividade.concluida_nome = window.__currentUser?.full_name || 'Você';
+        atividade.concluida_nome = completionLabel;
         atividade.concluida_em = new Date().toISOString();
         updated = true;
 
@@ -229,7 +238,10 @@ document.getElementById("task-form")?.addEventListener("submit", async (e) => {
       window.__currentTrip = optimisticTrip;
     }
     const freshTripRes = await api.getTrip(tripId);
-    const freshTrip = freshTripRes?.trip || optimisticTrip || res.trip;
+    const freshTrip = applyDemandCompletionOptimisticUpdate(
+      freshTripRes?.trip || optimisticTrip || res.trip,
+      payload,
+    );
     window.__currentTrip = freshTrip;
     renderTrip(freshTrip);
     setupPanelToggles();

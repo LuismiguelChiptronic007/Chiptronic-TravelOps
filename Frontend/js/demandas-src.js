@@ -128,7 +128,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
           <div><label>Montadora *</label><input data-campo="montadora" data-idx="${idx}" value="${escapeHtml(v.montadora)}" placeholder="Ex: Volkswagen"/></div>
           <div><label>Modelo *</label><input data-campo="modelo" data-idx="${idx}" value="${escapeHtml(v.modelo)}" placeholder="Ex: T-Cross"/></div>
           <div><label>Versão modelo</label><input data-campo="versao_modelo" data-idx="${idx}" value="${escapeHtml(v.versao_modelo)}" placeholder="Ex: Comfortline 200 TSI"/></div>
-          <div><label>Ano</label><input data-campo="ano" data-idx="${idx}" value="${escapeHtml(v.ano)}" placeholder="Ex: 2024"/></div>
+          <div><label>Ano</label><input data-campo="ano" data-idx="${idx}" type="number" min="1900" max="2027" step="1" inputmode="numeric" value="${escapeHtml(v.ano)}" placeholder="Ex: 2024"/></div>
           <div style="grid-column:1/-1;"><label>Placa (formato AAA-0000 ou AAA0A00)</label><input data-campo="placa" data-idx="${idx}" value="${escapeHtml(v.placa)}" placeholder="Ex: ABC-1D23" class="placa-input"/></div>
         </div>
         <div style="margin-top:14px;">

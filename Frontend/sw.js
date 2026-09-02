@@ -1,4 +1,4 @@
-const CACHE_NAME = 'travelops-shell-v26';
+const CACHE_NAME = 'travelops-shell-v29';
 const APP_SHELL = [
   '/',
   '/index.html',

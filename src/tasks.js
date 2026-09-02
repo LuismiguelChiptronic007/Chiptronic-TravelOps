@@ -84,6 +84,13 @@ function timeToMinutes(value) {
   return hours * 60 + minutes;
 }
 
+function isValidYear(value) {
+  if (!value) return true;
+  const year = String(value).trim();
+  const currentYear = new Date().getFullYear();
+  return /^\d{4}$/.test(year) && Number(year) >= 1900 && Number(year) <= currentYear + 1;
+}
+
 function parseResponsibleIds(value) {
   const raw = Array.isArray(value) ? value : String(value || "").split(",");
   const ids = raw
@@ -400,6 +407,10 @@ taskRoutes.post("/:id/tasks", async (c) => {
     !task_date
   ) {
     return err("Preencha todos os campos da tarefa.");
+  }
+
+  if (!isValidYear(ano)) {
+    return err(`Informe um ano válido entre 1900 e ${new Date().getFullYear() + 1}.`);
   }
 
   const requiresVehicle = [].includes(normalizedWorkType);
@@ -805,6 +816,10 @@ taskRoutes.put("/:id/tasks/:taskId", async (c) => {
     !task_date
   ) {
     return err("Preencha todos os campos da tarefa.");
+  }
+
+  if (!isValidYear(ano)) {
+    return err(`Informe um ano válido entre 1900 e ${new Date().getFullYear() + 1}.`);
   }
 
   const requiresVehicle = [].includes(normalizedWorkType);

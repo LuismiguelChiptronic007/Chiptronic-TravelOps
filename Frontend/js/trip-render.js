@@ -582,7 +582,7 @@ function openTaskModal(task) {
             </div>
             <div>
               <label for="edit-ano">Ano</label>
-              <input id="edit-ano" placeholder="Ex: 2024" />
+              <input id="edit-ano" type="number" min="1900" max="2027" step="1" inputmode="numeric" placeholder="Ex: 2024" />
             </div>
           </div>
           <div>

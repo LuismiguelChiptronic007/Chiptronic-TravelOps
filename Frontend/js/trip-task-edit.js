@@ -297,6 +297,12 @@ async function saveTask() {
     return;
   }
 
+  const currentYear = new Date().getFullYear();
+  if (ano && (!/^\d{4}$/.test(ano) || Number(ano) < 1900 || Number(ano) > currentYear + 1)) {
+    setAlert(`Informe um ano válido entre 1900 e ${currentYear + 1}.`, "error");
+    return;
+  }
+
   if (end_time < start_time) {
     setAlert(
       "Hora de término deve ser igual ou posterior à hora de início.",

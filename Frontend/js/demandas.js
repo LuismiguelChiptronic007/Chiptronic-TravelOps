@@ -211,7 +211,13 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
           ano: veiculo.ano || '',
           placa: veiculo.placa || '',
           tipo_projeto: demanda.tipo_projeto || '',
-          atividades: []
+          atividades: (veiculo.atividades || []).map((atividade) => ({
+            atividade_modelo_id: atividade.atividade_modelo_id || '',
+            prioridade: atividade.prioridade || 1,
+            atividade_descricao: atividade.atividade_descricao || '',
+            status: atividade.status || 'pendente',
+            existente: true,
+          }))
         }];
         tipoTrabalhoSelecionado = demanda.tipo_trabalho || demanda.demanda_tipo_trabalho || '';
         render();
@@ -233,7 +239,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
           <div><label>Montadora *</label><input data-campo="montadora" data-idx="${idx}" value="${escapeHtml(v.montadora)}" placeholder="Ex: Volkswagen"/></div>
           <div><label>Modelo *</label><input data-campo="modelo" data-idx="${idx}" value="${escapeHtml(v.modelo)}" placeholder="Ex: T-Cross"/></div>
           <div><label>Versão modelo</label><input data-campo="versao_modelo" data-idx="${idx}" value="${escapeHtml(v.versao_modelo)}" placeholder="Ex: Comfortline 200 TSI"/></div>
-          <div><label>Ano</label><input data-campo="ano" data-idx="${idx}" value="${escapeHtml(v.ano)}" placeholder="Ex: 2024"/></div>
+          <div><label>Ano</label><input data-campo="ano" data-idx="${idx}" type="number" min="1900" max="2027" step="1" inputmode="numeric" value="${escapeHtml(v.ano)}" placeholder="Ex: 2024"/></div>
           <div style="grid-column:1/-1;"><label>Placa (formato AAA-0000 ou AAA0A00)</label><input data-campo="placa" data-idx="${idx}" value="${escapeHtml(v.placa)}" placeholder="Ex: ABC-1D23" class="placa-input"/></div>
         </div>
         <div style="margin-top:14px;">
@@ -249,6 +255,16 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
   }
 
   function renderAtivRow(a, idx, aidx) {
+    if (a.existente) {
+      const pc = prioridadeCor(a.prioridade);
+      const status = a.status === 'concluida' ? 'Concluída' : a.status === 'em_andamento' ? 'Em andamento' : 'Pendente';
+      return `
+        <div class="demanda-ativ-row" style="display:grid;grid-template-columns:1fr 90px 110px;gap:8px;margin-bottom:6px;align-items:center;">
+          <div style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);">${escapeHtml(a.atividade_descricao || 'Atividade existente')}</div>
+          <span style="display:inline-flex;justify-content:center;padding:4px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.72rem;font-weight:700;">P${a.prioridade}</span>
+          <span class="text-muted" style="font-size:0.75rem;">${status}</span>
+        </div>`;
+    }
     const opcoes = atividadesModeloCache.map(am =>
       `<option value="${am.id}" ${Number(a.atividade_modelo_id) === Number(am.id) ? 'selected' : ''}>${escapeHtml(am.tipo_projeto ? `[${am.tipo_projeto}] ` : '')}${escapeHtml(am.descricao)}</option>`
     ).join('');
@@ -334,7 +350,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
         versao_modelo: v.versao_modelo.trim(),
         ano: v.ano.trim(),
         placa: v.placa.trim(),
-        atividades: v.atividades.map(a => ({
+        atividades: v.atividades.filter(a => !a.existente).map(a => ({
           atividade_modelo_id: Number(a.atividade_modelo_id) || 0,
           prioridade: Number(a.prioridade) || 1
         }))

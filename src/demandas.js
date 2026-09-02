@@ -25,6 +25,13 @@ function formatarPlaca(placa) {
   return limpa || null;
 }
 
+function validarAno(ano) {
+  if (!ano) return true;
+  const valor = String(ano).trim();
+  const atual = new Date().getFullYear();
+  return /^\d{4}$/.test(valor) && Number(valor) >= 1900 && Number(valor) <= atual + 1;
+}
+
 async function atualizarStatusDemanda(db, demandaId) {
   const { results: atividades } = await db.prepare(`
     SELECT da.id, da.status FROM demanda_atividades da
@@ -102,6 +109,28 @@ export async function fetchDemandasViagem(db, viagemId) {
           WHERE da.demanda_veiculo_id = ?
           ORDER BY da.prioridade ASC, da.id ASC
         `).bind(dv.id).all();
+
+        for (const atividade of atividadesRows || []) {
+          if (atividade.status !== 'concluida') continue;
+          const { results: tarefas } = await db.prepare(
+            'SELECT responsible_ids, responsible_id FROM trip_tasks WHERE demanda_atividade_id = ? ORDER BY id DESC LIMIT 1'
+          ).bind(atividade.id).all();
+          const tarefa = tarefas?.[0];
+          if (!tarefa) continue;
+
+          const ids = String(tarefa.responsible_ids || tarefa.responsible_id || '')
+            .split(',')
+            .map((id) => Number(id.trim()))
+            .filter((id, index, values) => id > 0 && values.indexOf(id) === index);
+          if (!ids.length) continue;
+          const placeholders = ids.map(() => '?').join(',');
+          const { results: responsaveis } = await db.prepare(
+            `SELECT full_name FROM users WHERE id IN (${placeholders}) ORDER BY full_name ASC`
+          ).bind(...ids).all();
+          if (responsaveis?.length) {
+            atividade.concluida_nome = responsaveis.map((user) => user.full_name).join(', ');
+          }
+        }
 
         veiculos.push({
           ...dv,
@@ -194,6 +223,7 @@ demandas.post('/viagem/:viagemId', async (c) => {
     const placaBruta = String(v.placa || '').trim();
     if (!montadora) return err(`Veículo ${idx + 1}: informe a montadora.`);
     if (!modelo) return err(`Veículo ${idx + 1}: informe o modelo.`);
+    if (!validarAno(ano)) return err(`Veículo ${idx + 1}: informe um ano válido entre 1900 e ${new Date().getFullYear() + 1}.`);
     if (placaBruta && !validarPlaca(placaBruta)) {
       return err(`Veículo ${idx + 1}: placa inválida (use AAA-0000 ou AAA0A00).`);
     }
@@ -306,6 +336,7 @@ demandas.put('/veiculo/:veiculoId', async (c) => {
 
   if (!montadora) return err('Informe a montadora do veículo.');
   if (!modelo) return err('Informe o modelo do veículo.');
+    if (!validarAno(ano)) return err(`Informe um ano válido entre 1900 e ${new Date().getFullYear() + 1}.`);
   if (placaBruta && !validarPlaca(placaBruta)) {
     return err('Placa inválida (use AAA-0000 ou AAA0A00).');
   }
