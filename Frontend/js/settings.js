@@ -1,6 +1,5 @@
 import { api, clearSession, showAlert } from './api.js';
 import { escapeHtml, mountShell } from './layout.js';
-import { getStoredTheme, toggleTheme } from './theme.js';
 import { confirmDialog } from './ui.js';
 
 const LUNCH_START_KEY = 'cto_lunch_window_start';
@@ -498,23 +497,10 @@ async function loadWorkTypeFields(workTypeName) {
 
 async function load() {
   await mountShell({ active: '' });
-  updateThemeBtn();
   await loadLunchWindowConfig();
   await loadLeaderSettings();
   setupLeaderListeners();
 }
-
-function updateThemeBtn() {
-  const btn = document.getElementById('btn-theme-toggle');
-  if (btn) {
-    btn.textContent = getStoredTheme() === 'dark' ? 'Usar tema claro' : 'Usar tema escuro';
-  }
-}
-
-document.getElementById('btn-theme-toggle')?.addEventListener('click', () => {
-  toggleTheme();
-  updateThemeBtn();
-});
 
 document.getElementById('btn-save-lunch-window')?.addEventListener('click', () => {
   saveLunchWindowConfig();

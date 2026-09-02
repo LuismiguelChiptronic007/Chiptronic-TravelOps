@@ -6,7 +6,7 @@ import {
   requireAuthPage,
   updateStoredUser,
 } from './api.js';
-import { applyTheme, getStoredTheme, toggleTheme } from './theme.js';
+import { applyTheme } from './theme.js';
 import {
   showToast,
   openCommandPalette,
@@ -27,7 +27,7 @@ let shellEventsInstalled = false;
 export async function mountShell({ active } = {}) {
   if (!requireAuthPage()) return null;
 
-  applyTheme(getStoredTheme());
+  applyTheme('light');
   ensureShellElements();
   installGlobalShortcuts();
   installProgressBar();
@@ -160,7 +160,6 @@ function ensureShellElements() {
           <a href="profile.html" class="drawer-link">✏️ Editar perfil</a>
           <a href="settings.html" class="drawer-link">⚙️ Configuração</a>
           <a href="admin.html" class="drawer-link drawer-admin-link hidden" id="drawer-admin">🛡️ Painel de admin</a>
-          <button type="button" class="drawer-link drawer-btn" id="drawer-theme">🌓 Tema</button>
           <button type="button" class="drawer-link drawer-btn danger" id="drawer-logout">Sair</button>
         </nav>
       </aside>
@@ -336,7 +335,6 @@ function renderDrawer(user) {
   const nameEl = document.getElementById('drawer-name');
   const metaEl = document.getElementById('drawer-meta');
   const avatarEl = document.getElementById('drawer-avatar');
-  const themeBtn = document.getElementById('drawer-theme');
   const adminLink = document.getElementById('drawer-admin');
 
   if (nameEl) nameEl.textContent = user.full_name;
@@ -355,9 +353,6 @@ function renderDrawer(user) {
       ? `<img src="${user.avatar_url}" alt="">`
       : initials(user.full_name);
   }
-  if (themeBtn) {
-    themeBtn.hidden = true;
-  }
   if (adminLink) adminLink.classList.toggle('hidden', !user.is_admin);
 }
 
@@ -375,13 +370,6 @@ function bindShellEvents(user) {
   });
 
   document.getElementById('cp-trigger')?.addEventListener('click', () => openCommandPalette());
-
-  const toggleAllTheme = () => {
-    toggleTheme();
-    showToast({ type: 'info', title: 'Tema', msg: 'Modo claro ativo.', duration: 1800 });
-  };
-  document.getElementById('drawer-theme')?.addEventListener('click', toggleAllTheme);
-  document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleAllTheme);
 
   document.getElementById('btn-profile')?.addEventListener('click', openDrawer);
   document.getElementById('drawer-close')?.addEventListener('click', closeDrawer);
