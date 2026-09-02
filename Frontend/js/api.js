@@ -406,7 +406,7 @@ export const api = {
     return request(`/mapa-operacional/estado${qs ? `?${qs}` : ""}`);
   },
 
-  adminUsers: () => request('/admin/users'),
+  adminUsers: (sector = '') => request(`/admin/users${sector ? `?sector=${encodeURIComponent(sector)}` : ''}`),
   updateAdminRole: (id, role) => request(`/admin/users/${id}/role`, {
     method: 'PUT',
     json: { role },

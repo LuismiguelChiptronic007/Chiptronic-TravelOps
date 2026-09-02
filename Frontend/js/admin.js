@@ -4,8 +4,15 @@ import { confirmDialog } from './ui.js';
 
 const body = document.getElementById('users-body');
 const alertEl = document.getElementById('admin-alert');
+const sectorSelect = document.getElementById('admin-sector-select');
 let viewer = null;
 let users = [];
+let selectedSector = '';
+
+function canManageAllSectors(user) {
+  const normalizedName = String(user?.full_name || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  return user?.is_admin_master || normalizedName === 'rodneigomes' || normalizedName === 'luismiguel';
+}
 
 function showError(message) {
   alertEl.textContent = message;
@@ -28,8 +35,8 @@ function roleLabel(user) {
 }
 
 function actionButtons(user) {
-  const canManageSector = viewer.is_admin_master || (viewer.is_sector_leader && viewer.sector === user.sector);
-  const canManageRole = viewer.is_admin_master || (viewer.is_sector_leader && viewer.sector === user.sector);
+  const canManageSector = canManageAllSectors(viewer) || viewer.is_admin_master || (viewer.is_sector_leader && viewer.sector === user.sector);
+  const canManageRole = canManageSector;
   const roleAction = canManageRole && !user.is_admin_master && user.id !== viewer.id
     ? `<button type="button" class="admin-action role-action" data-id="${user.id}" data-role="${user.is_admin ? 'user' : 'admin'}">${user.is_admin ? 'Remover admin' : 'Tornar admin'}</button>`
     : '';
@@ -62,7 +69,7 @@ function renderUsers() {
 async function loadUsers() {
   body.innerHTML = '<tr><td colspan="6" class="empty-state">Carregando usuários...</td></tr>';
   try {
-    const result = await api.adminUsers();
+    const result = await api.adminUsers(selectedSector);
     users = result.users || [];
     renderUsers();
   } catch (error) {
@@ -104,12 +111,34 @@ body.addEventListener('click', async (event) => {
 
 document.getElementById('refresh-users').addEventListener('click', loadUsers);
 
+async function loadSectorFilter() {
+  if (!sectorSelect || !canManageAllSectors(viewer)) return;
+  const result = await api.sectors();
+  const sectors = result.sectors || [];
+  sectorSelect.innerHTML = sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(formatSectorName(sector))}</option>`).join('');
+  selectedSector = viewer.sector || 'APLICAÇÃO';
+  if (!sectors.includes(selectedSector)) selectedSector = 'APLICAÇÃO';
+  sectorSelect.value = selectedSector;
+  sectorSelect.addEventListener('change', () => {
+    selectedSector = sectorSelect.value;
+    loadUsers();
+  });
+}
+
 const start = async () => {
   viewer = await mountShell({ active: 'admin' });
   if (!viewer || !viewer.is_admin) {
     window.location.href = 'index.html';
     return;
   }
+  if (sectorSelect) {
+    if (!canManageAllSectors(viewer)) {
+      sectorSelect.parentElement.remove();
+    } else {
+      await loadSectorFilter();
+    }
+  }
+  selectedSector = selectedSector || viewer.sector || 'APLICAÇÃO';
   await loadUsers();
 };
 
