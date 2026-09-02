@@ -435,6 +435,12 @@ export const api = {
     excluir: (demandaId) =>
       request(`/demandas/${demandaId}`, { method: 'DELETE' }),
   },
+  sectorEquipment: {
+    list: (sector = "") => request(`/configuracoes/lider/equipamentos${sector ? `?sector=${encodeURIComponent(sector)}` : ""}`),
+    createType: (name, sector = "") => request("/configuracoes/lider/equipamentos/tipos", { method: "POST", json: { name, ...(sector ? { sector } : {}) } }),
+    create: (body) => request("/configuracoes/lider/equipamentos", { method: "POST", json: body }),
+    remove: (id, sector = "") => request(`/configuracoes/lider/equipamentos/${id}${sector ? `?sector=${encodeURIComponent(sector)}` : ""}`, { method: "DELETE" }),
+  },
 };
 
 export function requireAuthPage() {

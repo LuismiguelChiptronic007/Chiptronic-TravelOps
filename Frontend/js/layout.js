@@ -46,7 +46,6 @@ export async function mountShell({ active } = {}) {
   }
 
   currentUser = user;
-  renderSidebar(user, active);
   renderTopbar(user, active);
   renderDrawer(user);
   bindShellEvents(user);
@@ -93,7 +92,6 @@ export async function updateShellUser({ active } = {}) {
   }
 
   currentUser = user;
-  renderSidebar(user, active);
   renderTopbar(user, active);
   renderDrawer(user);
   
@@ -110,36 +108,8 @@ function ensureShellElements() {
 
   const appShell = document.querySelector('.app-shell');
   if (appShell) {
-    appShell.classList.add('with-sidebar');
-  }
-
-  if (!document.getElementById('sidebar')) {
-    document.body.insertAdjacentHTML('afterbegin', `
-      <button type="button" class="sidebar-mobile-toggle" id="sidebar-toggle" aria-label="Menu" aria-controls="sidebar">
-        <span></span><span></span><span></span>
-      </button>
-      <aside id="sidebar" class="sidebar" aria-label="Menu principal">
-        <div class="sidebar-header">
-          <a href="index.html" class="sidebar-brand" id="sidebar-brand-link" aria-label="Chiptronic TravelOps">
-            <img src="assets/logo-mark.svg" alt="Chiptronic TravelOps" class="sidebar-logo-img" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%230a0a0a%22/><text x=%2224%22 y=%2230%22 font-family=%22Inter, sans-serif%22 font-size=%2220%22 font-weight=%22800%22 fill=%22white%22 text-anchor=%22middle%22>C</text></svg>';">
-          </a>
-          <button type="button" class="sidebar-collapse-toggle" id="sidebar-collapse-toggle" aria-label="Recolher menu" aria-controls="sidebar">
-            <svg class="sidebar-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
-          </button>
-        </div>
-        <nav class="sidebar-nav" id="sidebar-nav">
-          <div class="sidebar-section">Principal</div>
-        </nav>
-        <div class="sidebar-footer" id="sidebar-footer"></div>
-      </aside>
-    `);
-
-    const storedCollapsed = localStorage.getItem('cto_sidebar_collapsed');
-    const defaultCollapsed = storedCollapsed === null ? 'true' : storedCollapsed === 'true';
-    localStorage.setItem('cto_sidebar_collapsed', String(defaultCollapsed));
-    applySidebarCollapsedState(defaultCollapsed);
-  } else if (!document.getElementById('sidebar-footer')) {
-    document.getElementById('sidebar')?.insertAdjacentHTML('beforeend', '<div class="sidebar-footer" id="sidebar-footer"></div>');
+    appShell.classList.remove('with-sidebar');
+    appShell.classList.add('with-horizontal-nav');
   }
 
   if (!document.getElementById('drawer-overlay')) {
@@ -265,25 +235,92 @@ function renderTopbar(user, active) {
   let resolvedActive = active || '';
   if (ACTIVE_ALIASES[resolvedActive]) resolvedActive = ACTIVE_ALIASES[resolvedActive];
 
-  const titles = {
-    dashboard:        ['Home', 'Dashboard'],
-    viagens:          ['Viagens', 'Listagem'],
-    'mapa-operacional':['Operação', 'Mapa em tempo real'],
-    'new-trip':       ['Viagens', 'Nova'],
-    setor:            ['Setor', user.led_sector || 'Painel'],
-    profile:          ['Conta', 'Meu perfil'],
-    settings:         ['Configurações', 'Sistema'],
-    admin:            ['Administração', 'Painel de controle']
-  };
-  const parts = titles[resolvedActive] || ['Viagens', 'Detalhes'];
+  const viagensGroup = ['viagens', 'new-trip', 'mapa-operacional', 'trip-detail', 'trip'];
+  const configGroup = ['profile', 'setor', 'settings', 'admin'];
+  const isViagensActive = viagensGroup.includes(resolvedActive);
+  const isConfigActive = configGroup.includes(resolvedActive);
+
+  const showSector = user.is_sector_leader && user.led_sector;
 
   topbar.innerHTML = `
     <div class="topbar-left">
-      <div class="page-breadcrumb">
-        <strong>${parts[0]}</strong>
-        <span>${parts[1]}</span>
-      </div>
+      <a href="index.html" class="topbar-brand" aria-label="Chiptronic TravelOps">
+        <img src="assets/logo-mark.svg" alt="" class="topbar-logo-img" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%230a0a0a%22/><text x=%2224%22 y=%2230%22 font-family=%22Inter, sans-serif%22 font-size=%2220%22 font-weight=%22800%22 fill=%22white%22 text-anchor=%22middle%22>C</text></svg>';">
+        <span class="topbar-brand-text">Chiptronic <strong>TravelOps</strong></span>
+      </a>
     </div>
+
+    <nav class="topnav" aria-label="Navegação principal">
+      <a href="index.html" class="topnav-link ${resolvedActive === 'dashboard' ? 'active' : ''}" data-nav="dashboard">
+        <span class="topnav-icon">${SIDEBAR_ICONS.dashboard}</span>
+        <span>Dashboard</span>
+      </a>
+
+      <div class="topnav-dropdown ${isViagensActive ? 'has-active' : ''}" data-dropdown="viagens">
+        <button type="button" class="topnav-link dropdown-trigger ${isViagensActive ? 'active' : ''}" aria-haspopup="true" aria-expanded="false" data-nav="viagens">
+          <span class="topnav-icon">${SIDEBAR_ICONS.viagens}</span>
+          <span>Viagens</span>
+          <svg class="dropdown-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="topnav-dropdown-menu" role="menu">
+          <a href="trip-new.html" class="topnav-dropdown-item ${resolvedActive === 'new-trip' ? 'active' : ''}" role="menuitem" data-nav="new-trip">
+            <span class="dd-item-icon">${SIDEBAR_ICONS['new-trip']}</span>
+            <div>
+              <strong>Nova viagem</strong>
+              <small>Criar uma nova viagem</small>
+            </div>
+          </a>
+          <a href="viagens.html" class="topnav-dropdown-item ${resolvedActive === 'viagens' ? 'active' : ''}" role="menuitem" data-nav="viagens-list">
+            <span class="dd-item-icon">${SIDEBAR_ICONS.viagens}</span>
+            <div>
+              <strong>Viagens</strong>
+              <small>Listar e gerenciar viagens</small>
+            </div>
+          </a>
+          <a href="mapa-operacional.html" class="topnav-dropdown-item ${resolvedActive === 'mapa-operacional' ? 'active' : ''}" role="menuitem" data-nav="mapa-operacional">
+            <span class="dd-item-icon">${SIDEBAR_ICONS['mapa-operacional']}</span>
+            <div>
+              <strong>Mapa Operacional</strong>
+              <small>Visualização em tempo real</small>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <div class="topnav-dropdown ${isConfigActive ? 'has-active' : ''}" data-dropdown="config">
+        <button type="button" class="topnav-link dropdown-trigger ${isConfigActive ? 'active' : ''}" aria-haspopup="true" aria-expanded="false" data-nav="config">
+          <span class="topnav-icon">${SIDEBAR_ICONS.settings}</span>
+          <span>Configuração</span>
+          <svg class="dropdown-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="topnav-dropdown-menu" role="menu">
+          <a href="profile.html" class="topnav-dropdown-item ${resolvedActive === 'profile' ? 'active' : ''}" role="menuitem" data-nav="profile">
+            <span class="dd-item-icon">${SIDEBAR_ICONS.profile}</span>
+            <div>
+              <strong>Editar perfil</strong>
+              <small>Seus dados pessoais</small>
+            </div>
+          </a>
+          ${showSector ? `
+          <a href="setor.html" class="topnav-dropdown-item ${resolvedActive === 'setor' ? 'active' : ''}" role="menuitem" data-nav="setor">
+            <span class="dd-item-icon">${SIDEBAR_ICONS.setor}</span>
+            <div>
+              <strong>Painel de Setor</strong>
+              <small>${escapeHtml(user.led_sector)}</small>
+            </div>
+          </a>
+          ` : ''}
+          <a href="settings.html" class="topnav-dropdown-item ${resolvedActive === 'settings' ? 'active' : ''}" role="menuitem" data-nav="settings">
+            <span class="dd-item-icon">${SIDEBAR_ICONS.settings}</span>
+            <div>
+              <strong>Configuração</strong>
+              <small>Preferências do sistema</small>
+            </div>
+          </a>
+        </div>
+      </div>
+    </nav>
+
     <div class="topbar-right-stack">
       <div class="topbar-right">
         <button type="button" class="icon-btn notif-btn" id="btn-notifications" aria-label="Notificações" data-tooltip="Notificações">
@@ -360,13 +397,10 @@ function bindShellEvents(user) {
   if (shellEventsInstalled) return;
   shellEventsInstalled = true;
 
-  document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebarMobile);
-  document.getElementById('sidebar-collapse-toggle')?.addEventListener('click', toggleSidebarCollapsed);
-  window.addEventListener('resize', handleSidebarResize, { passive: true });
   document.getElementById('drawer-overlay')?.addEventListener('click', () => {
     closeDrawer();
-    closeSidebarMobile();
     closeNotifications();
+    closeAllDropdowns();
   });
 
   document.getElementById('cp-trigger')?.addEventListener('click', () => openCommandPalette());
@@ -391,7 +425,7 @@ function bindShellEvents(user) {
   document.getElementById('btn-notifications')?.addEventListener('click', (e) => {
     e.stopPropagation();
     closeDrawer();
-    closeSidebarMobile();
+    closeAllDropdowns();
     refreshOverlay();
     toggleNotifications();
   });
@@ -413,6 +447,32 @@ function bindShellEvents(user) {
     if (!panel || panel.classList.contains('hidden')) return;
     if (panel.contains(e.target) || btn?.contains(e.target)) return;
     closeNotifications();
+  });
+
+  document.querySelectorAll('.topnav-dropdown').forEach((dd) => {
+    const trigger = dd.querySelector('.dropdown-trigger');
+    trigger?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dd.classList.contains('open');
+      closeAllDropdowns();
+      if (!isOpen) {
+        dd.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.topnav-dropdown')) return;
+    closeAllDropdowns();
+  });
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.topnav-dropdown.open').forEach((dd) => {
+    dd.classList.remove('open');
+    const trigger = dd.querySelector('.dropdown-trigger');
+    trigger?.setAttribute('aria-expanded', 'false');
   });
 }
 
@@ -477,7 +537,7 @@ function closeSidebarMobile() {
 
 function openDrawer() {
   document.getElementById('profile-drawer')?.classList.add('open');
-  closeSidebarMobile();
+  closeAllDropdowns();
   closeNotifications();
   refreshOverlay();
 }
@@ -492,7 +552,7 @@ async function toggleNotifications() {
   if (panel.classList.contains('hidden')) {
     panel.classList.remove('hidden');
     closeDrawer();
-    closeSidebarMobile();
+    closeAllDropdowns();
     refreshOverlay();
     await loadNotifications();
   } else {

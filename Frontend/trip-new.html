@@ -103,16 +103,24 @@
                   <div>
                     <label>Equipamentos levados</label>
                     <p class="field-hint mb-1">
-                      Ao adicionar um equipamento, informe se ele já foi carregado.
+                      Marque os equipamentos que já foram carregados para esta viagem.
                     </p>
                   </div>
                 </div>
-                <div id="equipment-items" class="equipment-items">
-                  <div class="empty-state">Nenhum equipamento adicionado</div>
+
+                <div id="equipment-manage" class="equipment-manage hidden">
+                  <div class="equipment-add-row">
+                    <select id="equipment-catalog-type" aria-label="Tipo de equipamento para cadastrar">
+                      <option value="">Selecione o tipo de equipamento...</option>
+                    </select>
+                    <input id="equipment-catalog-name" type="text" placeholder="Nome do novo equipamento..." aria-label="Nome do equipamento" disabled />
+                    <button type="button" class="btn btn-secondary" id="btn-add-catalog-equipment" disabled>Cadastrar equipamento</button>
+                  </div>
+                  <p class="field-hint mt-1">Você pode cadastrar novos equipamentos. Eles ficarão disponíveis para todos os usuários do setor selecionado.</p>
                 </div>
-                <div class="equipment-add-row">
-                  <input id="equipment-name" placeholder="Ex: Notebook, multímetro, ferramentas" maxlength="120" />
-                  <button type="button" class="btn btn-secondary" id="btn-add-equipment">Adicionar equipamento</button>
+
+                <div id="equipment-columns" class="equipment-columns">
+                  <div class="empty-state">Nenhum equipamento cadastrado para este setor.</div>
                 </div>
               </div>
 

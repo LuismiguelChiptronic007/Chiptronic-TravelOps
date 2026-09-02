@@ -154,6 +154,43 @@ function renderMembers(t) {
     .join("");
 }
 
+function renderEquipment(t) {
+  const el = document.getElementById("trip-equipment");
+  if (!el) return;
+  const list = Array.isArray(t.checklist?.equipment_checklist) ? t.checklist.equipment_checklist : [];
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state">Nenhum equipamento registrado</div>';
+    return;
+  }
+
+  const groups = new Map();
+  for (const item of list) {
+    const type = String(item.equipment_type || "Outros").trim() || "Outros";
+    if (!groups.has(type)) groups.set(type, []);
+    groups.get(type).push(item);
+  }
+
+  const cols = [];
+  for (const [type, items] of groups.entries()) {
+    cols.push(`
+      <div class="equipment-column">
+        <h4 class="equipment-column-title">${escapeHtml(type)}</h4>
+        <div class="equipment-checklist-items">
+          ${items.map((item) => `
+            <label class="equipment-check-item" style="cursor:default">
+              <input type="checkbox" disabled ${item.carried ? "checked" : ""}>
+              <span class="equipment-name ${item.carried ? "" : "text-muted"}">${escapeHtml(item.name)}</span>
+              <span class="equipment-status ${item.carried ? "is-carried" : "is-pending"}">${item.carried ? "Carregado" : "Pendente"}</span>
+            </label>
+          `).join("")}
+        </div>
+      </div>
+    `);
+  }
+
+  el.innerHTML = cols.join("");
+}
+
 function fillTaskResponsibleOptions(t) {
   const list = document.getElementById("responsible_id");
   if (!list) return;
@@ -1417,6 +1454,7 @@ export function renderTrip(t) {
   else banner.classList.add("hidden");
 
   renderMembers(t);
+  renderEquipment(t);
   fillTaskResponsibleOptions(t);
   renderTripDays(t);
   renderTasks(t);

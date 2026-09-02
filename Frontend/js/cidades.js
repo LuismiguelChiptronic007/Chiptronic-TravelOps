@@ -251,6 +251,8 @@ function formatInternationalCity(value) {
   const raw = String(value || "").trim();
   if (!raw) return null;
 
+  if (raw.includes(",")) return null;
+
   const parts = raw
     .split("-")
     .map((p) => p.trim())
@@ -258,6 +260,14 @@ function formatInternationalCity(value) {
 
   if (parts.length < 2 || parts.length > 3) return null;
   if (parts.some((p) => p.length < 2 || /^\d+$/.test(p))) return null;
+
+  const addressTokens = /\b(rua|avenida|av|av\.|travessa|tv|rodovia|br|estrada|bairro|jardim|parque|plaza|praca|casa|predio|edificio|lote|quadra|setor|s\/n|sn|km)\b/i;
+  if (addressTokens.test(parts[0])) return null;
+
+  if (parts.length === 2) {
+    const last = parts[1];
+    if (/^[A-Z]{2}$/.test(last)) return null;
+  }
 
   return parts.join(" - ");
 }
@@ -274,7 +284,10 @@ export function findCity(value) {
     if (city && normalizeCity(city) === normalized) return city;
   }
 
-  return raw;
+  const international = formatInternationalCity(raw);
+  if (international) return international;
+
+  return null;
 }
 
 export function searchCities(query, max = 8) {

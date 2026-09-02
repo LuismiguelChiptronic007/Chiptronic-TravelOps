@@ -251,14 +251,117 @@ html[data-theme="dark"] .auth-page::after {
 
 .equipment-add-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 0.65rem;
 }
+
+.equipment-manage {
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  margin-bottom: 0.25rem;
+}
+
+.equipment-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.equipment-column {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.equipment-column-title {
+  margin: 0;
+  padding: 0 0 0.5rem 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--heading);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.equipment-checklist-items {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.equipment-check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.35rem;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.equipment-check-item:hover {
+  background: var(--surface-alt);
+}
+
+.equipment-check-item input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  accent-color: var(--primary-500);
+  cursor: pointer;
+}
+
+.equipment-check-item span {
+  font-size: 0.88rem;
+  color: var(--text);
+  line-height: 1.3;
+}
+.equipment-check-item .equipment-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.equipment-check-item .equipment-status {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.equipment-check-item .equipment-status.is-carried {
+  color: var(--success-600);
+}
+.equipment-check-item .equipment-status.is-pending {
+  color: var(--warning);
+}
+
+.mt-1 { margin-top: 0.5rem !important; }
+.mt-2 { margin-top: 1rem !important; }
 
 @media (max-width: 560px) {
   .equipment-add-row {
     grid-template-columns: 1fr;
   }
+  .equipment-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+#trip-equipment.equipment-columns {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+#trip-equipment .equipment-column {
+  padding: 0.65rem 0.75rem;
+}
+#trip-equipment .equipment-column-title {
+  font-size: 0.85rem;
+  padding-bottom: 0.35rem;
+}
+#trip-equipment .equipment-check-item span {
+  font-size: 0.83rem;
 }
 
 .activity-entry {
@@ -1256,6 +1359,38 @@ html[data-theme="dark"] .alert-info .alert-icon {
 }
 .flex-end {
   margin-left: auto;
+}
+.equipment-settings {
+  gap: 1.25rem;
+}
+.equipment-settings-section {
+  display: grid;
+  gap: 0.85rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+}
+.equipment-settings-heading {
+  color: var(--text-2);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+.equipment-type-create-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 1rem;
+}
+.equipment-type-create-row button {
+  min-height: 2.65rem;
+  margin-bottom: 0;
+}
+@media (max-width: 640px) {
+  .equipment-type-create-row {
+    grid-template-columns: 1fr;
+  }
+  .equipment-type-create-row button {
+    width: 100%;
+  }
 }
 .list-group {
   display: grid;

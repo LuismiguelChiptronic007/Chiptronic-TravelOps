@@ -127,6 +127,38 @@ async function loadLeaderWorkTypes() {
   }
 }
 
+async function loadEquipmentCatalog() {
+  const typeSelect = document.getElementById('new-equipment-type');
+  const filterSelect = document.getElementById('equipment-catalog-filter');
+  const list = document.getElementById('equipment-catalog-list');
+  if (!typeSelect || !filterSelect || !list) return;
+  try {
+    const data = await api.sectorEquipment.list();
+    const types = data.equipment_types || [];
+    const previousType = typeSelect.value;
+    const previousFilter = filterSelect.value;
+    typeSelect.innerHTML = types.length
+      ? types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join('')
+      : '<option value="">Nenhum tipo cadastrado</option>';
+    if (types.includes(previousType)) typeSelect.value = previousType;
+    filterSelect.innerHTML = `<option value="">Todos os tipos</option>${types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join('')}`;
+    if (types.includes(previousFilter)) filterSelect.value = previousFilter;
+    const equipment = data.equipment || [];
+    const visibleEquipment = filterSelect.value
+      ? equipment.filter((item) => item.equipment_type === filterSelect.value)
+      : equipment;
+    list.innerHTML = visibleEquipment.length
+      ? visibleEquipment.map((item) => `
+          <div class="list-item">
+            <span><strong>${escapeHtml(item.equipment_type)}</strong> · ${escapeHtml(item.name)}</span>
+            <button type="button" class="btn btn-danger btn-sm" data-remove-equipment-catalog="${item.id}">Remover</button>
+          </div>`).join('')
+      : `<p class="text-muted">Nenhum equipamento cadastrado${filterSelect.value ? ' neste tipo' : ' para este setor'}.</p>`;
+  } catch (err) {
+    list.innerHTML = `<p class="text-muted">${escapeHtml(err.message || 'Erro ao carregar equipamentos.')}</p>`;
+  }
+}
+
 async function loadLeaderSettings() {
   const leaderSection = document.getElementById('leader-settings');
   if (!leaderSection) return;
@@ -134,7 +166,7 @@ async function loadLeaderSettings() {
   try {
     const userRes = await api.me();
     const user = userRes?.user;
-    if (!user?.is_sector_leader) {
+    if (!user?.is_sector_leader && !user?.is_admin_master) {
       leaderSection.classList.add('hidden');
       return;
     }
@@ -142,6 +174,7 @@ async function loadLeaderSettings() {
     leaderSection.classList.remove('hidden');
     await loadLeaderProjects();
     await loadLeaderWorkTypes();
+    await loadEquipmentCatalog();
   } catch {
     leaderSection.classList.add('hidden');
   }
@@ -216,6 +249,58 @@ function setupLeaderListeners() {
   const addWorkTypeBtn = document.getElementById('btn-add-work-type');
   const workTypeInput = document.getElementById('new-work-type-name');
   const workTypesList = document.getElementById('work-types-list');
+  const addEquipmentTypeBtn = document.getElementById('btn-add-equipment-type');
+  const equipmentTypeInput = document.getElementById('new-equipment-type-name');
+
+  const addEquipmentType = async () => {
+    const name = equipmentTypeInput?.value?.trim();
+    if (!name) return;
+    try {
+      await api.sectorEquipment.createType(name);
+      equipmentTypeInput.value = '';
+      await loadEquipmentCatalog();
+      const typeSelect = document.getElementById('new-equipment-type');
+      if (typeSelect) typeSelect.value = name;
+    } catch (err) {
+      showAlert(document.getElementById('alert'), err.message || 'Erro ao criar tipo de equipamento.');
+    }
+  };
+
+  addEquipmentTypeBtn?.addEventListener('click', addEquipmentType);
+  equipmentTypeInput?.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    addEquipmentType();
+  });
+
+  document.getElementById('equipment-catalog-filter')?.addEventListener('change', loadEquipmentCatalog);
+
+  document.getElementById('btn-add-equipment-catalog')?.addEventListener('click', async () => {
+    const type = document.getElementById('new-equipment-type')?.value || '';
+    const nameInput = document.getElementById('new-equipment-name');
+    const name = nameInput?.value?.trim();
+    if (!type || !name) return;
+    try {
+      await api.sectorEquipment.create({ equipment_type: type, name });
+      nameInput.value = '';
+      await loadEquipmentCatalog();
+    } catch (err) {
+      showAlert(document.getElementById('alert'), err.message || 'Erro ao adicionar equipamento.');
+    }
+  });
+
+  document.getElementById('equipment-catalog-list')?.addEventListener('click', async (event) => {
+    const remove = event.target.closest('[data-remove-equipment-catalog]');
+    if (!remove) return;
+    const confirmed = await confirmDialog({ title: 'Remover equipamento', message: 'Remover este equipamento do catálogo?', confirmLabel: 'Remover', confirmTone: 'danger', tone: 'danger' });
+    if (!confirmed) return;
+    try {
+      await api.sectorEquipment.remove(remove.dataset.removeEquipmentCatalog);
+      await loadEquipmentCatalog();
+    } catch (err) {
+      showAlert(document.getElementById('alert'), err.message || 'Erro ao remover equipamento.');
+    }
+  });
 
   const addWorkType = async () => {
     const name = workTypeInput?.value?.trim();

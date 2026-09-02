@@ -355,6 +355,7 @@ trips.post("/", async (c) => {
     ? body.equipment_checklist
         .map((item) => ({
           name: String(item?.name || "").trim(),
+          equipment_type: String(item?.equipment_type || "").trim(),
           carried: Boolean(item?.carried),
         }))
         .filter((item) => item.name)
@@ -543,6 +544,7 @@ trips.put("/:id", async (c) => {
     ? body.equipment_checklist
         .map((item) => ({
           name: String(item?.name || "").trim(),
+          equipment_type: String(item?.equipment_type || "").trim(),
           carried: Boolean(item?.carried),
         }))
         .filter((item) => item.name)

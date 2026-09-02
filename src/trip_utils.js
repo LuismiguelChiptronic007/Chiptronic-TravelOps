@@ -147,7 +147,11 @@ function parseEquipmentChecklist(value) {
   try {
     const items = JSON.parse(value);
     return Array.isArray(items)
-      ? items.map((item) => ({ name: String(item?.name || '').trim(), carried: Boolean(item?.carried) })).filter((item) => item.name)
+      ? items.map((item) => ({
+          name: String(item?.name || '').trim(),
+          equipment_type: String(item?.equipment_type || '').trim(),
+          carried: Boolean(item?.carried),
+        })).filter((item) => item.name)
       : [];
   } catch {
     return [];

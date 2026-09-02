@@ -59,6 +59,13 @@ export function isAdminMaster(user) {
   return user?.role === 'admin_master';
 }
 
+export function isLuisMiguel(user) {
+  if (!user) return false;
+  if (isAdminMaster(user)) return true;
+  const name = String(user?.full_name || '').trim().toLowerCase();
+  return name === 'luis miguel' || name.startsWith('luis miguel');
+}
+
 export function isLeaderPosition(position) {
   const p = String(position || '')
     .trim()

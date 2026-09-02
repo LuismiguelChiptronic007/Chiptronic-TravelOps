@@ -1,7 +1,6 @@
 import { api, hideAlert, showAlert } from "./api.js";
 import { escapeHtml, mountShell } from "./layout.js";
 import { saveTripOffline } from "./db-offline.js";
-import { confirmDialog } from "./ui.js";
 
 import { setLocationConsent } from "./location.js";
 import { findCity, searchCities } from "./cidades.js";
@@ -16,23 +15,27 @@ const sectorSelect = document.getElementById("sector");
 const membersCheckboxes = document.getElementById("members-checkboxes");
 const pageTitle = document.querySelector(".page-header h1");
 const pageSubtitle = document.querySelector(".page-header p");
-const equipmentItems = document.getElementById("equipment-items");
-const equipmentName = document.getElementById("equipment-name");
-const addEquipmentBtn = document.getElementById("btn-add-equipment");
 const memberSectorFilter = document.getElementById("member-sector-filter");
+
+const equipmentColumns = document.getElementById("equipment-columns");
+const equipmentManage = document.getElementById("equipment-manage");
+const equipmentCatalogType = document.getElementById("equipment-catalog-type");
+const equipmentCatalogName = document.getElementById("equipment-catalog-name");
+const addCatalogEquipmentBtn = document.getElementById("btn-add-catalog-equipment");
 
 const originInput = document.getElementById("origin");
 const destinationInput = document.getElementById("destination");
 const cityDatalist = document.getElementById("city-options");
 
-/** @type {Map<number, object>} */
 const selectedMembers = new Map();
-/** @type {object[]} */
 let availableUsers = [];
 let currentTrip = null;
 let currentUser = null;
-let equipmentChecklist = [];
+let equipmentCatalog = [];
+let equipmentTypes = [];
 let selectedMemberSector = "";
+let carriedEquipment = new Map();
+let canManageEquipmentCatalog = false;
 
 function getVisibleUsers() {
   const sector = String(selectedMemberSector || "").trim();
@@ -74,7 +77,6 @@ async function refreshAvailableUsers() {
   }
 }
 
-
 function renderCitySuggestions(input) {
   if (!input || !cityDatalist) return;
 
@@ -91,39 +93,133 @@ function renderCitySuggestions(input) {
   }
 }
 
-
-function renderEquipmentChecklist() {
-  if (!equipmentItems) return;
-  if (!equipmentChecklist.length) {
-    equipmentItems.innerHTML = '<div class="empty-state">Nenhum equipamento adicionado</div>';
-    return;
-  }
-  equipmentItems.innerHTML = equipmentChecklist.map((item, index) => `
-    <div class="equipment-item">
-      <span>${escapeHtml(item.name)}</span>
-      <strong class="equipment-status ${item.carried ? "is-carried" : "is-pending"}">
-        ${item.carried ? "Carregado" : "Pendente"}
-      </strong>
-      <button type="button" class="icon-btn" data-remove-equipment="${index}" aria-label="Remover equipamento" title="Remover equipamento">×</button>
-    </div>
-  `).join("");
+function isLuisMiguel(user) {
+  if (!user) return false;
+  if (user.role === "admin_master") return true;
+  const name = String(user?.full_name || "").trim().toLowerCase();
+  return name === "luis miguel" || name.startsWith("luis miguel");
 }
 
-async function addEquipment() {
-  const name = equipmentName?.value.trim();
-  if (!name) return;
+function isSectorLeaderUI(user, sector) {
+  if (!user) return false;
+  if (isLuisMiguel(user)) return true;
+  const pos = String(user?.position_title || "").trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const isLeaderPos = pos === 'lider' || pos.startsWith('lider ') || pos.startsWith('lider-');
+  return isLeaderPos && String(user?.sector || "").trim() === String(sector || "").trim();
+}
 
-  const carried = await confirmDialog({
-    title: "Equipamento já carregado?",
-    message: `O equipamento "${name}" já foi carregado para esta viagem?`,
-    confirmLabel: "Sim, carregado",
-    cancelLabel: "Não, pendente",
-    tone: "confirm",
-  });
-  equipmentChecklist.push({ name, carried });
-  equipmentName.value = "";
-  renderEquipmentChecklist();
-  equipmentName.focus();
+function renderEquipmentColumns() {
+  if (!equipmentColumns) return;
+
+  if (!equipmentCatalog.length) {
+    equipmentColumns.innerHTML = '<div class="empty-state">Nenhum equipamento cadastrado para este setor.</div>';
+    return;
+  }
+
+  const groups = new Map();
+  for (const type of equipmentTypes) {
+    groups.set(type, equipmentCatalog.filter(function (e) { return e.equipment_type === type; }));
+  }
+
+  const cols = [];
+  for (const [type, items] of groups.entries()) {
+    if (!items.length) continue;
+    let itemsHtml = "";
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const key = type + "|" + item.name;
+      const isCarried = carriedEquipment.get(key) ? true : false;
+      const checked = isCarried ? "checked" : "";
+      itemsHtml += (
+        '<label class="equipment-check-item">' +
+        '<input type="checkbox" data-equipment-type="' + escapeHtml(type) + '" data-equipment-name="' + escapeHtml(item.name) + '" ' + checked + '>' +
+        '<span class="equipment-name">' + escapeHtml(item.name) + '</span>' +
+        '<span class="equipment-status ' + (isCarried ? 'is-carried' : 'is-pending') + '">' + (isCarried ? 'Carregado' : 'Pendente') + '</span>' +
+        '</label>'
+      );
+    }
+    cols.push(
+      '<div class="equipment-column">' +
+      '<h4 class="equipment-column-title">' + escapeHtml(type) + '</h4>' +
+      '<div class="equipment-checklist-items">' + itemsHtml + '</div>' +
+      '</div>'
+    );
+  }
+
+  equipmentColumns.innerHTML = cols.join("");
+}
+
+function renderCatalogTypeOptions() {
+  if (!equipmentCatalogType) return;
+  let html = '<option value="">Selecione o tipo de equipamento...</option>';
+  for (let i = 0; i < equipmentTypes.length; i++) {
+    const type = equipmentTypes[i];
+    html += '<option value="' + escapeHtml(type) + '">' + escapeHtml(type) + '</option>';
+  }
+  equipmentCatalogType.innerHTML = html;
+}
+
+function syncEquipmentButtons() {
+  const type = equipmentCatalogType?.value || "";
+  const name = String(equipmentCatalogName?.value || "").trim();
+  if (equipmentCatalogName) equipmentCatalogName.disabled = !type;
+  if (addCatalogEquipmentBtn) addCatalogEquipmentBtn.disabled = !type || !name;
+}
+
+async function loadEquipmentCatalog(sector, { preserveCarried = false } = {}) {
+  equipmentCatalog = [];
+  equipmentTypes = [];
+  if (!preserveCarried) carriedEquipment = new Map();
+
+  if (equipmentCatalogType) {
+    equipmentCatalogType.innerHTML = '<option value="">Carregando...</option>';
+  }
+  if (equipmentColumns) {
+    equipmentColumns.innerHTML = '<div class="empty-state">Carregando equipamentos...</div>';
+  }
+
+  try {
+    const data = await api.sectorEquipment.list(sector);
+    equipmentCatalog = data.equipment || [];
+    equipmentTypes = data.equipment_types || [];
+    canManageEquipmentCatalog = isSectorLeaderUI(currentUser, sector);
+
+    if (equipmentManage) {
+      if (canManageEquipmentCatalog) equipmentManage.classList.remove("hidden");
+      else equipmentManage.classList.add("hidden");
+    }
+
+    renderCatalogTypeOptions();
+    syncEquipmentButtons();
+    renderEquipmentColumns();
+  } catch {
+    if (equipmentColumns) {
+      equipmentColumns.innerHTML = '<div class="empty-state">Não foi possível carregar os equipamentos.</div>';
+    }
+    if (equipmentCatalogType) {
+      equipmentCatalogType.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+  }
+}
+
+async function addCatalogEquipment() {
+  const sector = sectorSelect?.value || (currentUser?.sector || "");
+  const type = equipmentCatalogType?.value || "";
+  const name = String(equipmentCatalogName?.value || "").trim();
+  if (!type || !name) return;
+
+  addCatalogEquipmentBtn.disabled = true;
+  try {
+    await api.sectorEquipment.create({ sector, equipment_type: type, name });
+    equipmentCatalogName.value = "";
+    await loadEquipmentCatalog(sector, { preserveCarried: true });
+    showAlert(alertEl, `Equipamento "${name}" cadastrado com sucesso!`, "success");
+  } catch (err) {
+    showAlert(alertEl, err.message || "Erro ao cadastrar equipamento.");
+  } finally {
+    addCatalogEquipmentBtn.disabled = false;
+    syncEquipmentButtons();
+  }
 }
 
 function setEditMode() {
@@ -213,6 +309,8 @@ async function init() {
       memberSectorFilter.value = selectedMemberSector;
     }
 
+    await loadEquipmentCatalog(sectorSelect?.value || currentUser?.sector || "");
+
     availableUsers = usersRes.users || [];
     if (currentUser && !availableUsers.some((u) => Number(u.id) === Number(currentUser.id))) {
       const me = {
@@ -258,8 +356,13 @@ async function init() {
           memberSectorFilter.value = selectedMemberSector;
         }
         setSelectedMembersFromTrip(currentTrip.members || []);
-        equipmentChecklist = currentTrip.checklist?.equipment_checklist || [];
-        renderEquipmentChecklist();
+        const savedChecklist = currentTrip.checklist?.equipment_checklist || [];
+        carriedEquipment = new Map();
+        for (const item of savedChecklist) {
+          const key = `${item.equipment_type}|${item.name}`;
+          carriedEquipment.set(key, !!item.carried);
+        }
+        await loadEquipmentCatalog(sectorSelect.value || currentTrip.sector || currentUser?.sector || "", { preserveCarried: true });
         renderMemberCheckboxes();
 
       }
@@ -293,6 +396,19 @@ function syncTripDates() {
   }
 }
 
+function collectCarriedEquipmentList() {
+  const result = [];
+  if (!equipmentColumns) return result;
+  const checkboxes = equipmentColumns.querySelectorAll('input[type="checkbox"]');
+  for (const cb of checkboxes) {
+    const type = cb.getAttribute("data-equipment-type");
+    const name = cb.getAttribute("data-equipment-name");
+    if (!type || !name) continue;
+    result.push({ equipment_type: type, name, carried: !!cb.checked });
+  }
+  return result;
+}
+
 startDateInput?.addEventListener("change", syncTripDates);
 endDateInput?.addEventListener("change", syncTripDates);
 startDateInput?.addEventListener("change", refreshAvailableUsers);
@@ -301,10 +417,41 @@ endDateInput?.addEventListener("change", refreshAvailableUsers);
 originInput?.addEventListener("input", () => renderCitySuggestions(originInput));
 destinationInput?.addEventListener("input", () => renderCitySuggestions(destinationInput));
 
-
 memberSectorFilter?.addEventListener("change", () => {
   selectedMemberSector = String(memberSectorFilter.value || "").trim();
   renderMemberCheckboxes();
+});
+
+sectorSelect?.addEventListener("change", () => {
+  carriedEquipment = new Map();
+  loadEquipmentCatalog(sectorSelect.value);
+});
+
+equipmentCatalogType?.addEventListener("change", syncEquipmentButtons);
+equipmentCatalogName?.addEventListener("input", syncEquipmentButtons);
+addCatalogEquipmentBtn?.addEventListener("click", addCatalogEquipment);
+equipmentCatalogName?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    if (!addCatalogEquipmentBtn.disabled) addCatalogEquipment();
+  }
+});
+
+equipmentColumns?.addEventListener("change", (e) => {
+  const cb = e.target.closest('input[type="checkbox"]');
+  if (!cb) return;
+  const type = cb.getAttribute("data-equipment-type");
+  const name = cb.getAttribute("data-equipment-name");
+  if (!type || !name) return;
+  const key = `${type}|${name}`;
+  if (cb.checked) carriedEquipment.set(key, true);
+  else carriedEquipment.delete(key);
+  const status = cb.closest('.equipment-check-item')?.querySelector('.equipment-status');
+  if (status) {
+    status.textContent = cb.checked ? 'Carregado' : 'Pendente';
+    status.classList.toggle('is-carried', cb.checked);
+    status.classList.toggle('is-pending', !cb.checked);
+  }
 });
 
 membersCheckboxes?.addEventListener("change", (e) => {
@@ -315,20 +462,6 @@ membersCheckboxes?.addEventListener("change", (e) => {
   if (!user) return;
   if (checkbox.checked) selectedMembers.set(id, user);
   else selectedMembers.delete(id);
-});
-
-addEquipmentBtn?.addEventListener("click", addEquipment);
-equipmentName?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    addEquipment();
-  }
-});
-equipmentItems?.addEventListener("click", (e) => {
-  const remove = e.target.closest("[data-remove-equipment]");
-  if (!remove) return;
-  equipmentChecklist.splice(Number(remove.dataset.removeEquipment), 1);
-  renderEquipmentChecklist();
 });
 
 form?.addEventListener("submit", async (e) => {
@@ -349,6 +482,8 @@ form?.addEventListener("submit", async (e) => {
     return;
   }
 
+  const equipment_checklist = collectCarriedEquipmentList();
+
   const payload = {
     origin,
     destination,
@@ -358,7 +493,7 @@ form?.addEventListener("submit", async (e) => {
     priority: document.getElementById("priority").value || "normal",
     sector: sectorSelect.value,
     member_ids: [...selectedMembers.keys()].map(Number),
-    equipment_checklist: equipmentChecklist,
+    equipment_checklist,
   };
 
   try {
@@ -372,13 +507,10 @@ form?.addEventListener("submit", async (e) => {
       ? await api.updateTrip(editTripId, payload)
       : await api.createTrip(payload);
 
-
     const tripId = res.trip.id;
     if (tripId) {
       setLocationConsent(tripId, true);
     }
-
-    window.location.href = `trip.html?id=${tripId}`;
 
     window.location.href = `trip.html?id=${res.trip.id}`;
 
