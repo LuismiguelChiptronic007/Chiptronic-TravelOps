@@ -2063,9 +2063,8 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.7rem 1rem;
+  padding: 0.6rem 1rem;
   border-bottom: 1px solid var(--border-subtle);
-  border-left: 3px solid var(--accent);
   background: var(--surface);
   color: var(--text);
 }
@@ -2102,14 +2101,20 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   height: 15px;
 }
 
-/* Faixa única compacta: Período · Setor · Integrantes numa só linha */
+/* Faixa de dados gerais: Período/Setor/Integrantes numa linha, Motivo em linha própria abaixo */
 .trip-detail-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.7rem 1.8rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tds-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 1.75rem;
-  padding: 0.7rem 1.8rem;
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 .tds-item {
@@ -2120,17 +2125,10 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
 }
 
 .tds-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--muted);
   white-space: nowrap;
-}
-.tds-label svg {
-  flex-shrink: 0;
-  opacity: 0.75;
 }
 
 .tds-value {
@@ -2144,15 +2142,17 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   gap: 0.35rem;
 }
 
-/* Motivo cresce e ocupa o espaço restante da faixa, truncando se for longo */
+/* Motivo ocupa a linha inteira, sem truncar */
+.tds-row-reason {
+  gap: 0.4rem;
+}
 .tds-item-grow {
-  flex: 1 1 220px;
-  min-width: 160px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .tds-item-grow .tds-value {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 /* Blocos de Motivo e Equipamentos, mais enxutos que antes */

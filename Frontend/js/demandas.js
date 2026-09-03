@@ -18,6 +18,84 @@ export function statusDemandaBadge(status) {
   return `<span class="${cfg.cls}">${cfg.label}</span>`;
 }
 
+function calcularResumoDemandas(demandas) {
+  let totalPendentes = 0;
+  let totalAndamento = 0;
+  let totalConcluidas = 0;
+  for (const d of demandas || []) {
+    for (const dv of d.veiculos || []) {
+      for (const a of dv.atividades || []) {
+        if (a.status === 'pendente') totalPendentes++;
+        else if (a.status === 'em_andamento') totalAndamento++;
+        else if (a.status === 'concluida') totalConcluidas++;
+      }
+    }
+  }
+  return { totalPendentes, totalAndamento, totalConcluidas };
+}
+
+function renderResumoDemandasHtml(demandas) {
+  const { totalPendentes, totalAndamento, totalConcluidas } = calcularResumoDemandas(demandas);
+  return `
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+      <span class="badge planned">Pendentes: ${totalPendentes}</span>
+      <span class="badge in_progress">Em andamento: ${totalAndamento}</span>
+      <span class="badge completed">Concluídas: ${totalConcluidas}</span>
+    </div>`;
+}
+
+function renderDemandaVeiculoTableHtml(dv, tipoProjeto, { showEditarVeiculo = false } = {}) {
+  const atividadesSorted = [...(dv.atividades || [])].sort((a, b) => Number(a.prioridade) - Number(b.prioridade));
+  const rows = atividadesSorted.map((a) => {
+    const pc = prioridadeCor(a.prioridade);
+    return `
+      <tr>
+        <td><span style="font-size:0.8rem;font-weight:600;">${escapeHtml(tipoProjeto || '—')}</span></td>
+        <td><span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.75rem;font-weight:700;">${pc.label}</span></td>
+        <td>${escapeHtml(a.atividade_descricao || '—')}</td>
+        <td>${statusDemandaBadge(a.status)}
+            ${a.status === 'concluida' && a.concluida_nome ? `<div class="text-muted" style="font-size:0.75rem;margin-top:2px;">${escapeHtml(a.concluida_nome)} · ${formatDateBR(String(a.concluida_em || '').slice(0,10))}</div>` : ''}
+        </td>
+      </tr>`;
+  }).join('');
+
+  const cabVeic = [dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || 'Veículo';
+
+  return `
+    <div class="demanda-vehicle-card" style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--panel-bg);">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:start;justify-content:space-between;margin-bottom:10px;">
+        <div>
+          <strong>${escapeHtml(cabVeic)}</strong>
+          <div class="text-muted" style="font-size:0.85rem;">
+            ${dv.placa ? `Placa: <strong>${escapeHtml(String(dv.placa).toUpperCase())}</strong>` : ''}
+            ${dv.ano ? ` · Ano: <strong>${escapeHtml(dv.ano)}</strong>` : ''}
+          </div>
+        </div>
+        ${showEditarVeiculo ? `<button type="button" class="btn btn-secondary btn-sm btn-editar-veiculo" data-veiculo-id="${dv.id}">Editar veículo</button>` : ''}
+      </div>
+      ${atividadesSorted.length ? `
+      <table class="data" style="width:100%;margin:0;">
+        <thead><tr><th style="width:150px;">Projeto</th><th style="width:60px;">Pri</th><th>Atividade</th><th style="width:170px;">Status</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>` : '<div class="text-muted" style="padding:8px 4px;">Sem atividades cadastradas.</div>'}
+    </div>`;
+}
+
+function renderDemandaGroupCardHtml(demanda, { showEditarVeiculo = false } = {}) {
+  const vCards = (demanda.veiculos || [])
+    .map((dv) => renderDemandaVeiculoTableHtml(dv, demanda.tipo_projeto, { showEditarVeiculo }))
+    .join('');
+
+  return `
+    <div class="demanda-group-card demanda-status-${demanda.status || 'pendente'}" style="margin-bottom:18px;">
+      <div class="demanda-group-header">
+        <div class="text-muted" style="font-size:0.8rem;">Criado por ${escapeHtml(demanda.criado_nome || 'Líder')} em ${formatDateBR(String(demanda.criado_em || '').slice(0,10))}</div>
+        <div class="demanda-status-highlight">${statusDemandaBadge(demanda.status)}</div>
+      </div>
+      ${vCards || '<div class="empty-state" style="padding:12px;">Sem veículos nesta demanda.</div>'}
+    </div>`;
+}
+
 function validarPlaca(placa) {
   if (!placa) return true;
   const limpa = String(placa).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -79,47 +157,10 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
 
     const demandasJaFornecidasHtml = demandasExistentes.length
       ? `
-        <div style="margin-top:22px;">
+        <div id="demandas" style="margin-top:22px;">
           <h3 style="margin:0 0 10px; font-size:1rem;">Demandas já fornecidas para esta viagem</h3>
-          <div style="display:flex;flex-direction:column;gap:10px;">
-            ${demandasExistentes.map((demanda) => {
-              const veiculosList = (demanda.veiculos || []).map((dv) => {
-                const atividades = (dv.atividades || []).map((a) => {
-                  const pc = prioridadeCor(a.prioridade || 1);
-                  return `<div class="demanda-activity-row" style="--dot-color:${pc.text};" title="Prioridade ${a.prioridade || 1}">
-                    <span class="demanda-activity-name">${escapeHtml(a.atividade_descricao || '—')}</span>
-                    <span class="demanda-activity-meta">${statusDemandaBadge(a.status)}</span>
-                  </div>`;
-                }).join('') || '<div class="text-muted" style="padding:6px 0 6px 1.1rem;">Sem atividades.</div>';
-
-                return `
-                  <div class="demanda-vehicle-card">
-                    <div class="demanda-vehicle-header">
-                      <strong>${escapeHtml([dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || 'Veículo')}</strong>
-                      <span class="text-muted" style="font-size:0.78rem;">
-                        ${dv.placa ? `${escapeHtml(String(dv.placa).toUpperCase())}` : ''}${dv.ano ? ` · ${escapeHtml(dv.ano)}` : ''}
-                      </span>
-                      <button type="button" class="btn btn-secondary btn-sm btn-editar-veiculo" data-veiculo-id="${dv.id}">Editar veículo</button>
-                    </div>
-                    ${atividades}
-                  </div>`;
-              }).join('');
-
-              return `
-                <div class="demanda-group-card demanda-status-${demanda.status || 'pendente'}">
-                  <div class="demanda-group-header">
-                    <div>
-                      <h3>${escapeHtml(demanda.tipo_projeto || 'Projeto')}</h3>
-                    </div>
-                    <div class="demanda-status-highlight">
-                      <span class="demanda-status-label">Status geral:</span>
-                      ${statusDemandaBadge(demanda.status)}
-                    </div>
-                  </div>
-                  ${veiculosList}
-                </div>`;
-            }).join('')}
-          </div>
+          ${renderResumoDemandasHtml(demandasExistentes)}
+          ${demandasExistentes.map((demanda) => renderDemandaGroupCardHtml(demanda, { showEditarVeiculo: true })).join('')}
         </div>`
       : '<div class="empty-state" style="margin-top:18px;">Nenhuma demanda fornecida ainda para esta viagem.</div>';
 
@@ -412,68 +453,7 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
     return;
   }
 
-  let totalPendentes = 0;
-  let totalAndamento = 0;
-  let totalConcluidas = 0;
-
-  const cards = todas.map(demanda => {
-    const vCards = (demanda.veiculos || []).map(dv => {
-      const atividadesSorted = [...(dv.atividades || [])].sort((a, b) => Number(a.prioridade) - Number(b.prioridade));
-      const rows = atividadesSorted.map(a => {
-        if (a.status === 'pendente') totalPendentes++;
-        else if (a.status === 'em_andamento') totalAndamento++;
-        else if (a.status === 'concluida') totalConcluidas++;
-
-        const pc = prioridadeCor(a.prioridade);
-
-        return `
-          <tr>
-            <td><span style="font-size:0.8rem;font-weight:600;">${escapeHtml(demanda.tipo_projeto)}</span></td>
-            <td><span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.75rem;font-weight:700;">${pc.label}</span></td>
-            <td>${escapeHtml(a.atividade_descricao || '—')}</td>
-            <td>${statusDemandaBadge(a.status)}
-                ${a.status === 'concluida' && a.concluida_nome ? `<div class="text-muted" style="font-size:0.75rem;margin-top:2px;">${escapeHtml(a.concluida_nome)} · ${formatDateBR(String(a.concluida_em || '').slice(0,10))}</div>` : ''}
-            </td>
-          </tr>`;
-      }).join('');
-
-      const cabVeic = [dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || '—';
-
-      return `
-        <div class="demanda-vehicle-card" style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--panel-bg);">
-          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:start;justify-content:space-between;margin-bottom:10px;">
-            <div>
-              <strong>${escapeHtml(cabVeic)}</strong>
-              <div class="text-muted" style="font-size:0.85rem;">
-                ${dv.placa ? `Placa: <strong>${escapeHtml(dv.placa.toUpperCase())}</strong>` : ''}
-                ${dv.ano ? ` · Ano: <strong>${escapeHtml(dv.ano)}</strong>` : ''}
-              </div>
-            </div>
-          </div>
-          ${(dv.atividades || []).length ? `
-          <table class="data" style="width:100%;margin:0;">
-            <thead><tr><th style="width:150px;">Projeto</th><th style="width:60px;">Pri</th><th>Atividade</th><th style="width:170px;">Status</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>` : '<div class="text-muted" style="padding:8px 4px;">Sem atividades cadastradas.</div>'}
-        </div>`;
-    }).join('');
-
-    return `
-      <div class="demanda-group-card demanda-status-${demanda.status || 'pendente'}" style="margin-bottom:18px;">
-        <div class="demanda-group-header">
-          <div class="text-muted" style="font-size:0.8rem;">Criado por ${escapeHtml(demanda.criado_nome || 'Líder')} em ${formatDateBR(String(demanda.criado_em || '').slice(0,10))}</div>
-          <div class="demanda-status-highlight">${statusDemandaBadge(demanda.status)}</div>
-        </div>
-        ${vCards || '<div class="empty-state" style="padding:12px;">Sem veículos nesta demanda.</div>'}
-      </div>`;
-  }).join('');
-
-  const resumoHtml = `
-    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-      <span class="badge planned">Pendentes: ${totalPendentes}</span>
-      <span class="badge in_progress">Em andamento: ${totalAndamento}</span>
-      <span class="badge completed">Concluídas: ${totalConcluidas}</span>
-    </div>`;
+  const cards = todas.map((demanda) => renderDemandaGroupCardHtml(demanda, { showEditarVeiculo: false })).join('');
 
   container.innerHTML = `
     <div class="panel" style="margin-top:0;">
@@ -482,14 +462,12 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
         <button type="button" class="panel-toggle" data-toggle="demandas-panel" aria-expanded="true" aria-label="Minimizar quadro de demandas" title="Minimizar quadro de demandas">▼</button>
       </div>
       <div class="panel-body panel-content demandas-panel-content">
-        ${resumoHtml}
+        ${renderResumoDemandasHtml(todas)}
         ${cards}
       </div>
     </div>`;
 
   wireDemandasPanelToggle(container);
-
-
 }
 
 function wireDemandasPanelToggle(container) {

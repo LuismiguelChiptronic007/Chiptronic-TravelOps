@@ -467,6 +467,18 @@ html[data-theme="dark"] .auth-page::after {
 .demanda-vehicle-card table td:nth-child(2) {
   font-weight: 600;
 }
+/* Card do quadro de demandas na página da viagem: alinhado à esquerda, sem o banner de status */
+.demanda-vehicle-card-flat {
+  text-align: left;
+}
+.demanda-vehicle-card-flat > div:first-child {
+  justify-content: space-between !important;
+}
+.demanda-vehicle-card-flat table th,
+.demanda-vehicle-card-flat table td {
+  text-align: left;
+  vertical-align: middle;
+}
 @media (max-width: 600px) {
   .demanda-group-header {
     align-items: stretch;
