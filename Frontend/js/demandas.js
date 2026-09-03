@@ -10,11 +10,11 @@ export function prioridadeCor(prioridade) {
 
 export function statusDemandaBadge(status) {
   const map = {
-    pendente: { cls: 'badge planned', label: 'Pendente' },
-    em_andamento: { cls: 'badge in_progress', label: 'Em andamento' },
-    concluida: { cls: 'badge completed', label: 'Concluída' },
+    pendente: { cls: 'badge badge-planned', label: 'Pendente' },
+    em_andamento: { cls: 'badge badge-in_progress', label: 'Em andamento' },
+    concluida: { cls: 'badge badge-completed', label: 'Concluída' },
   };
-  const cfg = map[status] || { cls: 'badge planned', label: status || '—' };
+  const cfg = map[status] || { cls: 'badge badge-planned', label: status || '—' };
   return `<span class="${cfg.cls}">${cfg.label}</span>`;
 }
 
@@ -86,15 +86,18 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
               const veiculosList = (demanda.veiculos || []).map((dv) => {
                 const atividades = (dv.atividades || []).map((a) => {
                   const pc = prioridadeCor(a.prioridade || 1);
-                  return `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:6px 0;border-top:1px solid var(--border);">
-                    <span>${escapeHtml(a.atividade_descricao || '—')}</span>
-                    <span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.72rem;font-weight:700;">P${a.prioridade || 1}</span>
+                  return `<div class="demanda-activity-row" style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:6px 0;border-top:1px solid var(--border);">
+                    <span class="demanda-activity-name">${escapeHtml(a.atividade_descricao || '—')}</span>
+                    <span class="demanda-activity-meta">
+                      ${statusDemandaBadge(a.status)}
+                      <span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.72rem;font-weight:700;">P${a.prioridade || 1}</span>
+                    </span>
                   </div>`;
                 }).join('') || '<div class="text-muted" style="padding:6px 0;">Sem atividades.</div>';
 
                 return `
-                  <div style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel-bg);">
-                    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+                  <div class="demanda-vehicle-card" style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel-bg);">
+                    <div class="demanda-vehicle-header" style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
                       <div style="font-weight:700;">${escapeHtml([dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || 'Veículo')}</div>
                       <button type="button" class="btn btn-secondary btn-sm btn-editar-veiculo" data-veiculo-id="${dv.id}">Editar veículo</button>
                     </div>
@@ -107,10 +110,11 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
               }).join('');
 
               return `
-                <div style="border:1px solid var(--border);border-radius:12px;padding:12px;background:linear-gradient(135deg, rgba(139,92,246,0.04), rgba(59,130,246,0.03));">
-                  <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+                <div class="demanda-group-card demanda-status-${demanda.status || 'pendente'}" style="padding:12px;background:linear-gradient(135deg, rgba(139,92,246,0.04), rgba(59,130,246,0.03));">
+                  <div class="demanda-group-header" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
                     <strong>${escapeHtml(demanda.tipo_projeto || 'Projeto')}</strong>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <div class="demanda-status-highlight" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                      <span class="demanda-status-label">Status geral:</span>
                       ${statusDemandaBadge(demanda.status)}
                     </div>
                   </div>
@@ -437,7 +441,7 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
       const cabVeic = [dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || '—';
 
       return `
-        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--panel-bg);">
+        <div class="demanda-vehicle-card" style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--panel-bg);">
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:start;justify-content:space-between;margin-bottom:10px;">
             <div>
               <strong>${escapeHtml(cabVeic)}</strong>
@@ -456,13 +460,13 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
     }).join('');
 
     return `
-      <div class="demanda-group-card" style="margin-bottom:18px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+      <div class="demanda-group-card demanda-status-${demanda.status || 'pendente'}" style="margin-bottom:18px;">
+        <div class="demanda-group-header">
           <div>
             <h3 style="margin:0;font-size:1rem;">Demanda · ${escapeHtml(demanda.tipo_projeto)}</h3>
             <div class="text-muted" style="font-size:0.8rem;">Criado por ${escapeHtml(demanda.criado_nome || 'Líder')} em ${formatDateBR(String(demanda.criado_em || '').slice(0,10))}</div>
           </div>
-          ${statusDemandaBadge(demanda.status)}
+          <div class="demanda-status-highlight">${statusDemandaBadge(demanda.status)}</div>
         </div>
         ${vCards || '<div class="empty-state" style="padding:12px;">Sem veículos nesta demanda.</div>'}
       </div>`;

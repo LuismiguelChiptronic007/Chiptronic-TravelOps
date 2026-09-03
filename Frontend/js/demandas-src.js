@@ -10,11 +10,11 @@ export function prioridadeCor(prioridade) {
 
 export function statusDemandaBadge(status) {
   const map = {
-    pendente: { cls: 'badge planned', label: 'Pendente' },
-    em_andamento: { cls: 'badge in_progress', label: 'Em andamento' },
-    concluida: { cls: 'badge completed', label: 'Concluída' },
+    pendente: { cls: 'badge badge-planned', label: 'Pendente' },
+    em_andamento: { cls: 'badge badge-in_progress', label: 'Em andamento' },
+    concluida: { cls: 'badge badge-completed', label: 'Concluída' },
   };
-  const cfg = map[status] || { cls: 'badge planned', label: status || '—' };
+  const cfg = map[status] || { cls: 'badge badge-planned', label: status || '—' };
   return `<span class="${cfg.cls}">${cfg.label}</span>`;
 }
 
@@ -306,7 +306,7 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
       const cabVeic = [dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || '—';
 
       return `
-        <div style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--panel-bg);">
+        <div class="demanda-vehicle-card" style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--panel-bg);">
           <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:start;justify-content:space-between;margin-bottom:10px;">
             <div>
               <strong>${escapeHtml(cabVeic)}</strong>
@@ -325,13 +325,13 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
     }).join('');
 
     return `
-      <div class="demanda-group-card" style="margin-bottom:18px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+      <div class="demanda-group-card demanda-status-${demanda.status || 'pendente'}" style="margin-bottom:18px;">
+        <div class="demanda-group-header">
           <div>
             <h3 style="margin:0;font-size:1rem;">Demanda · ${escapeHtml(demanda.tipo_projeto)}</h3>
             <div class="text-muted" style="font-size:0.8rem;">Criado por ${escapeHtml(demanda.criado_nome || 'Líder')} em ${formatDateBR(String(demanda.criado_em || '').slice(0,10))}</div>
           </div>
-          ${statusDemandaBadge(demanda.status)}
+          <div class="demanda-status-highlight">${statusDemandaBadge(demanda.status)}</div>
         </div>
         ${vCards || '<div class="empty-state" style="padding:12px;">Sem veículos nesta demanda.</div>'}
       </div>`;

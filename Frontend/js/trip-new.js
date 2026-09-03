@@ -18,10 +18,7 @@ const pageSubtitle = document.querySelector(".page-header p");
 const memberSectorFilter = document.getElementById("member-sector-filter");
 
 const equipmentColumns = document.getElementById("equipment-columns");
-const equipmentManage = document.getElementById("equipment-manage");
 const equipmentCatalogType = document.getElementById("equipment-catalog-type");
-const equipmentCatalogName = document.getElementById("equipment-catalog-name");
-const addCatalogEquipmentBtn = document.getElementById("btn-add-catalog-equipment");
 
 const originInput = document.getElementById("origin");
 const destinationInput = document.getElementById("destination");
@@ -35,7 +32,6 @@ let equipmentCatalog = [];
 let equipmentTypes = [];
 let selectedMemberSector = "";
 let carriedEquipment = new Map();
-let canManageEquipmentCatalog = false;
 
 function getVisibleUsers() {
   const sector = String(selectedMemberSector || "").trim();
@@ -93,23 +89,14 @@ function renderCitySuggestions(input) {
   }
 }
 
-function isLuisMiguel(user) {
-  if (!user) return false;
-  if (user.role === "admin_master") return true;
-  const name = String(user?.full_name || "").trim().toLowerCase();
-  return name === "luis miguel" || name.startsWith("luis miguel");
-}
-
-function isSectorLeaderUI(user, sector) {
-  if (!user) return false;
-  if (isLuisMiguel(user)) return true;
-  const pos = String(user?.position_title || "").trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const isLeaderPos = pos === 'lider' || pos.startsWith('lider ') || pos.startsWith('lider-');
-  return isLeaderPos && String(user?.sector || "").trim() === String(sector || "").trim();
-}
-
 function renderEquipmentColumns() {
   if (!equipmentColumns) return;
+
+  const selectedType = equipmentCatalogType?.value || "";
+  if (!selectedType) {
+    equipmentColumns.innerHTML = '<div class="empty-state">Selecione um tipo de equipamento para visualizar os itens.</div>';
+    return;
+  }
 
   if (!equipmentCatalog.length) {
     equipmentColumns.innerHTML = '<div class="empty-state">Nenhum equipamento cadastrado para este setor.</div>';
@@ -117,7 +104,8 @@ function renderEquipmentColumns() {
   }
 
   const groups = new Map();
-  for (const type of equipmentTypes) {
+  const typesToRender = selectedType === "*" ? equipmentTypes : [selectedType];
+  for (const type of typesToRender) {
     groups.set(type, equipmentCatalog.filter(function (e) { return e.equipment_type === type; }));
   }
 
@@ -151,7 +139,8 @@ function renderEquipmentColumns() {
 
 function renderCatalogTypeOptions() {
   if (!equipmentCatalogType) return;
-  let html = '<option value="">Selecione o tipo de equipamento...</option>';
+  let html = '<option value="">Selecione um tipo de equipamento...</option>';
+  html += '<option value="*">Todos os equipamentos</option>';
   for (let i = 0; i < equipmentTypes.length; i++) {
     const type = equipmentTypes[i];
     html += '<option value="' + escapeHtml(type) + '">' + escapeHtml(type) + '</option>';
@@ -159,21 +148,12 @@ function renderCatalogTypeOptions() {
   equipmentCatalogType.innerHTML = html;
 }
 
-function syncEquipmentButtons() {
-  const type = equipmentCatalogType?.value || "";
-  const name = String(equipmentCatalogName?.value || "").trim();
-  if (equipmentCatalogName) equipmentCatalogName.disabled = !type;
-  if (addCatalogEquipmentBtn) addCatalogEquipmentBtn.disabled = !type || !name;
-}
-
 async function loadEquipmentCatalog(sector, { preserveCarried = false } = {}) {
   equipmentCatalog = [];
   equipmentTypes = [];
   if (!preserveCarried) carriedEquipment = new Map();
 
-  if (equipmentCatalogType) {
-    equipmentCatalogType.innerHTML = '<option value="">Carregando...</option>';
-  }
+  if (equipmentCatalogType) equipmentCatalogType.innerHTML = '<option value="">Carregando...</option>';
   if (equipmentColumns) {
     equipmentColumns.innerHTML = '<div class="empty-state">Carregando equipamentos...</div>';
   }
@@ -182,15 +162,7 @@ async function loadEquipmentCatalog(sector, { preserveCarried = false } = {}) {
     const data = await api.sectorEquipment.list(sector);
     equipmentCatalog = data.equipment || [];
     equipmentTypes = data.equipment_types || [];
-    canManageEquipmentCatalog = isSectorLeaderUI(currentUser, sector);
-
-    if (equipmentManage) {
-      if (canManageEquipmentCatalog) equipmentManage.classList.remove("hidden");
-      else equipmentManage.classList.add("hidden");
-    }
-
     renderCatalogTypeOptions();
-    syncEquipmentButtons();
     renderEquipmentColumns();
   } catch {
     if (equipmentColumns) {
@@ -199,26 +171,6 @@ async function loadEquipmentCatalog(sector, { preserveCarried = false } = {}) {
     if (equipmentCatalogType) {
       equipmentCatalogType.innerHTML = '<option value="">Erro ao carregar</option>';
     }
-  }
-}
-
-async function addCatalogEquipment() {
-  const sector = sectorSelect?.value || (currentUser?.sector || "");
-  const type = equipmentCatalogType?.value || "";
-  const name = String(equipmentCatalogName?.value || "").trim();
-  if (!type || !name) return;
-
-  addCatalogEquipmentBtn.disabled = true;
-  try {
-    await api.sectorEquipment.create({ sector, equipment_type: type, name });
-    equipmentCatalogName.value = "";
-    await loadEquipmentCatalog(sector, { preserveCarried: true });
-    showAlert(alertEl, `Equipamento "${name}" cadastrado com sucesso!`, "success");
-  } catch (err) {
-    showAlert(alertEl, err.message || "Erro ao cadastrar equipamento.");
-  } finally {
-    addCatalogEquipmentBtn.disabled = false;
-    syncEquipmentButtons();
   }
 }
 
@@ -427,15 +379,7 @@ sectorSelect?.addEventListener("change", () => {
   loadEquipmentCatalog(sectorSelect.value);
 });
 
-equipmentCatalogType?.addEventListener("change", syncEquipmentButtons);
-equipmentCatalogName?.addEventListener("input", syncEquipmentButtons);
-addCatalogEquipmentBtn?.addEventListener("click", addCatalogEquipment);
-equipmentCatalogName?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault();
-    if (!addCatalogEquipmentBtn.disabled) addCatalogEquipment();
-  }
-});
+equipmentCatalogType?.addEventListener("change", renderEquipmentColumns);
 
 equipmentColumns?.addEventListener("change", (e) => {
   const cb = e.target.closest('input[type="checkbox"]');

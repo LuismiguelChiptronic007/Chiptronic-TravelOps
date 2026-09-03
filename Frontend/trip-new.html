@@ -108,15 +108,11 @@
                   </div>
                 </div>
 
-                <div id="equipment-manage" class="equipment-manage hidden">
-                  <div class="equipment-add-row">
-                    <select id="equipment-catalog-type" aria-label="Tipo de equipamento para cadastrar">
-                      <option value="">Selecione o tipo de equipamento...</option>
-                    </select>
-                    <input id="equipment-catalog-name" type="text" placeholder="Nome do novo equipamento..." aria-label="Nome do equipamento" disabled />
-                    <button type="button" class="btn btn-secondary" id="btn-add-catalog-equipment" disabled>Cadastrar equipamento</button>
-                  </div>
-                  <p class="field-hint mt-1">Você pode cadastrar novos equipamentos. Eles ficarão disponíveis para todos os usuários do setor selecionado.</p>
+                <div class="equipment-filter">
+                  <label for="equipment-catalog-type">Visualizar equipamentos por tipo</label>
+                  <select id="equipment-catalog-type" aria-label="Filtrar equipamentos por tipo">
+                    <option value="">Selecione um tipo de equipamento...</option>
+                  </select>
                 </div>
 
                 <div id="equipment-columns" class="equipment-columns">
