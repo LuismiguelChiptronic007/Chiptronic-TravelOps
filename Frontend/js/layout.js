@@ -6,7 +6,6 @@ import {
   requireAuthPage,
   updateStoredUser,
 } from './api.js';
-import { applyTheme } from './theme.js';
 import {
   showToast,
   openCommandPalette,
@@ -27,7 +26,6 @@ let shellEventsInstalled = false;
 export async function mountShell({ active } = {}) {
   if (!requireAuthPage()) return null;
 
-  applyTheme('light');
   ensureShellElements();
   installGlobalShortcuts();
   installProgressBar();

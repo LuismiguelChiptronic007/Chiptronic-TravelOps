@@ -92,58 +92,94 @@ export async function fetchDemandasViagem(db, viagemId) {
       ORDER BY d.criado_em DESC, d.id DESC
     `).bind(viagemId).all();
 
-    const demandasFormatadas = [];
-    for (const d of demandasRows || []) {
-      const { results: veiculosRows } = await db.prepare(`
-        SELECT * FROM demanda_veiculos WHERE demanda_id = ? ORDER BY id ASC
-      `).bind(d.id).all();
+    const demandaIds = (demandasRows || []).map((d) => Number(d.id)).filter(Boolean);
+    if (!demandaIds.length) return [];
+    const demandaPlaceholders = demandaIds.map(() => '?').join(',');
+    const { results: veiculosRows } = await db.prepare(`
+      SELECT * FROM demanda_veiculos WHERE demanda_id IN (${demandaPlaceholders}) ORDER BY demanda_id ASC, id ASC
+    `).bind(...demandaIds).all();
+    const veiculoIds = (veiculosRows || []).map((dv) => Number(dv.id)).filter(Boolean);
 
-      const veiculos = [];
-      for (const dv of veiculosRows || []) {
-        const { results: atividadesRows } = await db.prepare(`
-          SELECT da.*, am.descricao AS atividade_descricao, am.tipo_projeto AS atividade_tipo_projeto,
-                 u.full_name AS concluida_nome
-          FROM demanda_atividades da
-          LEFT JOIN atividades_modelo am ON am.id = da.atividade_modelo_id
-          LEFT JOIN users u ON u.id = da.concluida_por
-          WHERE da.demanda_veiculo_id = ?
-          ORDER BY da.prioridade ASC, da.id ASC
-        `).bind(dv.id).all();
+    let atividadesRows = [];
+    if (veiculoIds.length) {
+      const veiculoPlaceholders = veiculoIds.map(() => '?').join(',');
+      const atividadesResult = await db.prepare(`
+        SELECT da.*, am.descricao AS atividade_descricao, am.tipo_projeto AS atividade_tipo_projeto,
+               u.full_name AS concluida_nome
+        FROM demanda_atividades da
+        LEFT JOIN atividades_modelo am ON am.id = da.atividade_modelo_id
+        LEFT JOIN users u ON u.id = da.concluida_por
+        WHERE da.demanda_veiculo_id IN (${veiculoPlaceholders})
+        ORDER BY da.demanda_veiculo_id ASC, da.prioridade ASC, da.id ASC
+      `).bind(...veiculoIds).all();
+      atividadesRows = atividadesResult.results || [];
+    }
 
-        for (const atividade of atividadesRows || []) {
-          if (atividade.status !== 'concluida') continue;
-          const { results: tarefas } = await db.prepare(
-            'SELECT responsible_ids, responsible_id FROM trip_tasks WHERE demanda_atividade_id = ? ORDER BY id DESC LIMIT 1'
-          ).bind(atividade.id).all();
-          const tarefa = tarefas?.[0];
-          if (!tarefa) continue;
-
-          const ids = String(tarefa.responsible_ids || tarefa.responsible_id || '')
-            .split(',')
-            .map((id) => Number(id.trim()))
-            .filter((id, index, values) => id > 0 && values.indexOf(id) === index);
-          if (!ids.length) continue;
-          const placeholders = ids.map(() => '?').join(',');
-          const { results: responsaveis } = await db.prepare(
-            `SELECT full_name FROM users WHERE id IN (${placeholders}) ORDER BY full_name ASC`
-          ).bind(...ids).all();
-          if (responsaveis?.length) {
-            atividade.concluida_nome = responsaveis.map((user) => user.full_name).join(', ');
-          }
-        }
-
-        veiculos.push({
-          ...dv,
-          atividades: atividadesRows || []
-        });
+    const atividadeIds = atividadesRows.map((atividade) => Number(atividade.id)).filter(Boolean);
+    const tarefasMaisRecentes = new Map();
+    if (atividadeIds.length) {
+      const atividadePlaceholders = atividadeIds.map(() => '?').join(',');
+      const { results: tarefas } = await db.prepare(`
+        SELECT demanda_atividade_id, responsible_ids, responsible_id
+        FROM trip_tasks
+        WHERE demanda_atividade_id IN (${atividadePlaceholders})
+        ORDER BY demanda_atividade_id ASC, id DESC
+      `).bind(...atividadeIds).all();
+      for (const tarefa of tarefas || []) {
+        const atividadeId = Number(tarefa.demanda_atividade_id);
+        if (!tarefasMaisRecentes.has(atividadeId)) tarefasMaisRecentes.set(atividadeId, tarefa);
       }
+    }
 
-      demandasFormatadas.push({
-        ...d,
-        tipo_trabalho: String(d.tipo_trabalho || '').trim(),
-        veiculos
+    const responsavelIds = new Set();
+    for (const tarefa of tarefasMaisRecentes.values()) {
+      String(tarefa.responsible_ids || tarefa.responsible_id || '')
+        .split(',')
+        .map((id) => Number(id.trim()))
+        .filter((id) => id > 0)
+        .forEach((id) => responsavelIds.add(id));
+    }
+    const responsaveisPorId = new Map();
+    if (responsavelIds.size) {
+      const ids = [...responsavelIds];
+      const placeholders = ids.map(() => '?').join(',');
+      const { results: responsaveis } = await db.prepare(
+        `SELECT id, full_name FROM users WHERE id IN (${placeholders})`
+      ).bind(...ids).all();
+      for (const responsavel of responsaveis || []) responsaveisPorId.set(Number(responsavel.id), responsavel.full_name);
+    }
+
+    const atividadesPorVeiculo = new Map();
+    for (const atividade of atividadesRows) {
+      const tarefa = tarefasMaisRecentes.get(Number(atividade.id));
+      if (atividade.status === 'concluida' && tarefa) {
+        const ids = String(tarefa.responsible_ids || tarefa.responsible_id || '')
+          .split(',')
+          .map((id) => Number(id.trim()))
+          .filter((id, index, values) => id > 0 && values.indexOf(id) === index);
+        const nomes = ids.map((id) => responsaveisPorId.get(id)).filter(Boolean);
+        if (nomes.length) atividade.concluida_nome = nomes.sort((a, b) => a.localeCompare(b)).join(', ');
+      }
+      const veiculoId = Number(atividade.demanda_veiculo_id);
+      if (!atividadesPorVeiculo.has(veiculoId)) atividadesPorVeiculo.set(veiculoId, []);
+      atividadesPorVeiculo.get(veiculoId).push(atividade);
+    }
+
+    const veiculosPorDemanda = new Map();
+    for (const dv of veiculosRows || []) {
+      const demandaId = Number(dv.demanda_id);
+      if (!veiculosPorDemanda.has(demandaId)) veiculosPorDemanda.set(demandaId, []);
+      veiculosPorDemanda.get(demandaId).push({
+        ...dv,
+        atividades: atividadesPorVeiculo.get(Number(dv.id)) || [],
       });
     }
+
+    const demandasFormatadas = (demandasRows || []).map((d) => ({
+      ...d,
+      tipo_trabalho: String(d.tipo_trabalho || '').trim(),
+      veiculos: veiculosPorDemanda.get(Number(d.id)) || [],
+    }));
 
     return demandasFormatadas;
   } catch (e) {

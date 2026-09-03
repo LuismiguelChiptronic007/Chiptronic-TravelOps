@@ -86,41 +86,37 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
               const veiculosList = (demanda.veiculos || []).map((dv) => {
                 const atividades = (dv.atividades || []).map((a) => {
                   const pc = prioridadeCor(a.prioridade || 1);
-                  return `<div class="demanda-activity-row" style="display:flex;justify-content:space-between;gap:12px;align-items:center;padding:6px 0;border-top:1px solid var(--border);">
+                  return `<div class="demanda-activity-row" style="--dot-color:${pc.text};" title="Prioridade ${a.prioridade || 1}">
                     <span class="demanda-activity-name">${escapeHtml(a.atividade_descricao || '—')}</span>
-                    <span class="demanda-activity-meta">
-                      ${statusDemandaBadge(a.status)}
-                      <span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.72rem;font-weight:700;">P${a.prioridade || 1}</span>
-                    </span>
+                    <span class="demanda-activity-meta">${statusDemandaBadge(a.status)}</span>
                   </div>`;
-                }).join('') || '<div class="text-muted" style="padding:6px 0;">Sem atividades.</div>';
+                }).join('') || '<div class="text-muted" style="padding:6px 0 6px 1.1rem;">Sem atividades.</div>';
 
                 return `
-                  <div class="demanda-vehicle-card" style="padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel-bg);">
-                    <div class="demanda-vehicle-header" style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
-                      <div style="font-weight:700;">${escapeHtml([dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || 'Veículo')}</div>
+                  <div class="demanda-vehicle-card">
+                    <div class="demanda-vehicle-header">
+                      <strong>${escapeHtml([dv.montadora, dv.modelo, dv.versao_modelo].filter(Boolean).join(' · ') || 'Veículo')}</strong>
+                      <span class="text-muted" style="font-size:0.78rem;">
+                        ${dv.placa ? `${escapeHtml(String(dv.placa).toUpperCase())}` : ''}${dv.ano ? ` · ${escapeHtml(dv.ano)}` : ''}
+                      </span>
                       <button type="button" class="btn btn-secondary btn-sm btn-editar-veiculo" data-veiculo-id="${dv.id}">Editar veículo</button>
-                    </div>
-                    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
-                      ${dv.placa ? `Placa: <strong>${escapeHtml(String(dv.placa).toUpperCase())}</strong>` : ''}
-                      ${dv.ano ? ` · Ano: <strong>${escapeHtml(dv.ano)}</strong>` : ''}
                     </div>
                     ${atividades}
                   </div>`;
               }).join('');
 
               return `
-                <div class="demanda-group-card demanda-status-${demanda.status || 'pendente'}" style="padding:12px;background:linear-gradient(135deg, rgba(139,92,246,0.04), rgba(59,130,246,0.03));">
-                  <div class="demanda-group-header" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-                    <strong>${escapeHtml(demanda.tipo_projeto || 'Projeto')}</strong>
-                    <div class="demanda-status-highlight" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <div class="demanda-group-card demanda-status-${demanda.status || 'pendente'}">
+                  <div class="demanda-group-header">
+                    <div>
+                      <h3>${escapeHtml(demanda.tipo_projeto || 'Projeto')}</h3>
+                    </div>
+                    <div class="demanda-status-highlight">
                       <span class="demanda-status-label">Status geral:</span>
                       ${statusDemandaBadge(demanda.status)}
                     </div>
                   </div>
-                  <div style="display:grid;grid-template-columns:1fr;gap:10px;">
-                    ${veiculosList}
-                  </div>
+                  ${veiculosList}
                 </div>`;
             }).join('')}
           </div>
@@ -406,11 +402,13 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
       <div class="panel" style="margin-top:0;">
         <div class="panel-header">
           <h2>Demandas fornecidas pelo líder</h2>
+          <button type="button" class="panel-toggle" data-toggle="demandas-panel" aria-expanded="true" aria-label="Minimizar quadro de demandas" title="Minimizar quadro de demandas">▼</button>
         </div>
-        <div class="panel-body">
+        <div class="panel-body panel-content demandas-panel-content">
           <div class="empty-state">Nenhuma demanda fornecida para esta viagem ainda.</div>
         </div>
       </div>`;
+    wireDemandasPanelToggle(container);
     return;
   }
 
@@ -483,14 +481,42 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
     <div class="panel" style="margin-top:0;">
       <div class="panel-header">
         <h2>Demandas fornecidas pelo líder</h2>
+        <button type="button" class="panel-toggle" data-toggle="demandas-panel" aria-expanded="true" aria-label="Minimizar quadro de demandas" title="Minimizar quadro de demandas">▼</button>
       </div>
-      <div class="panel-body">
+      <div class="panel-body panel-content demandas-panel-content">
         ${resumoHtml}
         ${cards}
       </div>
     </div>`;
 
+  wireDemandasPanelToggle(container);
 
+
+}
+
+function wireDemandasPanelToggle(container) {
+  if (!container) return;
+  const btn = container.querySelector('.panel-toggle[data-toggle="demandas-panel"]');
+  const body = container.querySelector('.panel-content');
+  if (!btn || !body) return;
+  btn.addEventListener('click', () => {
+    const isCollapsed = btn.classList.toggle('collapsed');
+    body.classList.toggle('collapsed', isCollapsed);
+    btn.setAttribute('aria-expanded', String(!isCollapsed));
+    btn.setAttribute('aria-label', isCollapsed ? 'Expandir quadro de demandas' : 'Minimizar quadro de demandas');
+    btn.setAttribute('title', isCollapsed ? 'Expandir quadro de demandas' : 'Minimizar quadro de demandas');
+    try {
+      const key = `trip_demandas_panel_collapsed_v2`;
+      localStorage.setItem(key, isCollapsed ? '1' : '0');
+    } catch (e) {}
+  });
+  try {
+    const key = `trip_demandas_panel_collapsed_v2`;
+    if (localStorage.getItem(key) === '1') {
+      btn.classList.add('collapsed');
+      body.classList.add('collapsed');
+    }
+  } catch (e) {}
 }
 
 function flattenAtividadesPendentes(demandas) {

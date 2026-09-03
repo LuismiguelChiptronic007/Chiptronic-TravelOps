@@ -183,12 +183,11 @@ async function init() {
   window.__currentUser = user;
 
   try {
-    const res = await api.getTrip(tripId);
+    const [res, typesRes] = await Promise.all([
+      api.getTrip(tripId),
+      api.workTypes({ trip_id: tripId }),
+    ]);
     const trip = res.trip;
-    const typesRes = await api.workTypes({
-      trip_id: tripId,
-      sector: trip.sector,
-    });
     fillWorkTypes(typesRes.work_types || []);
     renderTrip(trip);
     setupPanelToggles();

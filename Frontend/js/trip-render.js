@@ -143,13 +143,14 @@ function renderMembers(t) {
     el.innerHTML = '<div class="empty-state">Nenhum integrante</div>';
     return;
   }
+  el.className = "tdb-members-list";
   el.innerHTML = members
     .map((m) => {
       const details = `Setor: ${formatSectorName(m.sector || "—")} · Responsável: ${m.manager_name || "Não informado"}${m.position_title ? ` · ${m.position_title}` : ""}`;
       return `
-    <div class="member-chip static" title="${escapeHtml(details)}">
-      <span class="member-chip-name">${escapeHtml(m.full_name)}</span>
-    </div>`;
+    <span class="tdb-member-chip" title="${escapeHtml(details)}">
+      ${escapeHtml(m.full_name)}
+    </span>`;
     })
     .join("");
 }
@@ -170,25 +171,39 @@ function renderEquipment(t) {
     groups.get(type).push(item);
   }
 
-  const cols = [];
+  const sections = [];
   for (const [type, items] of groups.entries()) {
-    cols.push(`
-      <div class="equipment-column">
-        <h4 class="equipment-column-title">${escapeHtml(type)}</h4>
-        <div class="equipment-checklist-items">
+    const carriedCount = items.filter((item) => item.carried).length;
+    sections.push(`
+      <div class="tdb-equipment-group">
+        <div class="tdb-equipment-group-title">
+          <span>${escapeHtml(type)}</span>
+          <span class="tdb-equipment-count">${carriedCount}/${items.length}</span>
+        </div>
+        <div class="tdb-equipment-items">
           ${items.map((item) => `
-            <label class="equipment-check-item" style="cursor:default">
-              <input type="checkbox" disabled ${item.carried ? "checked" : ""}>
-              <span class="equipment-name ${item.carried ? "" : "text-muted"}">${escapeHtml(item.name)}</span>
-              <span class="equipment-status ${item.carried ? "is-carried" : "is-pending"}">${item.carried ? "Carregado" : "Pendente"}</span>
-            </label>
+            <div class="tdb-equipment-item ${item.carried ? "is-carried" : "is-pending"}">
+              <label class="tdb-checkbox" style="cursor:default">
+                <input type="checkbox" disabled ${item.carried ? "checked" : ""}>
+                <span class="tdb-checkbox-box" aria-hidden="true">
+                  ${item.carried ? `
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                  ` : ""}
+                </span>
+              </label>
+              <span class="tdb-equipment-name">${escapeHtml(item.name)}</span>
+              <span class="tdb-equipment-status ${item.carried ? "status-carried" : "status-pending"}">
+                ${item.carried ? "Carregado" : "Pendente"}
+              </span>
+            </div>
           `).join("")}
         </div>
       </div>
     `);
   }
 
-  el.innerHTML = cols.join("");
+  el.className = "tdb-equipment-list";
+  el.innerHTML = sections.join("");
 }
 
 function fillTaskResponsibleOptions(t) {
@@ -1371,6 +1386,7 @@ function renderCompletionProgress(t) {
 export function setupPanelToggles() {
   setupTaskFilters();
   document.querySelectorAll(".panel-toggle").forEach((button) => {
+    if (button.dataset.toggle === "demandas-panel") return;
     if (button.dataset.panelToggleBound === "true") return;
     button.dataset.panelToggleBound = "true";
     button.addEventListener("click", (e) => {
@@ -1400,6 +1416,7 @@ export function setupPanelToggles() {
     document.querySelectorAll(".panel").forEach((panel) => {
       const h2 = panel.querySelector("h2");
       if (!h2) return;
+      if (panel.querySelector('[data-toggle="demandas-panel"]')) return;
       const key = `panelState_${h2.textContent}`;
       const state = localStorage.getItem(key);
       const toggle = panel.querySelector(".panel-toggle");
@@ -1439,15 +1456,31 @@ export function renderTrip(t) {
   document.getElementById("trip-subtitle").textContent =
     `${formatDateBR(t.start_date)} a ${formatDateBR(t.end_date)}`;
   document.getElementById("trip-status").innerHTML = statusBadge(t);
-  document.getElementById("trip-reason").textContent = t.reason;
 
-  document.getElementById("trip-kv").innerHTML = `
-    <div class="kv-item"><label>Origem</label><div>${escapeHtml(t.origin)}</div></div>
-    <div class="kv-item"><label>Destino</label><div>${escapeHtml(t.destination)}</div></div>
-    <div class="kv-item"><label>Início</label><div>${formatDateBR(t.start_date)}</div></div>
-    <div class="kv-item"><label>Término</label><div>${formatDateBR(t.end_date)}</div></div>
-    <div class="kv-item"><label>Setor</label><div>${escapeHtml(formatSectorName(t.sector))}</div></div>
-  `;
+  const originDisplay = document.getElementById("trip-origin-display");
+  const destinationDisplay = document.getElementById("trip-destination-display");
+  const statusDisplay = document.getElementById("trip-status-display");
+  const periodDisplay = document.getElementById("trip-period-display");
+  const sectorDisplay = document.getElementById("trip-sector-display");
+  const reasonEl = document.getElementById("trip-reason");
+
+  if (originDisplay) originDisplay.textContent = t.origin;
+  if (destinationDisplay) destinationDisplay.textContent = t.destination;
+  if (statusDisplay) statusDisplay.innerHTML = statusBadge(t);
+  if (periodDisplay) periodDisplay.textContent = `${formatDateBR(t.start_date)} a ${formatDateBR(t.end_date)}`;
+  if (sectorDisplay) sectorDisplay.textContent = formatSectorName(t.sector);
+  if (reasonEl) reasonEl.textContent = t.reason || "—";
+
+  const tripKv = document.getElementById("trip-kv");
+  if (tripKv) {
+    tripKv.innerHTML = `
+      <div class="kv-item"><label>Origem</label><div>${escapeHtml(t.origin)}</div></div>
+      <div class="kv-item"><label>Destino</label><div>${escapeHtml(t.destination)}</div></div>
+      <div class="kv-item"><label>Início</label><div>${formatDateBR(t.start_date)}</div></div>
+      <div class="kv-item"><label>Término</label><div>${formatDateBR(t.end_date)}</div></div>
+      <div class="kv-item"><label>Setor</label><div>${escapeHtml(formatSectorName(t.sector))}</div></div>
+    `;
+  }
 
   const banner = document.getElementById("overdue-banner");
   if (t.is_overdue) banner.classList.remove("hidden");

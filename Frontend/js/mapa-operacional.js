@@ -550,19 +550,10 @@ function initMap() {
       '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19,
   };
-  const tileDark = L.tileLayer(
-    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    tileOptions,
-  );
   const tileLight = L.tileLayer(
     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     tileOptions,
   );
-
-  const prefersDark =
-    document.documentElement.getAttribute("data-theme") === "dark" ||
-    (!document.documentElement.getAttribute("data-theme") &&
-      window.matchMedia?.("(prefers-color-scheme: dark)").matches);
 
   map = L.map("mapa", {
     zoomControl: true,
@@ -570,7 +561,7 @@ function initMap() {
     preferCanvas: false,
   });
   map.setView([-14.235004, -51.92528], 4);
-  (prefersDark ? tileDark : tileLight).addTo(map);
+  tileLight.addTo(map);
 
   let zoomTimeout;
   map.on("zoomstart", () => {
@@ -584,16 +575,6 @@ function initMap() {
     }, 150);
   });
 
-  new MutationObserver(() => {
-    const dark = document.documentElement.getAttribute("data-theme") === "dark";
-    map.eachLayer((l) => {
-      if (l instanceof L.TileLayer) map.removeLayer(l);
-    });
-    (dark ? tileDark : tileLight).addTo(map);
-  }).observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["data-theme"],
-  });
 }
 
 function initFilters() {

@@ -271,11 +271,13 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
       <div class="panel" style="margin-top:0;">
         <div class="panel-header">
           <h2>Demandas fornecidas pelo líder</h2>
+          <button type="button" class="panel-toggle" data-toggle="demandas-panel" aria-expanded="true" aria-label="Minimizar quadro de demandas" title="Minimizar quadro de demandas">▼</button>
         </div>
-        <div class="panel-body">
+        <div class="panel-body panel-content demandas-panel-content">
           <div class="empty-state">Nenhuma demanda fornecida para esta viagem ainda.</div>
         </div>
       </div>`;
+    wireDemandasPanelToggle(container);
     return;
   }
 
@@ -348,14 +350,41 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
     <div class="panel" style="margin-top:0;">
       <div class="panel-header">
         <h2>Demandas fornecidas pelo líder</h2>
+        <button type="button" class="panel-toggle" data-toggle="demandas-panel" aria-expanded="true" aria-label="Minimizar quadro de demandas" title="Minimizar quadro de demandas">▼</button>
       </div>
-      <div class="panel-body">
+      <div class="panel-body panel-content demandas-panel-content">
         ${resumoHtml}
         ${cards}
       </div>
     </div>`;
 
+  wireDemandasPanelToggle(container);
 
+}
+
+function wireDemandasPanelToggle(container) {
+  if (!container) return;
+  const btn = container.querySelector('.panel-toggle[data-toggle="demandas-panel"]');
+  const body = container.querySelector('.panel-content');
+  if (!btn || !body) return;
+  btn.addEventListener('click', () => {
+    const isCollapsed = btn.classList.toggle('collapsed');
+    body.classList.toggle('collapsed', isCollapsed);
+    btn.setAttribute('aria-expanded', String(!isCollapsed));
+    btn.setAttribute('aria-label', isCollapsed ? 'Expandir quadro de demandas' : 'Minimizar quadro de demandas');
+    btn.setAttribute('title', isCollapsed ? 'Expandir quadro de demandas' : 'Minimizar quadro de demandas');
+    try {
+      const key = `trip_demandas_panel_collapsed_v2`;
+      localStorage.setItem(key, isCollapsed ? '1' : '0');
+    } catch (e) {}
+  });
+  try {
+    const key = `trip_demandas_panel_collapsed_v2`;
+    if (localStorage.getItem(key) === '1') {
+      btn.classList.add('collapsed');
+      body.classList.add('collapsed');
+    }
+  } catch (e) {}
 }
 
 export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange } = {}) {
