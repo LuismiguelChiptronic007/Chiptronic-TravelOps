@@ -256,6 +256,7 @@ demandas.post('/viagem/:viagemId', async (c) => {
   for (const [idx, v] of veiculos.entries()) {
     const montadora = String(v.montadora || '').trim();
     const modelo = String(v.modelo || '').trim();
+    const ano = String(v.ano || '').trim();
     const placaBruta = String(v.placa || '').trim();
     if (!montadora) return err(`Veículo ${idx + 1}: informe a montadora.`);
     if (!modelo) return err(`Veículo ${idx + 1}: informe o modelo.`);

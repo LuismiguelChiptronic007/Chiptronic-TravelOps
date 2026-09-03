@@ -159,13 +159,14 @@ function renderEquipment(t) {
   const el = document.getElementById("trip-equipment");
   if (!el) return;
   const list = Array.isArray(t.checklist?.equipment_checklist) ? t.checklist.equipment_checklist : [];
-  if (!list.length) {
-    el.innerHTML = '<div class="empty-state">Nenhum equipamento registrado</div>';
+  const carriedItems = list.filter((item) => item.carried);
+  if (!carriedItems.length) {
+    el.innerHTML = '<div class="empty-state">Nenhum equipamento carregado</div>';
     return;
   }
 
   const groups = new Map();
-  for (const item of list) {
+  for (const item of carriedItems) {
     const type = String(item.equipment_type || "Outros").trim() || "Outros";
     if (!groups.has(type)) groups.set(type, []);
     groups.get(type).push(item);
@@ -173,12 +174,11 @@ function renderEquipment(t) {
 
   const sections = [];
   for (const [type, items] of groups.entries()) {
-    const carriedCount = items.filter((item) => item.carried).length;
     sections.push(`
       <div class="tdb-equipment-group">
         <div class="tdb-equipment-group-title">
           <span>${escapeHtml(type)}</span>
-          <span class="tdb-equipment-count">${carriedCount}/${items.length}</span>
+          <span class="tdb-equipment-count">${items.length}</span>
         </div>
         <div class="tdb-equipment-items">
           ${items.map((item) => `

@@ -7,6 +7,24 @@ const LUNCH_END_KEY = 'cto_lunch_window_end';
 const DEFAULT_LUNCH_START = '11:00';
 const DEFAULT_LUNCH_END = '14:00';
 
+function setupSettingsPanelToggles() {
+  document.querySelectorAll('main.container > .panel, #leader-settings > .panel').forEach((panel) => {
+    const button = panel.querySelector(':scope > .panel-header .panel-toggle');
+    const content = panel.querySelector(':scope > .panel-content');
+    if (!button || !content || button.dataset.settingsToggleBound === 'true') return;
+
+    button.dataset.settingsToggleBound = 'true';
+    button.addEventListener('click', () => {
+      const collapsed = content.classList.toggle('collapsed');
+      button.classList.toggle('collapsed', collapsed);
+      button.setAttribute('aria-expanded', String(!collapsed));
+      const title = panel.querySelector(':scope > .panel-header h2')?.textContent.trim() || 'painel';
+      button.setAttribute('aria-label', `${collapsed ? 'Expandir' : 'Minimizar'} quadro ${title}`);
+      button.setAttribute('title', `${collapsed ? 'Expandir' : 'Minimizar'} quadro ${title}`);
+    });
+  });
+}
+
 function getLunchWindowConfig() {
   const start = localStorage.getItem(LUNCH_START_KEY) || DEFAULT_LUNCH_START;
   const end = localStorage.getItem(LUNCH_END_KEY) || DEFAULT_LUNCH_END;
@@ -582,6 +600,7 @@ async function loadWorkTypeFields(workTypeName) {
 
 async function load() {
   await mountShell({ active: '' });
+  setupSettingsPanelToggles();
   await loadLunchWindowConfig();
   await loadLeaderSettings();
   setupLeaderListeners();

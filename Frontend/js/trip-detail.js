@@ -8,7 +8,7 @@ import {
   taskFormPayload,
   validateTaskTimeAvailability,
   setupPanelToggles,
-} from "./trip-render.js";
+} from "./trip-render.js?v=2";
 import { confirmDialog } from "./ui.js";
 import {
   getLocationConsent,
