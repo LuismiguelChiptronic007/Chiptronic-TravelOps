@@ -428,6 +428,7 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
 
         return `
           <tr>
+            <td><span style="font-size:0.8rem;font-weight:600;">${escapeHtml(demanda.tipo_projeto)}</span></td>
             <td><span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.75rem;font-weight:700;">${pc.label}</span></td>
             <td>${escapeHtml(a.atividade_descricao || '—')}</td>
             <td>${statusDemandaBadge(a.status)}
@@ -451,7 +452,7 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
           </div>
           ${(dv.atividades || []).length ? `
           <table class="data" style="width:100%;margin:0;">
-            <thead><tr><th style="width:60px;">Pri</th><th>Atividade</th><th style="width:170px;">Status</th></tr></thead>
+            <thead><tr><th style="width:150px;">Projeto</th><th style="width:60px;">Pri</th><th>Atividade</th><th style="width:170px;">Status</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>` : '<div class="text-muted" style="padding:8px 4px;">Sem atividades cadastradas.</div>'}
         </div>`;
@@ -460,10 +461,7 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
     return `
       <div class="demanda-group-card demanda-status-${demanda.status || 'pendente'}" style="margin-bottom:18px;">
         <div class="demanda-group-header">
-          <div>
-            <h3 style="margin:0;font-size:1rem;">Demanda · ${escapeHtml(demanda.tipo_projeto)}</h3>
-            <div class="text-muted" style="font-size:0.8rem;">Criado por ${escapeHtml(demanda.criado_nome || 'Líder')} em ${formatDateBR(String(demanda.criado_em || '').slice(0,10))}</div>
-          </div>
+          <div class="text-muted" style="font-size:0.8rem;">Criado por ${escapeHtml(demanda.criado_nome || 'Líder')} em ${formatDateBR(String(demanda.criado_em || '').slice(0,10))}</div>
           <div class="demanda-status-highlight">${statusDemandaBadge(demanda.status)}</div>
         </div>
         ${vCards || '<div class="empty-state" style="padding:12px;">Sem veículos nesta demanda.</div>'}

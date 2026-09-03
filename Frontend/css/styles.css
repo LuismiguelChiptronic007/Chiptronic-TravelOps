@@ -1671,11 +1671,8 @@ html[data-theme='dark'] .trip-detail-card {
 html[data-theme='dark'] .trip-detail-header {
   border-bottom-color: rgba(255,255,255,0.06);
 }
-html[data-theme='dark'] .trip-detail-grid {
+html[data-theme='dark'] .trip-detail-strip {
   border-bottom-color: rgba(255,255,255,0.06);
-}
-html[data-theme='dark'] .trip-detail-grid .trip-detail-block + .trip-detail-block {
-  border-left-color: rgba(255,255,255,0.06);
 }
 html[data-theme='dark'] .tdb-block-row {
   border-top-color: rgba(255,255,255,0.06);
@@ -2065,26 +2062,27 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 1.6rem 1.8rem;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
   border-bottom: 1px solid var(--border-subtle);
-  background: var(--gradient-1);
-  color: #fff;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
 }
 
 .trip-detail-route {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.55rem;
   min-width: 0;
   flex: 1;
 }
 
 .trip-route-city {
-  font-size: 1.6rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2094,35 +2092,84 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 40px; height: 40px;
-  border-radius: 12px;
-  background: rgba(255,255,255,0.10);
-  color: rgba(255,255,255,0.92);
+  width: 24px; height: 24px;
+  border-radius: 8px;
+  background: var(--neutral-bg);
+  color: var(--muted);
+}
+.trip-route-arrow svg {
+  width: 15px;
+  height: 15px;
 }
 
-.trip-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+/* Faixa única compacta: Período · Setor · Integrantes numa só linha */
+.trip-detail-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.75rem;
+  padding: 0.7rem 1.8rem;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.trip-detail-block {
-  padding: 1.25rem 1.5rem;
+.tds-item {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: baseline;
+  gap: 0.4rem;
   min-width: 0;
 }
-.trip-detail-grid .trip-detail-block + .trip-detail-block {
-  border-left: 1px solid var(--border-subtle);
+
+.tds-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tds-label svg {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.tds-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+/* Integrantes usa chips (tdb-members-list) mesmo dentro da faixa */
+.tds-item .tdb-members-list {
+  gap: 0.35rem;
+}
+
+/* Motivo cresce e ocupa o espaço restante da faixa, truncando se for longo */
+.tds-item-grow {
+  flex: 1 1 220px;
+  min-width: 160px;
+}
+.tds-item-grow .tds-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Blocos de Motivo e Equipamentos, mais enxutos que antes */
+.trip-detail-block {
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
 }
 
 .tdb-block-row {
   border-top: 1px solid var(--border-subtle);
-  padding: 1.25rem 1.8rem;
+  padding: 0.85rem 1.8rem;
 }
 .tdb-block-row .tdb-value {
-  margin-top: 0.25rem;
+  margin-top: 0.15rem;
 }
 
 .tdb-label {
@@ -2463,10 +2510,9 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   .fab-container { bottom: 5.5rem; right: 1.25rem; }
   .fab { width: 50px; height: 50px; }
   .fab.secondary { width: 42px; height: 42px; }
-  .trip-detail-header { padding: 1.3rem 1.5rem; }
-  .trip-route-city { font-size: 1.4rem; }
-  .trip-detail-block { padding: 1.1rem 1.25rem; }
-  .tdb-block-row { padding: 1.1rem 1.5rem; }
+  .trip-detail-strip { padding: 0.6rem 1.5rem; }
+  .trip-detail-block { padding: 0.75rem 1.25rem; }
+  .tdb-block-row { padding: 0.75rem 1.5rem; }
 }
 
 /* Notebook médio (até 1366px — resolução comum) */
@@ -2581,15 +2627,7 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   .topnav-link { padding: 0.6rem 0.8rem; }
   .topnav-icon svg { width: 20px !important; height: 20px !important; }
   .topnav-dropdown-menu { min-width: 280px; }
-  .trip-detail-grid { grid-template-columns: 1fr 1fr; }
-  .trip-detail-grid .trip-detail-block + .trip-detail-block { border-left: 1px solid var(--border-subtle); }
-  .trip-detail-grid .trip-detail-block:nth-child(3) {
-    border-left: none;
-    border-top: 1px solid var(--border-subtle);
-    grid-column: 1 / -1;
-  }
-  .trip-route-city { font-size: 1.25rem; }
-  .trip-route-arrow { width: 36px; height: 36px; }
+  .trip-detail-strip { gap: 0.45rem 1.1rem; padding: 0.6rem 1.1rem; }
   .trip-page-header { justify-content: flex-end; gap: 0.6rem; }
 }
 
@@ -2598,20 +2636,19 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   .trip-detail-header {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.85rem;
-    padding: 1.2rem 1.1rem;
+    gap: 0.6rem;
+    padding: 0.65rem 0.9rem;
   }
-  .trip-detail-route { gap: 0.65rem; }
-  .trip-route-city { font-size: 1.1rem; }
-  .trip-route-arrow { width: 34px; height: 34px; }
+  .trip-detail-route { gap: 0.5rem; }
   #trip-status-display { align-self: flex-start; }
-  .trip-detail-grid { grid-template-columns: 1fr; }
-  .trip-detail-grid .trip-detail-block + .trip-detail-block {
-    border-left: none;
-    border-top: 1px solid var(--border-subtle);
+  .trip-detail-strip {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+    padding: 0.75rem 1.1rem;
   }
-  .trip-detail-block { padding: 1rem 1.1rem; }
-  .tdb-block-row { padding: 1rem 1.1rem; }
+  .trip-detail-block { padding: 0.75rem 1.1rem; }
+  .tdb-block-row { padding: 0.75rem 1.1rem; }
   .tdb-equipment-item {
     padding: 0.75rem 0.85rem;
     gap: 0.7rem;
