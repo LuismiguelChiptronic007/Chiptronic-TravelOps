@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 72" fill="none">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#2563eb"/>
+      <stop offset=".55" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="arrow-blue" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#1e40af"/>
+      <stop offset=".5" stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="text-dark" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#1e293b"/>
+    </linearGradient>
+    <filter id="soft-shadow" x="-10%" y="-20%" width="120%" height="160%">
+      <feGaussianBlur stdDeviation="0.3"/>
+    </filter>
+    <filter id="glow-cyan" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Mark container (square gradient) -->
+  <g>
+    <rect x="4" y="10" width="60" height="60" rx="16" fill="url(#bg-gradient)"/>
+    <rect x="4" y="10" width="60" height="60" rx="16" fill="white" opacity=".1"/>
+    <rect x="4" y="10" width="60" height="22" rx="16" fill="white" opacity=".12"/>
+
+    <!-- Top arrow (left) -->
+    <path d="M22 25 L14 25 L14 22 L7 28 L14 34 L14 31 L24 31 Q31 31 36 25" stroke="url(#arrow-blue)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#soft-shadow)"/>
+    <path d="M22 25 L14 25 L14 22 L7 28 L14 34 L14 31 L24 31 Q31 31 36 25" stroke="#7dd3fc" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".9"/>
+
+    <!-- Bottom arrow (right) -->
+    <path d="M50 55 L58 55 L58 58 L65 52 L58 46 L58 49 L48 49 Q41 49 36 55" stroke="url(#arrow-blue)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#soft-shadow)"/>
+    <path d="M50 55 L58 55 L58 58 L65 52 L58 46 L58 49 L48 49 Q41 49 36 55" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".9"/>
+
+    <!-- Letter C -->
+    <g transform="translate(16 22)">
+      <path d="M20 0 L20 7 L12 7 Q6 7 6 16 Q6 25 12 25 L20 25 L20 32 L10 32 Q0 32 0 20 Q0 8 10 8 L20 8 Z" fill="white" opacity=".98"/>
+    </g>
+  </g>
+
+  <!-- Text CHIPTRONIC -->
+  <g transform="translate(82 20)" filter="url(#glow-cyan)">
+    <!-- shadow offset -->
+    <g transform="translate(0 2)" opacity=".22" fill="#0b1220">
+      <path d="M0 12v24h24v-8H10v-8h12v-8H0zm34 0v24h24v-8H44v-8h12v-8H34zm48 0v24h24v-8H58v-8h12v-8H82zm68 0v24h10V20l10 16h12L162 22v14h10V12h-24zm34 0v8h14v8h-14v8h24V12h-24zm40 24h10l6-16 6 16h10l-10-24h-12l-10 24zm28-24v24h26v-8h-16v-4h14v-4h-14v-4h16v-4h-26z"/>
+    </g>
+    <!-- main text -->
+    <g fill="url(#text-dark)">
+      <path d="M0 10v24h24v-8H10v-8h12v-8H0zm34 0v24h24v-8H44v-8h12v-8H34zm48 0v24h24v-8H58v-8h12v-8H82zm68 0v24h10V18l10 16h12L162 20v14h10V10h-24zm34 0v8h14v8h-14v8h24V10h-24zm40 24h10l6-16 6 16h10l-10-24h-12l-10 24zm28-24v24h26v-8h-16v-4h14v-4h-14v-4h16v-4h-26z"/>
+    </g>
+    <!-- top highlight -->
+    <g transform="translate(0 1)" opacity=".18" fill="white">
+      <path d="M0 10v8h24v-8H0zm34 0v8h24v-8H34zm48 0v8h24v-8H82zm68 0v8h32v-8h-32zm34 0v8h24v-8h-24zm40 0v8h32v-8h-32zm28 0v8h26v-8h-26z"/>
+    </g>
+  </g>
+
+  <!-- Tag TravelOps removida (texto branco ilegível) -->
+</svg>

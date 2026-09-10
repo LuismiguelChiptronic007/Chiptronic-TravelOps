@@ -1,0 +1,93 @@
+diff --git a/Frontend/js/trip-render.js b/Frontend/js/trip-render.js
+index 4dd2421..a0507f1 100644
+--- a/Frontend/js/trip-render.js
++++ b/Frontend/js/trip-render.js
+@@ -46,11 +46,19 @@ function requiresVehicleFields(type) {
+   ].includes(normalized);
+ }
+ 
++function isLunchType(type) {
++  return normalizeWorkType(type) === 'almoço';
++}
++
+ function updateTaskTypeFields() {
+   const type = document.getElementById('work_type')?.value;
+   const vehicleFields = document.getElementById('vehicle-fields');
+   const vehicleInput = document.getElementById('vehicle');
+   const plateInput = document.getElementById('plate');
++  const locationField = document.getElementById('location-field');
++  const locationInput = document.getElementById('location');
++  const summaryField = document.getElementById('summary-field');
++  const summaryInput = document.getElementById('summary');
+ 
+   hideElement(vehicleFields);
+   if (vehicleInput) vehicleInput.required = false;
+@@ -61,6 +69,20 @@ function updateTaskTypeFields() {
+     if (vehicleInput) vehicleInput.required = true;
+     if (plateInput) plateInput.required = true;
+   }
++
++  const lunch = isLunchType(type);
++
++  if (locationField) lunch ? hideElement(locationField) : showElement(locationField);
++  if (locationInput) {
++    locationInput.required = !lunch;
++    if (lunch && !locationInput.value) locationInput.value = 'Almoço';
++  }
++
++  if (summaryField) lunch ? hideElement(summaryField) : showElement(summaryField);
++  if (summaryInput) {
++    summaryInput.required = !lunch;
++    if (lunch && !summaryInput.value) summaryInput.value = 'Horário de almoço';
++  }
+ }
+ 
+ function renderMembers(t) {
+diff --git a/Frontend/trip.html b/Frontend/trip.html
+index 61fc7ca..ffd9441 100644
+--- a/Frontend/trip.html
++++ b/Frontend/trip.html
+@@ -105,7 +105,7 @@
+                     <input id="plate" placeholder="Ex: ABC-1234" />
+                   </div>
+                 </div>
+-                <div>
++                <div id="location-field">
+                   <label for="location">Local do serviço *</label>
+                   <input id="location" required placeholder="Ex: Cliente XYZ — unidade centro" />
+                 </div>
+@@ -120,7 +120,7 @@
+                   </div>
+                 </div>
+                 <div id="task-time-availability" class="hidden-fields" style="font-size:0.7rem; color:#4b5563; line-height:1.2; margin-top:-6px;"></div>
+-                <div>
++                <div id="summary-field">
+                   <label for="summary">Resumo do que foi feito *</label>
+                   <textarea id="summary" required placeholder="Descreva a atividade realizada…"></textarea>
+                 </div>
+diff --git a/src/helpers.js b/src/helpers.js
+index a410b4a..ad76569 100644
+--- a/src/helpers.js
++++ b/src/helpers.js
+@@ -170,6 +170,7 @@ export const WORK_TYPES = [
+ 
+ ];
+ 
+ export const STATUS_LABELS = {
+diff --git a/src/tasks.js b/src/tasks.js
+index 091b766..c07c137 100644
+--- a/src/tasks.js
++++ b/src/tasks.js
+@@ -69,6 +69,12 @@ taskRoutes.post('/:id/tasks', async (c) => {
+     plate = String(body.plate || '').trim();
+   }
+ 
++  const isLunch = work_type === 'Almoço';
++  if (isLunch) {
++    if (!location) location = 'Almoço';
++    if (!summary) summary = 'Horário de almoço';
++  }
++
+   if (!work_type || !location || !start_time || !end_time || !summary || !task_date) {
+     return err('Preencha todos os campos da tarefa.');
+   }

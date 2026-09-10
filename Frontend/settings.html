@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Configuração — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header">
+        <div>
+          <h1>Configuração</h1>
+          <p>Preferências da sua conta</p>
+        </div>
+      </div>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Conta</h2>
+          <button type="button" class="panel-toggle collapsed" aria-expanded="false" aria-label="Expandir quadro Conta" title="Expandir quadro Conta">▼</button>
+        </div>
+        <div class="panel-body panel-content stack collapsed">
+          <div class="settings-row">
+            <div>
+              <strong>Editar perfil</strong>
+              <p class="text-muted mb-0">Nome, cargo, setor e foto</p>
+            </div>
+            <a href="profile.html" class="btn btn-primary">Abrir perfil</a>
+          </div>
+          <div class="settings-row">
+            <div>
+              <strong>Sair da conta</strong>
+              <p class="text-muted mb-0">Encerrar sessão neste dispositivo</p>
+            </div>
+            <button type="button" class="btn btn-secondary" id="btn-logout-settings">Sair</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="leader-settings" class="hidden">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Projetos do setor</h2>
+            <button type="button" class="panel-toggle collapsed" aria-expanded="false" aria-label="Expandir quadro Projetos do setor" title="Expandir quadro Projetos do setor">▼</button>
+          </div>
+          <div class="panel-body panel-content stack collapsed">
+            <p class="text-muted mb-0">Adicione projetos que aparecerão no formulário de tarefas para todo o seu setor.</p>
+            <div class="form-grid two">
+              <div>
+                <label for="new-project-name">Novo projeto</label>
+                <input id="new-project-name" placeholder="Ex: Expansão Filial Sul" />
+              </div>
+              <div class="flex-end">
+                <button type="button" class="btn btn-primary" id="btn-add-project">Adicionar projeto</button>
+              </div>
+            </div>
+            <div id="projects-list" class="list-group"></div>
+            <div id="project-fields-modal" class="modal-overlay hidden">
+              <div class="modal-content fields-modal">
+                <div class="modal-header">
+                  <div>
+                    <h3>Campos do projeto</h3>
+                    <p class="modal-subtitle">Defina as informações extras exigidas neste projeto.</p>
+                  </div>
+                  <button type="button" class="modal-close" data-close="project-fields-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="fields-form-box">
+                    <div class="fields-form-main">
+                      <label for="new-project-field-name">Nome do campo</label>
+                      <input id="new-project-field-name" placeholder="Ex: Número da NF" />
+                    </div>
+                    <label class="field-required-option">
+                      <input type="checkbox" id="new-project-field-required" />
+                      <span>Obrigatório</span>
+                    </label>
+                    <button type="button" class="btn btn-primary" id="btn-add-project-field">Adicionar campo</button>
+                  </div>
+                  <div class="fields-list-heading"><strong>Campos cadastrados</strong><span>Remova ou revise os campos abaixo.</span></div>
+                  <div id="project-fields-list" class="list-group fields-list"></div>
+                </div>
+                <div class="modal-footer fields-modal-footer">
+                  <button type="button" class="btn btn-danger" id="btn-clear-project-fields">Limpar todos</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Tipos de trabalho do setor</h2>
+            <button type="button" class="panel-toggle collapsed" aria-expanded="false" aria-label="Expandir quadro Tipos de trabalho do setor" title="Expandir quadro Tipos de trabalho do setor">▼</button>
+          </div>
+          <div class="panel-body panel-content stack collapsed">
+            <p class="text-muted mb-0">Adicione tipos de trabalho personalizados que aparecerão no formulário de tarefas.</p>
+            <div class="form-grid two">
+              <div>
+                <label for="new-work-type-name">Novo tipo de trabalho</label>
+                <input id="new-work-type-name" placeholder="Ex: Manutenção preventiva" />
+              </div>
+              <div class="flex-end">
+                <button type="button" class="btn btn-primary" id="btn-add-work-type">Adicionar tipo</button>
+              </div>
+            </div>
+            <div id="work-types-list" class="list-group"></div>
+            <div id="work-type-fields-modal" class="modal-overlay hidden">
+              <div class="modal-content fields-modal">
+                <div class="modal-header">
+                  <div>
+                    <h3>Campos do tipo de trabalho</h3>
+                    <p class="modal-subtitle">Defina as informações extras exigidas neste tipo de trabalho.</p>
+                  </div>
+                  <button type="button" class="modal-close" data-close="work-type-fields-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="fields-form-box">
+                    <div class="fields-form-main">
+                      <label for="new-work-type-field-name">Nome do campo</label>
+                      <input id="new-work-type-field-name" placeholder="Ex: Número da NF" />
+                    </div>
+                    <label class="field-required-option">
+                      <input type="checkbox" id="new-work-type-field-required" />
+                      <span>Obrigatório</span>
+                    </label>
+                    <button type="button" class="btn btn-primary" id="btn-add-work-type-field">Adicionar campo</button>
+                  </div>
+                  <div class="fields-list-heading"><strong>Campos cadastrados</strong><span>Remova ou revise os campos abaixo.</span></div>
+                  <div id="work-type-fields-list" class="list-group fields-list"></div>
+                </div>
+                <div class="modal-footer fields-modal-footer">
+                  <button type="button" class="btn btn-danger" id="btn-clear-work-type-fields">Limpar todos</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Equipamentos por tipo</h2>
+            <button type="button" class="panel-toggle collapsed" aria-expanded="false" aria-label="Expandir quadro Equipamentos por tipo" title="Expandir quadro Equipamentos por tipo">▼</button>
+          </div>
+          <div class="panel-body panel-content stack equipment-settings collapsed">
+            <p class="text-muted mb-0">Cadastre os equipamentos disponíveis para seleção nas viagens do setor.</p>
+            <div class="equipment-settings-section">
+              <div class="equipment-settings-heading">Criar tipo de equipamento</div>
+              <div class="equipment-type-create-row">
+                <div>
+                  <label for="new-equipment-type-name">Nome do novo tipo</label>
+                  <input id="new-equipment-type-name" maxlength="120" placeholder="Ex: Equipamentos de segurança" />
+                </div>
+                <button type="button" class="btn btn-secondary" id="btn-add-equipment-type">Criar tipo</button>
+              </div>
+            </div>
+            <div class="equipment-settings-section">
+              <div class="equipment-settings-heading">Adicionar equipamento</div>
+              <div class="form-grid two">
+                <div>
+                  <label for="new-equipment-type">Tipo para cadastrar equipamento</label>
+                  <select id="new-equipment-type"></select>
+                </div>
+                <div>
+                  <label for="new-equipment-name">Nome do equipamento</label>
+                  <input id="new-equipment-name" maxlength="120" placeholder="Ex: Multímetro" />
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn btn-primary" id="btn-add-equipment-catalog">Adicionar equipamento</button>
+              </div>
+            </div>
+            <div class="equipment-settings-section">
+              <div class="equipment-settings-heading">Equipamentos cadastrados</div>
+              <label for="equipment-catalog-filter">Visualizar equipamentos por tipo</label>
+              <select id="equipment-catalog-filter"></select>
+              <div id="equipment-catalog-list" class="list-group"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="accessory-modal" class="modal-overlay hidden">
+          <div class="modal-content" style="max-width:480px;">
+            <div class="modal-header">
+              <div>
+                <h3>Novo acessório</h3>
+                <p class="modal-subtitle">Cadastre um acessório para este equipamento.</p>
+              </div>
+              <button type="button" class="modal-close" id="btn-close-accessory" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body">
+              <label for="new-accessory-name">Nome do acessório</label>
+              <input id="new-accessory-name" type="text" maxlength="120" placeholder="Ex: Cabo USB-C" />
+              <label class="field-required-option" style="margin-top:12px;">
+                <input type="checkbox" id="new-accessory-required" />
+                <span>Acessório Obrigatório</span>
+              </label>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" id="btn-cancel-accessory">Cancelar</button>
+              <button type="button" class="btn btn-primary" id="btn-save-accessory">Salvar</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="edit-name-modal" class="modal-overlay hidden">
+          <div class="modal-content" style="max-width:480px;">
+            <div class="modal-header">
+              <div>
+                <h3 id="edit-name-modal-title">Editar</h3>
+                <p class="modal-subtitle">Atualize o nome e salve a alteração.</p>
+              </div>
+              <button type="button" class="modal-close" id="btn-close-edit-name" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body">
+              <label for="edit-name-input">Nome</label>
+              <input id="edit-name-input" type="text" maxlength="120" />
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" id="btn-cancel-edit-name">Cancelar</button>
+              <button type="button" class="btn btn-primary" id="btn-save-edit-name">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/settings.js?v=4"></script>
+</body>
+</html>

@@ -1,0 +1,853 @@
+import {
+  api,
+  clearSession,
+  getStoredUser,
+  initials,
+  requireAuthPage,
+  updateStoredUser,
+} from './api.js';
+import {
+  showToast,
+  openCommandPalette,
+  closeCommandPalette,
+  showHotkeysHelp,
+  registerHotkeys,
+  confirmDialog,
+  emptyStateSVG
+} from './ui.js';
+
+let currentUser = null;
+let notifPollTimer = null;
+let presencePollTimer = null;
+let shellInstalled = false;
+let uxInstalled = false;
+let shellEventsInstalled = false;
+
+export async function mountShell({ active } = {}) {
+  if (!requireAuthPage()) return null;
+
+  ensureShellElements();
+  installGlobalShortcuts();
+  installProgressBar();
+  initScrollReveal();
+  installGlobalErrorHandler();
+
+  let user = getStoredUser();
+  try {
+    const res = await api.me();
+    user = res.user;
+    updateStoredUser(user);
+  } catch {
+    clearSession();
+    window.location.href = 'login.html';
+    return null;
+  }
+
+  currentUser = user;
+  renderTopbar(user, active);
+  renderDrawer(user);
+  bindShellEvents(user);
+  refreshNotificationBadge();
+  refreshTopAnnouncement();
+  api.presenceHeartbeat().catch(() => {});
+
+  if (notifPollTimer) clearInterval(notifPollTimer);
+  notifPollTimer = setInterval(() => {
+    refreshNotificationBadge();
+    refreshTopAnnouncement();
+  }, 60000);
+  if (presencePollTimer) clearInterval(presencePollTimer);
+  presencePollTimer = setInterval(() => api.presenceHeartbeat().catch(() => {}), 60000);
+
+  return user;
+}
+
+export async function rebuildShell({ active } = {}) {
+  // Reset shell state to force full re-render
+  shellInstalled = false;
+  uxInstalled = false;
+  shellEventsInstalled = false;
+  
+  // Clear notification poll timer
+  if (notifPollTimer) {
+    clearInterval(notifPollTimer);
+    notifPollTimer = null;
+  }
+  
+  // Re-mount the shell with fresh state
+  return await mountShell({ active });
+}
+
+export async function updateShellUser({ active } = {}) {
+  // Update shell UI with fresh user data without remounting
+  let user = getStoredUser();
+  try {
+    const res = await api.me();
+    user = res.user;
+    updateStoredUser(user);
+  } catch {
+    return null;
+  }
+
+  currentUser = user;
+  renderTopbar(user, active);
+  renderDrawer(user);
+  
+  return user;
+}
+
+function installGlobalShortcuts() {
+  registerHotkeys();
+}
+
+function ensureShellElements() {
+  if (shellInstalled) return;
+  shellInstalled = true;
+
+  const appShell = document.querySelector('.app-shell');
+  if (appShell) {
+    appShell.classList.remove('with-sidebar');
+    appShell.classList.add('with-horizontal-nav');
+  }
+
+  if (!document.getElementById('drawer-overlay')) {
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="drawer-overlay" class="drawer-overlay hidden" aria-hidden="true"></div>
+      <aside id="profile-drawer" class="profile-drawer" aria-hidden="true">
+        <div class="drawer-header">
+          <div class="drawer-user">
+            <div class="avatar lg" id="drawer-avatar">?</div>
+            <div>
+              <strong id="drawer-name">—</strong>
+              <small id="drawer-meta" class="text-muted">—</small>
+            </div>
+          </div>
+          <button type="button" class="icon-btn" id="drawer-close" aria-label="Fechar">✕</button>
+        </div>
+        <nav class="drawer-nav">
+          <a href="profile.html" class="drawer-link">✏️ Editar perfil</a>
+          <a href="settings.html" class="drawer-link">⚙️ Configuração</a>
+          <a href="admin.html" class="drawer-link drawer-admin-link hidden" id="drawer-admin">🛡️ Painel de admin</a>
+          <button type="button" class="drawer-link drawer-btn danger" id="drawer-logout">Sair</button>
+        </nav>
+      </aside>
+      <div id="notifications-panel" class="notifications-panel hidden" aria-hidden="true">
+        <div class="notifications-header">
+          <h3>Notificações</h3>
+          <button type="button" class="btn btn-secondary btn-sm" id="notif-read-all">Marcar todas</button>
+        </div>
+        <div id="notifications-list" class="notifications-list">
+          <p class="empty-state">Carregando…</p>
+        </div>
+      </div>
+    `);
+  }
+}
+
+const ACTIVE_ALIASES = {
+  'new': 'new-trip',
+  'trip-detail': 'viagens',
+  'trip': 'viagens',
+  'mapa': 'mapa-operacional',
+  'map': 'mapa-operacional',
+};
+
+const SIDEBAR_ICONS = {
+  dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1V9.5z"/></svg>',
+  viagens: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>',
+  'mapa-operacional': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15"/><path d="M15 6v15"/><circle cx="12" cy="10" r="1.8"/><path d="M12 11.8v3.2"/></svg>',
+  'new-trip': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>',
+  setor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  profile: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
+};
+
+function renderSidebar(user, active) {
+  const nav = document.getElementById('sidebar-nav');
+  if (!nav) return;
+
+  let resolvedActive = active || '';
+  if (ACTIVE_ALIASES[resolvedActive]) resolvedActive = ACTIVE_ALIASES[resolvedActive];
+
+  const links = [
+    { id: 'dashboard',        title: 'Dashboard',        href: 'index.html' },
+    { id: 'viagens',          title: 'Viagens',          href: 'viagens.html' },
+    { id: 'mapa-operacional', title: 'Mapa Operacional', href: 'mapa-operacional.html' },
+    { id: 'new-trip',         title: 'Nova viagem',      href: 'trip-new.html' }
+  ];
+  if (user.is_sector_leader && user.led_sector) {
+    links.push({ id: 'setor', title: 'Painel do Setor', href: 'setor.html' });
+  }
+  links.push(
+    { id: 'profile',   title: 'Meu perfil',       href: 'profile.html' },
+    { id: 'settings',  title: 'Configurações',    href: 'settings.html' }
+  );
+
+  const html = [
+    '<div class="sidebar-section">Principal</div>',
+    ...links.map((l) => `
+      <a href="${l.href}" class="sidebar-link ${resolvedActive === l.id ? 'active' : ''}" data-id="${l.id}" data-tooltip="${l.title}">
+        <span class="sl-icon">${SIDEBAR_ICONS[l.id] || ''}</span>
+        <span>${l.title}</span>
+      </a>
+    `)
+  ].join('');
+
+  nav.innerHTML = html;
+  renderSidebarFooter(user);
+}
+
+function renderSidebarFooter(user) {
+  const footer = document.getElementById('sidebar-footer');
+  if (!footer || !user) return;
+
+  const avatarHtml = user.avatar_url
+    ? `<img src="${user.avatar_url}" alt="">`
+    : initials(user.full_name);
+
+  const roleLabel = user.is_sector_leader
+    ? `Líder · ${user.led_sector}`
+    : user.position_title;
+
+  footer.innerHTML = `
+    <button type="button" class="sidebar-user-card" id="sidebar-user-btn" aria-label="Abrir menu de usuário" data-tooltip="${escapeHtml(user.full_name)}">
+      <div class="avatar">${avatarHtml}</div>
+      <div class="sidebar-user-meta">
+        <strong>${escapeHtml(user.full_name)}</strong>
+        <small>${escapeHtml(user.sector)} · ${escapeHtml(roleLabel)}</small>
+      </div>
+    </button>
+  `;
+
+  document.getElementById('sidebar-user-btn')?.addEventListener('click', openDrawer);
+}
+
+function renderTopbar(user, active) {
+  const topbar = document.getElementById('topbar');
+  if (!topbar) return;
+
+  const avatarHtml = user.avatar_url
+    ? `<img src="${user.avatar_url}" alt="">`
+    : initials(user.full_name);
+
+  let resolvedActive = active || '';
+  if (ACTIVE_ALIASES[resolvedActive]) resolvedActive = ACTIVE_ALIASES[resolvedActive];
+
+  const viagensGroup = ['viagens', 'new-trip', 'mapa-operacional', 'trip-detail', 'trip'];
+  const configGroup = ['profile', 'setor', 'settings', 'admin'];
+  const isViagensActive = viagensGroup.includes(resolvedActive);
+  const isConfigActive = configGroup.includes(resolvedActive);
+
+  const showSector = user.is_sector_leader && user.led_sector;
+
+  topbar.innerHTML = `
+    <div class="topbar-left">
+      <a href="index.html" class="topbar-brand" aria-label="Chiptronic TravelOps">
+        <img src="assets/logo-mark.svg" alt="" class="topbar-logo-img" onerror="this.onerror=null;this.src='data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 48 48%22><rect width=%2248%22 height=%2248%22 rx=%2212%22 fill=%22%230a0a0a%22/><text x=%2224%22 y=%2230%22 font-family=%22Inter, sans-serif%22 font-size=%2220%22 font-weight=%22800%22 fill=%22white%22 text-anchor=%22middle%22>C</text></svg>';">
+        <span class="topbar-brand-text">Chiptronic <strong>TravelOps</strong></span>
+      </a>
+    </div>
+
+    <nav class="topnav" aria-label="Navegação principal">
+      <a href="index.html" class="topnav-link ${resolvedActive === 'dashboard' ? 'active' : ''}" data-nav="dashboard">
+        <span class="topnav-icon">${SIDEBAR_ICONS.dashboard}</span>
+        <span>Dashboard</span>
+      </a>
+
+      <div class="topnav-dropdown ${isViagensActive ? 'has-active' : ''}" data-dropdown="viagens">
+        <button type="button" class="topnav-link dropdown-trigger ${isViagensActive ? 'active' : ''}" aria-haspopup="true" aria-expanded="false" data-nav="viagens">
+          <span class="topnav-icon">${SIDEBAR_ICONS.viagens}</span>
+          <span>Viagens</span>
+          <svg class="dropdown-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="topnav-dropdown-menu" role="menu">
+          <a href="trip-new.html" class="topnav-dropdown-item ${resolvedActive === 'new-trip' ? 'active' : ''}" role="menuitem" data-nav="new-trip">
+            <span class="dd-item-icon">${SIDEBAR_ICONS['new-trip']}</span>
+            <div>
+              <strong>Nova viagem</strong>
+              <small>Criar uma nova viagem</small>
+            </div>
+          </a>
+          <a href="viagens.html" class="topnav-dropdown-item ${resolvedActive === 'viagens' ? 'active' : ''}" role="menuitem" data-nav="viagens-list">
+            <span class="dd-item-icon">${SIDEBAR_ICONS.viagens}</span>
+            <div>
+              <strong>Viagens</strong>
+              <small>Listar e gerenciar viagens</small>
+            </div>
+          </a>
+          <a href="mapa-operacional.html" class="topnav-dropdown-item ${resolvedActive === 'mapa-operacional' ? 'active' : ''}" role="menuitem" data-nav="mapa-operacional">
+            <span class="dd-item-icon">${SIDEBAR_ICONS['mapa-operacional']}</span>
+            <div>
+              <strong>Mapa Operacional</strong>
+              <small>Visualização em tempo real</small>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <div class="topnav-dropdown ${isConfigActive ? 'has-active' : ''}" data-dropdown="config">
+        <button type="button" class="topnav-link dropdown-trigger ${isConfigActive ? 'active' : ''}" aria-haspopup="true" aria-expanded="false" data-nav="config">
+          <span class="topnav-icon">${SIDEBAR_ICONS.settings}</span>
+          <span>Configuração</span>
+          <svg class="dropdown-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="topnav-dropdown-menu" role="menu">
+          <a href="profile.html" class="topnav-dropdown-item ${resolvedActive === 'profile' ? 'active' : ''}" role="menuitem" data-nav="profile">
+            <span class="dd-item-icon">${SIDEBAR_ICONS.profile}</span>
+            <div>
+              <strong>Editar perfil</strong>
+              <small>Seus dados pessoais</small>
+            </div>
+          </a>
+          ${showSector ? `
+          <a href="setor.html" class="topnav-dropdown-item ${resolvedActive === 'setor' ? 'active' : ''}" role="menuitem" data-nav="setor">
+            <span class="dd-item-icon">${SIDEBAR_ICONS.setor}</span>
+            <div>
+              <strong>Painel de Setor</strong>
+              <small>${escapeHtml(user.led_sector)}</small>
+            </div>
+          </a>
+          ` : ''}
+          <a href="settings.html" class="topnav-dropdown-item ${resolvedActive === 'settings' ? 'active' : ''}" role="menuitem" data-nav="settings">
+            <span class="dd-item-icon">${SIDEBAR_ICONS.settings}</span>
+            <div>
+              <strong>Configuração</strong>
+              <small>Preferências do sistema</small>
+            </div>
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="topbar-right-stack">
+      <div class="topbar-right">
+        <button type="button" class="icon-btn notif-btn" id="btn-notifications" aria-label="Notificações" data-tooltip="Notificações">
+          🔔
+          <span class="notif-badge hidden" id="notif-badge">0</span>
+        </button>
+        <button type="button" class="user-profile-btn" id="btn-profile" aria-label="Abrir menu de usuário">
+          <div class="avatar pill">${avatarHtml}</div>
+          <div class="meta">
+            <strong>${escapeHtml(user.full_name)}</strong>
+            <small>${escapeHtml(user.sector)} · ${escapeHtml(user.is_sector_leader ? `Líder ${user.led_sector}` : user.position_title)}</small>
+          </div>
+        </button>
+      </div>
+      <div id="user-top-announce" class="user-top-announce hidden" aria-live="polite">
+        <button type="button" class="user-top-announce-close" id="user-top-announce-close" aria-label="Fechar aviso">×</button>
+        <span id="user-top-announce-text">Aviso</span>
+      </div>
+    </div>
+  `;
+
+  const banner = document.getElementById('user-top-announce');
+  const closeBtn = document.getElementById('user-top-announce-close');
+  if (banner) {
+    banner.addEventListener('click', async () => {
+      const link = banner.dataset.link || '';
+      const id = Number(banner.dataset.notificationId || 0);
+      if (id) {
+        try { await api.markNotificationRead(id); } catch { /* ignore */ }
+      }
+      if (link) {
+        const normalized = link.startsWith('/') ? link.slice(1) : link;
+        window.location.href = normalized;
+      }
+    });
+  }
+  closeBtn?.addEventListener('click', async (event) => {
+    event.stopPropagation();
+    const id = Number(banner?.dataset.notificationId || 0);
+    if (id) {
+      try { await api.markNotificationRead(id); } catch { /* ignore */ }
+    }
+    banner?.classList.add('hidden');
+    await refreshNotificationBadge();
+  });
+}
+
+function renderDrawer(user) {
+  const nameEl = document.getElementById('drawer-name');
+  const metaEl = document.getElementById('drawer-meta');
+  const avatarEl = document.getElementById('drawer-avatar');
+  const adminLink = document.getElementById('drawer-admin');
+
+  if (nameEl) nameEl.textContent = user.full_name;
+  if (metaEl) {
+    const roleLabel = user.is_admin_master
+      ? 'Admin Master'
+      : user.is_admin
+        ? 'Administrador'
+        : user.is_sector_leader
+          ? `Líder · ${user.led_sector}`
+          : user.position_title;
+    metaEl.textContent = `${user.sector} · ${roleLabel}`;
+  }
+  if (avatarEl) {
+    avatarEl.innerHTML = user.avatar_url
+      ? `<img src="${user.avatar_url}" alt="">`
+      : initials(user.full_name);
+  }
+  if (adminLink) adminLink.classList.toggle('hidden', !user.is_admin);
+}
+
+function bindShellEvents(user) {
+  if (shellEventsInstalled) return;
+  shellEventsInstalled = true;
+
+  document.getElementById('drawer-overlay')?.addEventListener('click', () => {
+    closeDrawer();
+    closeNotifications();
+    closeAllDropdowns();
+  });
+
+  document.getElementById('cp-trigger')?.addEventListener('click', () => openCommandPalette());
+
+  document.getElementById('btn-profile')?.addEventListener('click', openDrawer);
+  document.getElementById('drawer-close')?.addEventListener('click', closeDrawer);
+
+  document.getElementById('drawer-logout')?.addEventListener('click', async () => {
+    const ok = await confirmDialog({
+      title: 'Sair da conta?',
+      message: 'Você será redirecionado para a tela de login e precisará autenticar novamente.',
+      confirmLabel: 'Sair',
+      cancelLabel: 'Cancelar',
+      tone: 'danger',
+      confirmTone: 'danger'
+    });
+    if (!ok) return;
+    clearSession();
+    window.location.href = 'login.html';
+  });
+
+  document.getElementById('btn-notifications')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeDrawer();
+    closeAllDropdowns();
+    refreshOverlay();
+    toggleNotifications();
+  });
+
+  document.getElementById('notif-read-all')?.addEventListener('click', async () => {
+    try {
+      await api.markAllNotificationsRead();
+      await loadNotifications();
+      await refreshNotificationBadge();
+      showToast({ type: 'success', title: 'Pronto!', msg: 'Todas as notificações foram marcadas como lidas.', duration: 2400 });
+    } catch (err) {
+      showToast({ type: 'error', title: 'Erro', msg: err?.message || 'Não foi possível atualizar.', duration: 2800 });
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    const panel = document.getElementById('notifications-panel');
+    const btn = document.getElementById('btn-notifications');
+    if (!panel || panel.classList.contains('hidden')) return;
+    if (panel.contains(e.target) || btn?.contains(e.target)) return;
+    closeNotifications();
+  });
+
+  document.querySelectorAll('.topnav-dropdown').forEach((dd) => {
+    const trigger = dd.querySelector('.dropdown-trigger');
+    trigger?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = dd.classList.contains('open');
+      closeAllDropdowns();
+      if (!isOpen) {
+        dd.classList.add('open');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+    });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.topnav-dropdown')) return;
+    closeAllDropdowns();
+  });
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.topnav-dropdown.open').forEach((dd) => {
+    dd.classList.remove('open');
+    const trigger = dd.querySelector('.dropdown-trigger');
+    trigger?.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function isAnyPanelOpen() {
+  const dr = document.getElementById('profile-drawer');
+  return Boolean(dr && dr.classList.contains('open'));
+}
+function refreshOverlay() {
+  const ov = document.getElementById('drawer-overlay');
+  if (!ov) return;
+  if (isAnyPanelOpen()) ov.classList.remove('hidden');
+  else ov.classList.add('hidden');
+}
+
+function toggleSidebarMobile() {
+  const sb = document.getElementById('sidebar');
+  if (!sb) return;
+  const open = sb.classList.toggle('open');
+  document.getElementById('sidebar-toggle')?.classList.toggle('is-open', open);
+  if (open) { closeDrawer(); closeNotifications(); }
+  refreshOverlay();
+}
+
+function applySidebarCollapsedState(collapsed) {
+  const appShell = document.querySelector('.app-shell');
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('sidebar-collapse-toggle');
+  if (!appShell || !sidebar || !toggle) return;
+
+  const isMobile = window.innerWidth < 880;
+  const effectiveCollapsed = collapsed && !isMobile;
+
+  appShell.classList.toggle('sidebar-collapsed', effectiveCollapsed);
+  sidebar.classList.toggle('is-collapsed', effectiveCollapsed);
+  toggle.setAttribute('aria-expanded', String(!effectiveCollapsed));
+  toggle.setAttribute('aria-label', effectiveCollapsed ? 'Expandir menu' : 'Recolher menu');
+}
+
+function handleSidebarResize() {
+  const collapsed = localStorage.getItem('cto_sidebar_collapsed') === 'true';
+  applySidebarCollapsedState(collapsed);
+  if (window.innerWidth >= 880) closeSidebarMobile();
+}
+
+function toggleSidebarCollapsed() {
+  if (window.innerWidth < 880) {
+    toggleSidebarMobile();
+    return;
+  }
+  const collapsed = !document.querySelector('.app-shell')?.classList.contains('sidebar-collapsed');
+  applySidebarCollapsedState(collapsed);
+  localStorage.setItem('cto_sidebar_collapsed', String(collapsed));
+}
+
+function closeSidebarMobile() {
+  const sb = document.getElementById('sidebar');
+  if (!sb) return;
+  if (window.innerWidth < 880) sb.classList.remove('open');
+  document.getElementById('sidebar-toggle')?.classList.remove('is-open');
+  refreshOverlay();
+}
+
+function openDrawer() {
+  document.getElementById('profile-drawer')?.classList.add('open');
+  closeAllDropdowns();
+  closeNotifications();
+  refreshOverlay();
+}
+function closeDrawer() {
+  document.getElementById('profile-drawer')?.classList.remove('open');
+  refreshOverlay();
+}
+
+async function toggleNotifications() {
+  const panel = document.getElementById('notifications-panel');
+  if (!panel) return;
+  if (panel.classList.contains('hidden')) {
+    panel.classList.remove('hidden');
+    closeDrawer();
+    closeAllDropdowns();
+    refreshOverlay();
+    await loadNotifications();
+  } else {
+    panel.classList.add('hidden');
+    refreshOverlay();
+  }
+}
+function closeNotifications() {
+  document.getElementById('notifications-panel')?.classList.add('hidden');
+  refreshOverlay();
+}
+
+async function refreshNotificationBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  try {
+    const res = await api.notificationUnreadCount();
+    const count = res.unread_count || 0;
+    if (count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  } catch {
+    badge.classList.add('hidden');
+  }
+}
+
+async function refreshTopAnnouncement() {
+  const banner = document.getElementById('user-top-announce');
+  const textEl = document.getElementById('user-top-announce-text');
+  if (!banner || !textEl) return;
+
+  try {
+    const res = await api.listNotifications();
+    const items = Array.isArray(res.notifications) ? res.notifications : [];
+    const relevant = items
+      .filter((n) => !n.is_read && (n.link || '').toLowerCase().includes('trip.html'))
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))[0];
+
+    if (!relevant) {
+      banner.classList.add('hidden');
+      banner.dataset.link = '';
+      banner.dataset.notificationId = '';
+      return;
+    }
+
+    textEl.textContent = relevant.message || relevant.title || 'Nova atualização';
+    banner.dataset.link = relevant.link || '';
+    banner.dataset.notificationId = String(relevant.id || '');
+    banner.classList.remove('hidden');
+  } catch {
+    banner.classList.add('hidden');
+    banner.dataset.link = '';
+    banner.dataset.notificationId = '';
+  }
+}
+
+async function loadNotifications() {
+  const list = document.getElementById('notifications-list');
+  if (!list) return;
+  list.innerHTML = '<p class="empty-state">Carregando…</p>';
+  try {
+    const res = await api.listNotifications();
+    const items = res.notifications || [];
+    if (!items.length) {
+      list.innerHTML = `
+        <div class="empty-illust">${emptyStateSVG('folder')}</div>
+        <div class="empty-state" style="padding-top:0.5rem;">
+          <p class="empty-title">Nada por aqui</p>
+          <p class="empty-sub">Você não tem notificações. Volte em breve.</p>
+        </div>`;
+      return;
+    }
+    list.innerHTML = items
+      .map((n) => `
+        <button type="button" class="notif-item ${n.is_read ? '' : 'unread'}" data-id="${n.id}" data-link="${escapeHtml(n.link || '')}">
+          <strong>${escapeHtml(n.title)}</strong>
+          <p>${escapeHtml(n.message)}</p>
+          <small class="text-muted">${formatNotifDate(n.created_at)}</small>
+        </button>`
+      )
+      .join('');
+
+    list.querySelectorAll('.notif-item').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = Number(btn.dataset.id);
+        const link = btn.dataset.link;
+        try {
+          await api.markNotificationRead(id);
+        } catch { /* ignore */ }
+        await refreshNotificationBadge();
+        closeNotifications();
+        if (link) {
+          const normalized = link.startsWith('/') ? link.slice(1) : link;
+          window.location.href = normalized;
+        }
+      });
+    });
+  } catch (err) {
+    list.innerHTML = `<p class="empty-state">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function formatNotifDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso.includes('T') ? iso : `${iso}Z`);
+  return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+export function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function installProgressBar() {
+  const bar = document.createElement('div');
+  bar.className = 'progress-bar';
+  bar.id = 'progress-bar';
+  document.body.appendChild(bar);
+
+  let ticking = false;
+  const update = () => {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        const doc = document.documentElement;
+        const total = doc.scrollHeight - doc.clientHeight;
+        const pct = total > 0 ? Math.min(100, (doc.scrollTop / total) * 100) : 0;
+        bar.style.width = pct + '%';
+        ticking = false;
+      });
+      ticking = true;
+    }
+  };
+  window.addEventListener('scroll', update, { passive: true });
+  update();
+}
+
+function installBackToTop() {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'back-to-top';
+  btn.id = 'back-to-top';
+  btn.setAttribute('aria-label', 'Voltar ao topo');
+  btn.setAttribute('data-tooltip', 'Voltar ao topo');
+  btn.innerHTML = '↑';
+  document.body.appendChild(btn);
+
+  let ticking = false;
+  const onScroll = () => {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        const show = window.scrollY > 420;
+        btn.classList.toggle('visible', show);
+        ticking = false;
+      });
+      ticking = true;
+    }
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  btn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    showToast({ type: 'info', title: 'Topo!', msg: 'Você voltou ao topo da página.', duration: 1400 });
+  });
+}
+
+/* Scroll Reveal — revela elementos suavemente ao rolar */
+function initScrollReveal() {
+  const autoTargets = document.querySelectorAll(
+    '.stat-card, .panel, .card, .table-wrap, .page-header, .team-member-card, .checklist-box, .mini-stat, .task-day-group, .ranking-row, .member-chip, .list-item'
+  );
+  const viewportHeight = window.innerHeight;
+  autoTargets.forEach((el, i) => {
+    const rect = el.getBoundingClientRect();
+    if (rect.top < viewportHeight && rect.bottom > 0) {
+      el.classList.add('visible');
+      return;
+    }
+    const delay = Math.min(i * 20, 100);
+    el.classList.add('reveal');
+    el.style.transitionDelay = delay + 'ms';
+  });
+
+  if (!('IntersectionObserver' in window)) {
+    document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale').forEach((el) => el.classList.add('visible'));
+    return;
+  }
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          io.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+  );
+
+  document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale').forEach((el) => io.observe(el));
+}
+
+/* FAB — Quick Actions */
+function installFabButtons(user) {
+  if (document.getElementById('fab-container')) return;
+
+  const container = document.createElement('div');
+  container.className = 'fab-container';
+  container.id = 'fab-container';
+
+  const actions = [
+    {
+      label: 'Nova viagem',
+      icon: '✈️',
+      href: 'trip-new.html',
+      tooltip: 'Criar nova viagem',
+      main: true
+    },
+    {
+      label: 'Dashboard',
+      icon: '🏠',
+      href: 'index.html',
+      tooltip: 'Ir para o Dashboard',
+      main: false
+    }
+  ];
+
+  if (user?.is_sector_leader && user?.led_sector) {
+    actions.splice(1, 0, {
+      label: 'Painel do Setor',
+      icon: '👥',
+      href: 'setor.html',
+      tooltip: 'Ver seu setor',
+      main: false
+    });
+  }
+
+  container.innerHTML = actions.map((a) => {
+    if (a.main) {
+      return `<a href="${a.href}" class="fab" aria-label="${a.label}" data-tooltip="${a.tooltip}">${a.icon}</a>`;
+    }
+    return `<a href="${a.href}" class="fab secondary" aria-label="${a.label}" data-tooltip="${a.tooltip}">${a.icon}</a>`;
+  }).reverse().join('');
+
+  document.body.appendChild(container);
+}
+
+function installGlobalErrorHandler() {
+  const IGNORE_MESSAGES = [
+    'ResizeObserver loop',
+    'textContent assignment',
+    'chrome-extension',
+    'edge-extension',
+    'safari-extension',
+  ];
+
+  const normalizeMessage = (message) => {
+    if (!message) return '';
+    return message
+      .replace(/\\/g, '/')
+      .replace(/[\\"']/g, '')
+      .trim();
+  };
+
+  const shouldIgnore = (message) => {
+    const normalized = normalizeMessage(message);
+    return IGNORE_MESSAGES.some((m) => normalized.includes(m));
+  };
+
+  const showErrorToast = (message) => {
+    if (shouldIgnore(message)) return;
+    const normalized = normalizeMessage(message);
+    if (!normalized) return;
+    showToast({
+      type: 'error',
+      title: 'Erro',
+      msg: normalized,
+      duration: 8000,
+    });
+  };
+
+  window.addEventListener('error', (event) => {
+    if (event.target === window || event.target === document) {
+      showErrorToast(event.message);
+    }
+  }, true);
+
+  window.addEventListener('unhandledrejection', (event) => {
+    const message = event.reason?.message || event.reason || 'Erro não tratado.';
+    showErrorToast(message);
+  });
+}
+
+export { showToast, confirmDialog, showHotkeysHelp, emptyStateSVG };

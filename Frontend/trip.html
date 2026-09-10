@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Detalhe da viagem — Chiptronic TravelOps</title>
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/logo-mark.svg" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar" id="topbar"></header>
+    <main class="container">
+      <div class="page-header trip-page-header trip-shell-header">
+        <a href="index.html" class="btn btn-secondary trip-back-button" aria-label="Voltar ao dashboard">← <span>Voltar</span></a>
+        <div class="trip-page-header-title">
+          <h1 id="trip-title">Viagem</h1>
+          <p id="trip-subtitle" class="text-muted">Carregando…</p>
+        </div>
+        <div class="form-actions mb-0">
+          <span id="trip-status"></span>
+          <button type="button" class="btn btn-secondary" id="btn-trip-history" aria-label="Ver histórico da viagem" title="Ver histórico da viagem">?</button>
+          <button type="button" class="btn btn-secondary" id="btn-edit-trip">Editar viagem</button>
+          <button type="button" class="btn btn-danger" id="btn-delete-trip">Excluir viagem</button>
+        </div>
+      </div>
+
+      <nav class="trip-tabs" id="trip-tabs" aria-label="Seções da viagem">
+        <a href="?id=&view=geral" data-trip-view="geral">Dados gerais</a>
+        <a href="?id=&view=tarefa" data-trip-view="tarefa">Adicionar tarefa</a>
+        <a href="?id=&view=demandas" data-trip-view="demandas">Demandas do líder</a>
+        <a href="?id=&view=relatorio" data-trip-view="relatorio">Relatório <span class="trip-tab-indicator hidden-fields" aria-label="Pendência"></span></a>
+      </nav>
+
+      <div id="alert" class="alert alert-error hidden"></div>
+      <div id="overdue-banner" class="alert alert-warning hidden">
+        Esta viagem encerrou e o relatório ainda não foi preenchido.
+      </div>
+
+      <div class="stack" id="content">
+        <section class="trip-view" data-trip-panel="geral">
+        <div class="trip-detail-card" id="trip-detail-card">
+          <div class="trip-detail-header">
+            <div class="trip-detail-route">
+              <span class="trip-route-city" id="trip-origin-display"></span>
+              <span class="trip-route-arrow" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="28" height="28"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+              </span>
+              <span class="trip-route-city" id="trip-destination-display"></span>
+            </div>
+            <div id="trip-status-display"></div>
+          </div>
+
+          <div class="trip-detail-strip">
+            <div class="tds-row">
+              <div class="tds-item">
+                <div class="tds-label">Período</div>
+                <div class="tds-value" id="trip-period-display"></div>
+              </div>
+              <div class="tds-item">
+                <div class="tds-label">Setor</div>
+                <div class="tds-value" id="trip-sector-display"></div>
+              </div>
+              <div class="tds-item">
+                <div class="tds-label">Integrantes</div>
+                <div class="tds-value" id="trip-members"></div>
+              </div>
+              <div class="tds-item tds-item-grow">
+                <div class="tds-label">Motivo</div>
+                <div class="tds-value" id="trip-reason"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="trip-detail-block tdb-block-row">
+            <div class="tdb-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M12 2h-8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-8"/><path d="m9 17 5-5L9 7"/><path d="M16 17h6"/></svg>
+              Equipamentos levados
+            </div>
+            <div class="tdb-value tdb-equipment" id="trip-equipment"></div>
+          </div>
+        </div>
+        </section>
+
+        <section class="trip-view" data-trip-panel="tarefa">
+        <div class="panel" id="tasks-panel">
+          <div class="panel-header">
+            <div>
+              <h2>Tarefas realizadas</h2>
+              <span class="text-muted" style="font-size:0.85rem">Registre as tarefas do dia</span>
+            </div>
+            <div class="form-actions mb-0">
+              <button type="button" class="panel-toggle collapsed" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+            </div>
+          </div>
+          <div class="panel-body panel-content collapsed">
+            <div class="task-filters">
+              <div>
+                <label for="filter-responsible">Responsável</label>
+                <select id="filter-responsible">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-work-type">Tipo de trabalho</label>
+                <select id="filter-work-type">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-location">Local</label>
+                <select id="filter-location">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-montadora">Montadora</label>
+                <select id="filter-montadora">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-modelo">Modelo</label>
+                <select id="filter-modelo">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div>
+                <label for="filter-submodelo">Versão</label>
+                <select id="filter-submodelo">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+            </div>
+            <div id="trip-days" class="trip-days"></div>
+            <div id="tasks-board" class="tasks-board"></div>
+
+            <div id="completion-progress" class="completion-progress mt-2 hidden-fields">
+              <div class="completion-progress-header">
+                <h3>Conclusão da viagem</h3>
+                <span id="progress-text" class="text-muted">0 de 0 dias com tarefa</span>
+              </div>
+              <div class="completion-progress-bar">
+                <div id="progress-fill" class="completion-progress-fill"></div>
+              </div>
+              <p id="progress-hint" class="completion-progress-hint text-muted"></p>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="panel">
+          <div id="task-form-wrap" class="task-form-wrap panel-body hidden-fields">
+            <div class="panel-subheader">
+              <h3 id="task-form-title">Trabalhos do dia</h3>
+              <button type="button" class="panel-toggle" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+            </div>
+             <form id="task-form" class="checklist-box form-grid panel-content">
+               <div class="collapsible-section collapsed" id="task-fields-section">
+                 <div class="collapsible-header">
+                   <span class="text-muted" style="font-size:0.85rem">Campos da tarefa (tipo, data, responsável, veículo, horários...)</span>
+                   <button type="button" class="panel-toggle collapsed" data-target="task-fields-section" aria-label="Minimizar/Maximizar" title="Minimizar/Maximizar">▼</button>
+                 </div>
+                 <div class="collapsible-content collapsed">
+                   <div>
+                     <label for="project_id">Projeto</label>
+                     <select id="project_id">
+                       <option value="">Sem projeto</option>
+                     </select>
+                   </div>
+                   <div class="form-grid two">
+                     <div>
+                       <label for="work_type">Tipo de trabalho *</label>
+                       <select id="work_type" required>
+                         <option value="">Selecione…</option>
+                       </select>
+                     </div>
+                     <div>
+                       <label for="task_date">Data da tarefa *</label>
+                       <input id="task_date" type="date" required />
+                     </div>
+                   </div>
+                   <div>
+                     <label>Responsáveis pela tarefa</label>
+                     <div id="responsible_id" class="responsible-list" aria-label="Responsáveis pela tarefa"></div>
+                   </div>
+                  <div id="demand-vehicle-fields" class="form-grid two hidden-fields">
+                    <div>
+                      <label for="demanda_veiculo_id">Veículo da demanda</label>
+                      <select id="demanda_veiculo_id">
+                        <option value="">Sem veículo de demanda</option>
+                      </select>
+                    </div>
+                    <div id="demand-activity-field" class="hidden-fields">
+                      <label for="demanda_atividade_id">Demanda do veículo</label>
+                      <select id="demanda_atividade_id">
+                        <option value="">Selecione uma demanda</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div id="vehicle-detail-fields" class="form-grid five hidden-fields">
+                    <div>
+                      <label for="montadora">Montadora</label>
+                      <input id="montadora" placeholder="Ex: Chevrolet" />
+                    </div>
+                    <div>
+                      <label for="modelo">Modelo</label>
+                      <input id="modelo" placeholder="Ex: S10" />
+                    </div>
+                    <div>
+                      <label for="submodelo">Versão modelo</label>
+                      <input id="submodelo" placeholder="Ex: LTZ 2.8" />
+                    </div>
+                    <div>
+                      <label for="plate">Placa</label>
+                      <input id="plate" placeholder="Ex: ABC-1234" />
+                    </div>
+                    <div>
+                      <label for="ano">Ano</label>
+                      <input id="ano" type="number" min="1900" max="2027" step="1" inputmode="numeric" placeholder="Ex: 2024" />
+                    </div>
+                   </div>
+                   <div id="custom-fields-container"></div>
+                   <div id="location-field">
+                    <label for="location">Local do serviço *</label>
+                    <input id="location" required placeholder="Ex: Cliente XYZ — unidade centro" />
+                  </div>
+                  <div class="form-grid two">
+                    <div>
+                      <label for="start_time">Hora de início *</label>
+                      <input id="start_time" type="time" required />
+                    </div>
+                    <div>
+                      <label for="end_time">Hora de término *</label>
+                      <input id="end_time" type="time" required />
+                    </div>
+                  </div>
+                  <div id="task-time-availability" class="hidden-fields" style="font-size:0.7rem; color:var(--muted); line-height:1.2; margin-top:12px;"></div>
+                 </div>
+               </div>
+               <div id="demanda-prioridade-anchor"></div>
+               <div id="summary-field">
+                <label for="summary">Resumo do que foi feito *</label>
+                <textarea id="summary" required placeholder="Descreva a atividade realizada…" class="textarea-expanded" style="min-height: 260px;"></textarea>
+              </div>
+              <div id="pending-items-field">
+                <label for="pending_items">Pendências neste trabalho</label>
+                <textarea id="pending_items" placeholder="O que ficou pendente neste mesmo trabalho…" class="textarea-expanded" style="min-height: 260px;"></textarea>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="btn-save-task">Salvar tarefa</button>
+                <button type="button" class="btn btn-success" id="btn-complete">Finalizar viagem</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        </section>
+
+        <section class="trip-view" data-trip-panel="demandas">
+          <div id="demandas-panel-container"></div>
+        </section>
+
+        <section class="trip-view" data-trip-panel="relatorio">
+          <div class="panel trip-report-panel">
+            <div class="panel-header">
+              <div>
+                <h2>Relatório da viagem</h2>
+                <p class="text-muted">Visualize o relatório antes de exportar.</p>
+              </div>
+              <button type="button" class="btn btn-primary" id="btn-trip-report" disabled>Gerar PDF</button>
+            </div>
+            <div class="panel-body">
+              <div id="trip-report-preview" class="trip-report-preview">
+                <div class="empty-state">Carregando relatório...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div id="btn-demanda-lider-wrap" class="hidden-fields" style="margin-bottom:16px;"></div>
+      </div>
+    </main>
+  </div>
+  <script src="js/config.js"></script>
+  <script src="js/report-logos-inline.js?v=48"></script>
+  <script src="js/trip-report-frontend.js?v=48"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script type="module" src="js/trip-detail.js?v=48"></script>
+</body>
+</html>
