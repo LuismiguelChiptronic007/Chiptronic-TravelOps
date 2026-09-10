@@ -16,6 +16,8 @@ const membersCheckboxes = document.getElementById("members-checkboxes");
 const pageTitle = document.querySelector(".page-header h1");
 const pageSubtitle = document.querySelector(".page-header p");
 const memberSectorFilter = document.getElementById("member-sector-filter");
+const tripVehiclesList = document.getElementById("trip-vehicles-list");
+const addTripVehicleButton = document.getElementById("btn-add-trip-vehicle");
 
 const equipmentColumns = document.getElementById("equipment-columns");
 const equipmentCatalogType = document.getElementById("equipment-catalog-type");
@@ -32,6 +34,35 @@ let equipmentCatalog = [];
 let equipmentTypes = [];
 let selectedMemberSector = "";
 let carriedEquipment = new Map();
+let tripVehicles = [];
+
+function renderTripVehicles() {
+  if (!tripVehiclesList) return;
+  tripVehiclesList.innerHTML = tripVehicles.map((vehicle, index) => `
+    <div class="trip-vehicle-row" data-index="${index}">
+      <div class="form-grid two">
+        <div><label>Montadora *</label><input data-vehicle-field="montadora" value="${escapeHtml(vehicle.montadora)}" required></div>
+        <div><label>Modelo *</label><input data-vehicle-field="modelo" value="${escapeHtml(vehicle.modelo)}" required></div>
+        <div><label>Versão modelo</label><input data-vehicle-field="versao_modelo" value="${escapeHtml(vehicle.versao_modelo)}"></div>
+        <div><label>Ano</label><input data-vehicle-field="ano" value="${escapeHtml(vehicle.ano)}"></div>
+        <div><label>Placa</label><input data-vehicle-field="placa" value="${escapeHtml(vehicle.placa)}"></div>
+      </div>
+      <button type="button" class="btn btn-danger btn-sm btn-remove-trip-vehicle">Remover</button>
+    </div>`).join("");
+}
+
+function setTripVehicles(vehicles = []) {
+  tripVehicles = (Array.isArray(vehicles) ? vehicles : []).map((vehicle) => ({
+    id: vehicle.id || null,
+    montadora: String(vehicle.montadora || ""), modelo: String(vehicle.modelo || ""),
+    versao_modelo: String(vehicle.versao_modelo || ""), ano: String(vehicle.ano || ""), placa: String(vehicle.placa || ""),
+  }));
+  renderTripVehicles();
+}
+
+function collectTripVehicles() {
+  return tripVehicles.filter((vehicle) => Object.entries(vehicle).some(([key, value]) => key !== "id" && String(value || "").trim()));
+}
 
 function getVisibleUsers() {
   const sector = String(selectedMemberSector || "").trim();
@@ -308,6 +339,7 @@ async function init() {
           memberSectorFilter.value = selectedMemberSector;
         }
         setSelectedMembersFromTrip(currentTrip.members || []);
+        setTripVehicles(currentTrip.vehicles || []);
         const savedChecklist = currentTrip.checklist?.equipment_checklist || [];
         carriedEquipment = new Map();
         for (const item of savedChecklist) {
@@ -334,6 +366,22 @@ async function init() {
 
 const startDateInput = document.getElementById("start_date");
 const endDateInput = document.getElementById("end_date");
+
+tripVehiclesList?.addEventListener("input", (event) => {
+  const field = event.target.closest("[data-vehicle-field]");
+  const row = field?.closest("[data-index]");
+  if (field && row && tripVehicles[Number(row.dataset.index)]) tripVehicles[Number(row.dataset.index)][field.dataset.vehicleField] = field.value;
+});
+tripVehiclesList?.addEventListener("click", (event) => {
+  const button = event.target.closest(".btn-remove-trip-vehicle");
+  if (!button) return;
+  tripVehicles.splice(Number(button.closest("[data-index]").dataset.index), 1);
+  renderTripVehicles();
+});
+addTripVehicleButton?.addEventListener("click", () => {
+  tripVehicles.push({ montadora: "", modelo: "", versao_modelo: "", ano: "", placa: "" });
+  renderTripVehicles();
+});
 
 function syncTripDates() {
   const start = startDateInput?.value;
@@ -438,6 +486,7 @@ form?.addEventListener("submit", async (e) => {
     sector: sectorSelect.value,
     member_ids: [...selectedMembers.keys()].map(Number),
     equipment_checklist,
+    vehicles: collectTripVehicles(),
   };
 
   try {
@@ -465,3 +514,5 @@ form?.addEventListener("submit", async (e) => {
 });
 
 init();
+
+renderTripVehicles();

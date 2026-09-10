@@ -1,5 +1,6 @@
 import { api, hideAlert, showAlert } from "./api.js";
 import { renderQuadroDemandasIntegrante } from "./demandas.js";
+import { renderTripVehicles } from "./trip-vehicles.js";
 import { mountShell } from "./layout.js";
 import {
   fillWorkTypes,
@@ -49,7 +50,7 @@ function hasTaskEveryTripDay(trip) {
 const params = new URLSearchParams(location.search);
 const tripId = Number(params.get("id"));
 const alertEl = document.getElementById("alert");
-const VALID_TRIP_VIEWS = new Set(["geral", "tarefa", "demandas", "relatorio"]);
+const VALID_TRIP_VIEWS = new Set(["geral", "tarefa", "veiculos", "relatorio"]);
 
 
 let monitorMetricsTimer = null;
@@ -77,7 +78,11 @@ function updateTripView(view) {
     tab.setAttribute("aria-current", active ? "page" : "false");
   });
   const leaderDemandButton = document.getElementById("btn-demanda-lider-wrap");
-  if (leaderDemandButton) leaderDemandButton.classList.toggle("hidden-fields", view !== "demandas");
+  if (leaderDemandButton) leaderDemandButton.classList.toggle("hidden-fields", view !== "veiculos");
+  const vehiclesTab = document.getElementById("trip-vehicles-tab");
+  const user = window.__currentUser || {};
+  const managesDemands = Boolean(user.is_admin || user.is_admin_master || user.is_sector_leader || String(user.position_title || '').trim().toLowerCase() === 'líder');
+  if (vehiclesTab) vehiclesTab.textContent = managesDemands ? "Veículos e fornecer demandas" : "Veículos";
 }
 
 function updateReportIndicator(trip) {
@@ -127,6 +132,9 @@ async function navigateTripView(view, { updateHistory = true } = {}) {
     const taskFormWrap = document.getElementById("task-form-wrap");
     if (taskFormWrap) taskFormWrap.classList.toggle("hidden-fields", nextView !== "tarefa");
     if (nextView === "tarefa") configureTaskEntryMode("task");
+    if (nextView === "veiculos") {
+      await renderTripVehicles(document.getElementById("trip-vehicles-container"), trip, window.__currentUser, { alertEl });
+    }
     updateReportIndicator(trip);
     if (nextView === "relatorio") renderReportPreview(trip);
   } catch (error) {

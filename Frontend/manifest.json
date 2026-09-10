@@ -4,9 +4,9 @@
   "description": "Acompanhamento operacional e gestao de viagens de equipes em campo.",
   "icons": [
     {
-      "src": "/assets/icone.png",
-      "type": "image/png",
-      "sizes": "225x225",
+      "src": "assets/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
       "purpose": "any maskable"
     }
   ],

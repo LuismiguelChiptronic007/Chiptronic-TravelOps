@@ -165,7 +165,7 @@ function parseEquipmentChecklist(value) {
   }
 }
 
-export function formatTrip(trip, checklist = null, expenses = [], attachments = [], members = [], tasks = [], demandas = []) {
+export function formatTrip(trip, checklist = null, expenses = [], attachments = [], members = [], tasks = [], demandas = [], vehicles = []) {
   const taskList = tasks || [];
   return {
     id: trip.id,
@@ -204,6 +204,7 @@ export function formatTrip(trip, checklist = null, expenses = [], attachments = 
     members: (members || []).map(formatMember),
     tasks: taskList,
     demandas: demandas || [],
+    vehicles: vehicles || [],
     expenses: (expenses || []).map((e) => ({
       id: e.id,
       description: e.description,
@@ -229,7 +230,7 @@ export async function fetchTripFull(db, tripId, userId) {
     .first();
   if (!trip) return null;
 
-  const [checklist, expenses, attachments, membersResult, taskRowsResult, demandasList] = await Promise.all([
+  const [checklist, expenses, attachments, membersResult, taskRowsResult, demandasList, vehiclesResult] = await Promise.all([
     db.prepare('SELECT * FROM trip_checklists WHERE trip_id = ?').bind(tripId).first(),
     db.prepare('SELECT * FROM expenses WHERE trip_id = ? ORDER BY id ASC').bind(tripId).all(),
     db.prepare('SELECT * FROM attachments WHERE trip_id = ? ORDER BY id ASC').bind(tripId).all(),
@@ -272,7 +273,87 @@ export async function fetchTripFull(db, tripId, userId) {
       }
     })(),
     fetchDemandasViagem(db, tripId),
+    (async () => {
+      try {
+        const { results } = await db.prepare(`
+          SELECT v.*, u.full_name AS created_by_name,
+                 vd.id AS demand_id, vd.tipo_projeto AS demand_tipo_projeto,
+                 vd.atividade_modelo_id AS demand_atividade_modelo_id,
+                 vd.atividade AS demand_atividade, vd.prioridade AS demand_prioridade,
+                 vd.status AS demand_status, vd.created_at AS demand_created_at,
+                 vd.created_by AS demand_created_by, du.full_name AS demand_created_by_name
+          FROM vehicles v
+          LEFT JOIN users u ON u.id = v.created_by
+          LEFT JOIN vehicle_demands vd ON vd.vehicle_id = v.id
+          LEFT JOIN users du ON du.id = vd.created_by
+          WHERE v.trip_id = ?
+          ORDER BY v.id ASC, vd.prioridade ASC, vd.id ASC
+        `).bind(tripId).all();
+        const byVehicle = new Map();
+        for (const row of results || []) {
+          if (!byVehicle.has(row.id)) {
+            byVehicle.set(row.id, {
+              id: row.id,
+              trip_id: row.trip_id,
+              montadora: row.montadora,
+              modelo: row.modelo,
+              versao_modelo: row.versao_modelo,
+              ano: row.ano,
+              placa: row.placa,
+              created_by: row.created_by,
+              created_at: row.created_at,
+              created_by_name: row.created_by_name,
+              demands: [],
+            });
+          }
+          if (row.demand_id) {
+            byVehicle.get(row.id).demands.push({
+              id: row.demand_id,
+              vehicle_id: row.id,
+              trip_id: tripId,
+              tipo_projeto: row.demand_tipo_projeto,
+              atividade_modelo_id: row.demand_atividade_modelo_id,
+              atividade: row.demand_atividade,
+              prioridade: row.demand_prioridade,
+              status: row.demand_status,
+              created_by: row.demand_created_by,
+              created_at: row.demand_created_at,
+              created_by_name: row.demand_created_by_name,
+            });
+          }
+        }
+        return [...byVehicle.values()];
+      } catch {
+        return [];
+      }
+    })(),
   ]);
+
+  const vehicleDemands = (vehiclesResult || []).flatMap((vehicle) =>
+    (vehicle.demands || []).map((demand) => ({
+      id: demand.id,
+      tipo_projeto: demand.tipo_projeto || '',
+      tipo_trabalho: '',
+      status: demand.status || 'pendente',
+      criado_nome: demand.created_by_name || 'Líder',
+      criado_em: demand.created_at || null,
+      veiculos: [{
+        id: vehicle.id,
+        montadora: vehicle.montadora,
+        modelo: vehicle.modelo,
+        versao_modelo: vehicle.versao_modelo,
+        ano: vehicle.ano,
+        placa: vehicle.placa,
+        atividades: [{
+          id: demand.id,
+          atividade_modelo_id: demand.atividade_modelo_id,
+          atividade_descricao: demand.atividade,
+          prioridade: demand.prioridade,
+          status: demand.status || 'pendente',
+        }],
+      }],
+    })),
+  );
 
   let members = membersResult;
 
@@ -384,7 +465,7 @@ export async function fetchTripFull(db, tripId, userId) {
     }
   }
 
-  return formatTrip(trip, checklist, expenses.results || [], attachments.results || [], members, tasks, demandasList);
+  return formatTrip(trip, checklist, expenses.results || [], attachments.results || [], members, tasks, [...(demandasList || []), ...vehicleDemands], vehiclesResult);
 }
 
 export async function saveTripMembers(db, tripId, memberUserIds = []) {

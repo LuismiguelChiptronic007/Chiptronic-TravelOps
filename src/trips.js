@@ -18,6 +18,18 @@ import { renderTripReportHTML } from "./trip_report_template.js";
 export const trips = new Hono();
 trips.use("*", requireUser);
 
+function validarPlaca(placa) {
+  if (!placa) return true;
+  const limpa = String(placa).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return /^[A-Z]{3}[0-9]{4}$/.test(limpa) || /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(limpa);
+}
+
+function validarAnoVeiculo(ano) {
+  if (!ano) return true;
+  const valor = String(ano).trim();
+  return /^\d{4}$/.test(valor) && Number(valor) >= 1900 && Number(valor) <= new Date().getFullYear() + 1;
+}
+
 async function geocodeCity(city) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
@@ -397,12 +409,19 @@ trips.post("/", async (c) => {
         }))
         .filter((item) => item.name)
     : [];
+  const vehicles = Array.isArray(body.vehicles) ? body.vehicles : [];
 
   if (!origin || !destination) return err("Informe origem e destino.");
   if (!start_date || !end_date) return err("Informe as datas da viagem.");
   if (end_date < start_date)
     return err("Data de término deve ser >= data de início.");
   if (!reason) return err("Informe o motivo da viagem.");
+  for (const [index, vehicle] of vehicles.entries()) {
+    if (!String(vehicle?.montadora || '').trim()) return err(`Veículo ${index + 1}: informe a montadora.`);
+    if (!String(vehicle?.modelo || '').trim()) return err(`Veículo ${index + 1}: informe o modelo.`);
+    if (!validarAnoVeiculo(vehicle?.ano)) return err(`Veículo ${index + 1}: informe um ano válido.`);
+    if (!validarPlaca(vehicle?.placa)) return err(`Veículo ${index + 1}: placa inválida. Use AAA-0000 ou AAA0A00.`);
+  }
 
 
   const memberIdsForValidation = Array.isArray(memberIds)
@@ -476,6 +495,10 @@ trips.post("/", async (c) => {
     )
       .bind(JSON.stringify(equipmentChecklist), tripId)
       .run();
+  }
+  for (const vehicle of vehicles) {
+    await c.env.DB.prepare(`INSERT INTO vehicles (trip_id, montadora, modelo, versao_modelo, ano, placa, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .bind(tripId, String(vehicle.montadora || '').trim(), String(vehicle.modelo || '').trim(), String(vehicle.versao_modelo || '').trim() || null, String(vehicle.ano || '').trim() || null, String(vehicle.placa || '').trim() || null, user.id).run();
   }
 
   // Always include the trip creator as a trip member so they can be
@@ -587,11 +610,20 @@ trips.put("/:id", async (c) => {
         }))
         .filter((item) => item.name)
     : null;
+  const vehicles = Array.isArray(body.vehicles) ? body.vehicles : null;
 
   if (!origin || !destination || !start_date || !end_date || !reason) {
     return err("Preencha todos os campos obrigatórios.");
   }
   if (end_date < start_date) return err("Data de término inválida.");
+  if (vehicles) {
+    for (const [index, vehicle] of vehicles.entries()) {
+      if (!String(vehicle?.montadora || '').trim()) return err(`Veículo ${index + 1}: informe a montadora.`);
+      if (!String(vehicle?.modelo || '').trim()) return err(`Veículo ${index + 1}: informe o modelo.`);
+      if (!validarAnoVeiculo(vehicle?.ano)) return err(`Veículo ${index + 1}: informe um ano válido.`);
+      if (!validarPlaca(vehicle?.placa)) return err(`Veículo ${index + 1}: placa inválida. Use AAA-0000 ou AAA0A00.`);
+    }
+  }
 
 
   const memberIdsForValidation = Array.isArray(body.member_ids)
@@ -696,6 +728,18 @@ trips.put("/:id", async (c) => {
     )
       .bind(JSON.stringify(equipmentChecklist), id)
       .run();
+  }
+  if (vehicles) {
+    for (const vehicle of vehicles) {
+      const vehicleId = Number(vehicle.id || 0);
+      if (vehicleId) {
+        await c.env.DB.prepare(`UPDATE vehicles SET montadora = ?, modelo = ?, versao_modelo = ?, ano = ?, placa = ? WHERE id = ? AND trip_id = ?`)
+          .bind(String(vehicle.montadora || '').trim(), String(vehicle.modelo || '').trim(), String(vehicle.versao_modelo || '').trim() || null, String(vehicle.ano || '').trim() || null, String(vehicle.placa || '').trim() || null, vehicleId, id).run();
+      } else {
+        await c.env.DB.prepare(`INSERT INTO vehicles (trip_id, montadora, modelo, versao_modelo, ano, placa, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+          .bind(id, String(vehicle.montadora || '').trim(), String(vehicle.modelo || '').trim(), String(vehicle.versao_modelo || '').trim() || null, String(vehicle.ano || '').trim() || null, String(vehicle.placa || '').trim() || null, userId).run();
+      }
+    }
   }
 
 

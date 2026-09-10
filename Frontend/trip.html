@@ -33,7 +33,7 @@
       <nav class="trip-tabs" id="trip-tabs" aria-label="Seções da viagem">
         <a href="?id=&view=geral" data-trip-view="geral">Dados gerais</a>
         <a href="?id=&view=tarefa" data-trip-view="tarefa">Adicionar tarefa</a>
-        <a href="?id=&view=demandas" data-trip-view="demandas">Demandas do líder</a>
+        <a href="?id=&view=veiculos" data-trip-view="veiculos" id="trip-vehicles-tab">Veículos</a>
         <a href="?id=&view=relatorio" data-trip-view="relatorio">Relatório <span class="trip-tab-indicator hidden-fields" aria-label="Pendência"></span></a>
       </nav>
 
@@ -261,8 +261,9 @@
         </div>
         </section>
 
-        <section class="trip-view" data-trip-panel="demandas">
+        <section class="trip-view" data-trip-panel="veiculos">
           <div id="demandas-panel-container"></div>
+          <div id="trip-vehicles-container"></div>
         </section>
 
         <section class="trip-view" data-trip-panel="relatorio">

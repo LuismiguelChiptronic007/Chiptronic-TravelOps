@@ -1,16 +1,5 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const LOGO_FULL = readFileSync(
-  path.resolve(__dirname, "..", "Frontend", "assets", "logo-full.svg"),
-  "utf8",
-);
-const LOGO_MARK = readFileSync(
-  path.resolve(__dirname, "..", "Frontend", "assets", "logo-mark.svg"),
-  "utf8",
-);
+const LOGO_FULL = "<strong>Chiptronic</strong> <span>TravelOps</span>";
+const LOGO_MARK = "<strong>CT</strong>";
 
 const SYSTEM_NAME = "Chiptronic TravelOps";
 

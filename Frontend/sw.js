@@ -1,4 +1,4 @@
-const CACHE_NAME = 'travelops-shell-v48';
+const CACHE_NAME = 'travelops-shell-v49';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -18,6 +18,7 @@ const APP_SHELL = [
   '/js/viagens.js',
   '/js/trip-new.js',
   '/js/trip-detail.js',
+  '/js/trip-vehicles.js',
   '/js/trip-report-frontend.js',
   '/js/trip-render.js',
   '/js/trip-history.js',
@@ -29,7 +30,6 @@ const APP_SHELL = [
   '/js/location.js',
   '/js/mapa-operacional.js',
 
-  '/assets/icone.png',
   '/assets/favicon.svg',
   '/assets/logo-mark.svg',
   '/assets/default-avatar.svg'
@@ -41,8 +41,8 @@ self.addEventListener('push', (event) => {
     const title = typeof data === 'string' ? data : (data.title || 'Chiptronic TravelOps');
     const options = {
       body: typeof data === 'string' ? '' : (data.body || data.message || 'Nova notificação.'),
-      icon: '/assets/icone.png',
-      badge: '/assets/icone.png',
+      icon: '/assets/favicon.svg',
+      badge: '/assets/favicon.svg',
       data: typeof data === 'string' ? {} : (data.data || {}),
       tag: typeof data === 'string' ? 'generic' : (data.tag || 'travelops-notification'),
       renotify: true,
@@ -52,8 +52,8 @@ self.addEventListener('push', (event) => {
     const title = 'Chiptronic TravelOps';
     const options = {
       body: 'Nova notificação recebida.',
-      icon: '/assets/icone.png',
-      badge: '/assets/icone.png',
+      icon: '/assets/favicon.svg',
+      badge: '/assets/favicon.svg',
       tag: 'travelops-notification',
     };
     event.waitUntil(self.registration.showNotification(title, options));

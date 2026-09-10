@@ -13,6 +13,7 @@ import { presence } from './presence.js';
 import { admin } from './admin.js';
 import { mapaOperacional } from './mapa_operacional.js';
 import { demandas } from './demandas.js';
+import { vehicleRoutes } from './vehicles.js';
 import { err, json } from './helpers.js';
 
 const app = new Hono();
@@ -21,7 +22,7 @@ app.use(
   '/api/*',
   cors({
     origin: '*',
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
   })
 );
@@ -48,6 +49,7 @@ app.route('/api/admin', admin);
 app.route('/api', mapaOperacional);
 app.route('/api', files);
 app.route('/api/demandas', demandas);
+app.route('/api', vehicleRoutes);
 
 app.notFound((c) => {
   if (c.req.path.startsWith('/api/') || c.req.path === '/api') {

@@ -50,6 +50,10 @@ async function atualizarStatusDemandaAtividade(db, demandaAtividadeId, userId) {
     .bind(novoStatus, demandaId).run();
 }
 
+async function atualizarStatusDemandaVeiculo(db, demandaId) {
+  await db.prepare("UPDATE vehicle_demands SET status = 'concluida' WHERE id = ?").bind(demandaId).run();
+}
+
 async function notificarLiderDemandaConcluida(db, trip, atividade, userId, env) {
   const lider = await db.prepare(`
     SELECT id FROM users
@@ -316,7 +320,7 @@ export async function getAccessibleTrip(c, tripId) {
     .first();
   if (!trip) return null;
 
-  if (trip.user_id === userId) return trip;
+  if (Number(trip.user_id) === Number(userId)) return trip;
 
   const [member, ledSector, owner] = await Promise.all([
     c.env.DB.prepare(
@@ -344,9 +348,11 @@ export async function getAccessibleTrip(c, tripId) {
     viewer?.role === "admin" || viewer?.role === "admin_master";
   if (isAdminUser) return trip;
 
-  if (ledSector) return trip;
+  const ownerSector = String(owner?.sector || "").trim();
+  const viewerSector = String(viewer?.sector || "").trim();
+  if (ledSector || (getLedSector(viewer) && ownerSector === viewerSector)) return trip;
 
-  if (owner && owner.manager_id === userId) return trip;
+  if (owner && Number(owner.manager_id) === Number(userId)) return trip;
 
   return null;
 }
@@ -644,11 +650,19 @@ taskRoutes.post("/:id/tasks", async (c) => {
         SELECT da.status, am.descricao
         FROM demanda_atividades da
         LEFT JOIN atividades_modelo am ON am.id = da.atividade_modelo_id
-        WHERE da.id = ?
-      `).bind(demanda_atividade_id).first();
-      await atualizarStatusDemandaAtividade(c.env.DB, demanda_atividade_id, userId);
-      if (atividade?.status !== 'concluida') {
-        await notificarLiderDemandaConcluida(c.env.DB, trip, atividade, userId, c.env);
+        INNER JOIN demanda_veiculos dv ON dv.id = da.demanda_veiculo_id
+        WHERE da.id = ? AND dv.id = ?
+      `).bind(demanda_atividade_id, demanda_veiculo_id).first();
+      if (atividade) {
+        await atualizarStatusDemandaAtividade(c.env.DB, demanda_atividade_id, userId);
+        if (atividade.status !== 'concluida') {
+          await notificarLiderDemandaConcluida(c.env.DB, trip, atividade, userId, c.env);
+        }
+      } else {
+        const vehicleDemand = await c.env.DB.prepare(
+          'SELECT status, atividade AS descricao FROM vehicle_demands WHERE id = ? AND vehicle_id = ?',
+        ).bind(demanda_atividade_id, demanda_veiculo_id).first();
+        if (vehicleDemand) await atualizarStatusDemandaVeiculo(c.env.DB, demanda_atividade_id);
       }
     } catch (statusError) {
       console.error("Falha ao atualizar status de demanda atividade:", statusError);

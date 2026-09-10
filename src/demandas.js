@@ -32,6 +32,31 @@ function validarAno(ano) {
   return /^\d{4}$/.test(valor) && Number(valor) >= 1900 && Number(valor) <= atual + 1;
 }
 
+async function sincronizarVeiculoDaDemanda(db, tripId, vehicle, createdBy) {
+  const montadora = String(vehicle.montadora || '').trim();
+  const modelo = String(vehicle.modelo || '').trim();
+  const versaoModelo = String(vehicle.versao_modelo || '').trim() || null;
+  const ano = String(vehicle.ano || '').trim() || null;
+  const placa = formatarPlaca(vehicle.placa) || null;
+  const existente = await db.prepare(`
+    SELECT id FROM vehicles
+    WHERE trip_id = ?
+      AND montadora = ?
+      AND modelo = ?
+      AND IFNULL(versao_modelo, '') = IFNULL(?, '')
+      AND IFNULL(ano, '') = IFNULL(?, '')
+      AND IFNULL(placa, '') = IFNULL(?, '')
+    LIMIT 1
+  `).bind(tripId, montadora, modelo, versaoModelo, ano, placa).first();
+  if (existente) return existente.id;
+
+  const result = await db.prepare(`
+    INSERT INTO vehicles (trip_id, montadora, modelo, versao_modelo, ano, placa, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).bind(tripId, montadora, modelo, versaoModelo, ano, placa, createdBy).run();
+  return result.meta.last_row_id;
+}
+
 async function atualizarStatusDemanda(db, demandaId) {
   const { results: atividades } = await db.prepare(`
     SELECT da.id, da.status FROM demanda_atividades da
@@ -293,6 +318,8 @@ demandas.post('/viagem/:viagemId', async (c) => {
     ).run();
     const veiculoId = resultVeiculo.meta.last_row_id;
 
+    await sincronizarVeiculoDaDemanda(c.env.DB, viagemId, v, userId);
+
     const atividades = Array.isArray(v.atividades) ? v.atividades : [];
     for (const a of atividades) {
       await c.env.DB.prepare(
@@ -393,6 +420,14 @@ demandas.put('/veiculo/:veiculoId', async (c) => {
     SET montadora = ?, modelo = ?, versao_modelo = ?, ano = ?, placa = ?
     WHERE id = ?
   `).bind(montadora, modelo, versaoModelo || null, ano || null, placa, veiculoId).run();
+
+  await sincronizarVeiculoDaDemanda(c.env.DB, Number(veiculo.viagem_id), {
+    montadora,
+    modelo,
+    versao_modelo: versaoModelo,
+    ano,
+    placa,
+  }, userId);
 
   const tipoProjeto = String(body.tipo_projeto || veiculo.tipo_projeto || '').trim();
   const tipoTrabalho = String(body.tipo_trabalho || '').trim();

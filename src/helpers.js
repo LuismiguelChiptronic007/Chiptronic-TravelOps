@@ -26,7 +26,7 @@ export const ADMIN_MASTER_EMAILS = [
   'luismiguel.oliveira@chiptronic.com',
 ];
 
-export const DEFAULT_AVATAR_URL = 'assets/icone.png?v=2';
+export const DEFAULT_AVATAR_URL = 'assets/default-avatar.svg?v=2';
 
 /** Admin master → setor liderado (bootstrap legado) */
 export const SECTOR_LEADERS = {
