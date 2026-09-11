@@ -894,7 +894,7 @@ document.getElementById("task-form")?.addEventListener("submit", async (e) => {
     ) {
       showAlert(
         alertEl,
-        "Há sobreposição com uma tarefa sua. Confira o aviso abaixo e clique em 'Salvar mesmo assim' para prosseguir.",
+        "Há sobreposição com uma tarefa sua. Ajuste o horário ou o responsável para continuar.",
         "warning",
       );
       alertEl?.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -2699,6 +2699,27 @@ html[data-theme="dark"] .alert-info .alert-icon {
 .vehicle-demand-delete .ti-trash::before { content: '\1F5D1'; font-size: 1rem; }
 .vehicle-demand-delete:hover { color: var(--danger-600, var(--text)); }
 .vehicle-demand-empty { padding: 1rem; color: var(--text-2); font-size: 0.82rem; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
+.trip-vehicles-empty { padding: 1.15rem; color: var(--text-2); text-align: center; border: 1px dashed #d9dce0; border-radius: var(--radius-sm); }
+.trip-vehicle-summary { display: flex; align-items: center; gap: 1rem; min-height: 4rem; padding: 0.7rem 0.85rem; border: 1px solid #d9dce0; border-radius: var(--radius-sm); background: var(--surface); }
+.trip-vehicle-summary + .trip-vehicle-summary,
+.trip-vehicle-summary + .trip-vehicle-editor,
+.trip-vehicle-editor + .trip-vehicle-summary { margin-top: 0.55rem; }
+.trip-vehicle-summary-main { display: flex; flex: 1; align-items: baseline; min-width: 0; gap: 0.55rem; }
+.trip-vehicle-summary-main strong { overflow: hidden; color: var(--text); font-size: 0.92rem; text-overflow: ellipsis; white-space: nowrap; }
+.trip-vehicle-summary-main span { overflow: hidden; color: var(--text-2); font-size: 0.78rem; text-overflow: ellipsis; white-space: nowrap; }
+.trip-vehicle-plate { flex: 0 0 auto; padding: 0.28rem 0.55rem; color: var(--text); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.76rem; font-weight: 700; letter-spacing: 0.03em; border: 1px solid #d9dce0; border-radius: 999px; }
+.trip-vehicle-actions { display: flex; flex: 0 0 auto; gap: 0.2rem; }
+.trip-vehicle-icon-button { display: grid; width: 2rem; height: 2rem; padding: 0; place-items: center; color: var(--text-2); background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm); cursor: pointer; }
+.trip-vehicle-icon-button:hover { color: var(--text); border-color: #d9dce0; background: var(--neutral-bg); }
+.trip-vehicle-icon-button.is-danger:hover { color: var(--danger-600, #991b1b); }
+.trip-vehicle-icon-button svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+.trip-vehicle-editor { padding: 0.9rem; border: 1px solid #d9dce0; border-radius: var(--radius-sm); background: var(--surface); }
+.trip-vehicle-editor-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.85rem; }
+
+@media (max-width: 560px) {
+  .trip-vehicle-summary-main { min-width: 0; }
+  .trip-vehicle-summary-main strong { max-width: 45%; }
+}
 .demanda-integrante-vehicle-card { margin-bottom: 1rem; }
 .demanda-integrante-row { align-items: center; }
 .demanda-integrante-row strong { color: var(--text); }

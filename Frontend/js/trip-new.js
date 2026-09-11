@@ -3,7 +3,7 @@ import { escapeHtml, mountShell } from "./layout.js";
 import { saveTripOffline } from "./db-offline.js";
 
 import { setLocationConsent } from "./location.js";
-import { findCity, searchCities } from "./cidades.js";
+import { searchCities } from "./cidades.js";
 
 const params = new URLSearchParams(location.search);
 const editTripId = Number(params.get("id")) || null;
@@ -35,20 +35,49 @@ let equipmentTypes = [];
 let selectedMemberSector = "";
 let carriedEquipment = new Map();
 let tripVehicles = [];
+let vehicleEditor = null;
 
 function renderTripVehicles() {
   if (!tripVehiclesList) return;
-  tripVehiclesList.innerHTML = tripVehicles.map((vehicle, index) => `
-    <div class="trip-vehicle-row" data-index="${index}">
+  const rows = tripVehicles.map((vehicle, index) => {
+    if (vehicleEditor?.index === index) return renderVehicleEditor(vehicleEditor.draft, index);
+    return `
+      <div class="trip-vehicle-summary" data-index="${index}">
+        <div class="trip-vehicle-summary-main">
+          <strong>${escapeHtml([vehicle.montadora, vehicle.modelo].filter(Boolean).join(" ") || "Veículo sem identificação")}</strong>
+          <span>${escapeHtml([vehicle.versao_modelo, vehicle.ano].filter(Boolean).join(" · ") || "Dados complementares não informados")}</span>
+        </div>
+        ${vehicle.placa ? `<span class="trip-vehicle-plate">${escapeHtml(vehicle.placa.toUpperCase())}</span>` : ""}
+        <div class="trip-vehicle-actions">
+          <button type="button" class="trip-vehicle-icon-button" data-action="edit-vehicle" aria-label="Editar veículo" title="Editar veículo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"></path></svg></button>
+          <button type="button" class="trip-vehicle-icon-button is-danger" data-action="remove-vehicle" aria-label="Remover veículo" title="Remover veículo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="m19 6-1 14H6L5 6"></path><path d="M10 11v5M14 11v5"></path></svg></button>
+        </div>
+      </div>`;
+  });
+
+  if (vehicleEditor && vehicleEditor.index === tripVehicles.length) {
+    rows.push(renderVehicleEditor(vehicleEditor.draft, vehicleEditor.index));
+  }
+
+  tripVehiclesList.innerHTML = rows.join("") || '<div class="trip-vehicles-empty">Nenhum veículo cadastrado ainda.</div>';
+  if (addTripVehicleButton) addTripVehicleButton.classList.toggle("hidden-fields", Boolean(vehicleEditor));
+}
+
+function renderVehicleEditor(vehicle, index) {
+  return `
+    <div class="trip-vehicle-editor" data-index="${index}">
       <div class="form-grid two">
         <div><label>Montadora *</label><input data-vehicle-field="montadora" value="${escapeHtml(vehicle.montadora)}" required></div>
         <div><label>Modelo *</label><input data-vehicle-field="modelo" value="${escapeHtml(vehicle.modelo)}" required></div>
-        <div><label>Versão modelo</label><input data-vehicle-field="versao_modelo" value="${escapeHtml(vehicle.versao_modelo)}"></div>
-        <div><label>Ano</label><input data-vehicle-field="ano" value="${escapeHtml(vehicle.ano)}"></div>
+        <div><label>Versão modelo *</label><input data-vehicle-field="versao_modelo" value="${escapeHtml(vehicle.versao_modelo)}" required></div>
+        <div><label>Ano *</label><input data-vehicle-field="ano" value="${escapeHtml(vehicle.ano)}" required></div>
         <div><label>Placa</label><input data-vehicle-field="placa" value="${escapeHtml(vehicle.placa)}"></div>
       </div>
-      <button type="button" class="btn btn-danger btn-sm btn-remove-trip-vehicle">Remover</button>
-    </div>`).join("");
+      <div class="trip-vehicle-editor-actions">
+        <button type="button" class="btn btn-secondary" data-action="cancel-vehicle">Cancelar</button>
+        <button type="button" class="btn btn-primary" data-action="save-vehicle">Salvar veículo</button>
+      </div>
+    </div>`;
 }
 
 function setTripVehicles(vehicles = []) {
@@ -57,6 +86,7 @@ function setTripVehicles(vehicles = []) {
     montadora: String(vehicle.montadora || ""), modelo: String(vehicle.modelo || ""),
     versao_modelo: String(vehicle.versao_modelo || ""), ano: String(vehicle.ano || ""), placa: String(vehicle.placa || ""),
   }));
+  vehicleEditor = null;
   renderTripVehicles();
 }
 
@@ -389,17 +419,49 @@ function normalizeIsoDate(value) {
 
 tripVehiclesList?.addEventListener("input", (event) => {
   const field = event.target.closest("[data-vehicle-field]");
-  const row = field?.closest("[data-index]");
-  if (field && row && tripVehicles[Number(row.dataset.index)]) tripVehicles[Number(row.dataset.index)][field.dataset.vehicleField] = field.value;
+  if (field && vehicleEditor) vehicleEditor.draft[field.dataset.vehicleField] = field.value;
 });
 tripVehiclesList?.addEventListener("click", (event) => {
-  const button = event.target.closest(".btn-remove-trip-vehicle");
+  const button = event.target.closest("[data-action]");
   if (!button) return;
-  tripVehicles.splice(Number(button.closest("[data-index]").dataset.index), 1);
-  renderTripVehicles();
+  const row = button.closest("[data-index]");
+  const index = Number(row?.dataset.index);
+  const action = button.dataset.action;
+
+  if (action === "edit-vehicle") {
+    vehicleEditor = { index, draft: { ...tripVehicles[index] }, isNew: false };
+    renderTripVehicles();
+    return;
+  }
+  if (action === "remove-vehicle") {
+    tripVehicles.splice(index, 1);
+    renderTripVehicles();
+    return;
+  }
+  if (action === "cancel-vehicle") {
+    vehicleEditor = null;
+    renderTripVehicles();
+    return;
+  }
+  if (action === "save-vehicle") {
+    const draft = vehicleEditor?.draft;
+    if (!draft?.montadora.trim() || !draft?.modelo.trim() || !draft?.versao_modelo.trim() || !draft?.ano.trim()) {
+      const firstMissing = ["montadora", "modelo", "versao_modelo", "ano"].find((field) => !draft?.[field].trim());
+      tripVehiclesList.querySelector(`[data-vehicle-field="${firstMissing}"]`)?.focus();
+      return;
+    }
+    if (vehicleEditor.isNew) tripVehicles.push({ ...draft });
+    else tripVehicles[vehicleEditor.index] = { ...draft };
+    vehicleEditor = null;
+    renderTripVehicles();
+  }
 });
 addTripVehicleButton?.addEventListener("click", () => {
-  tripVehicles.push({ montadora: "", modelo: "", versao_modelo: "", ano: "", placa: "" });
+  vehicleEditor = {
+    index: tripVehicles.length,
+    isNew: true,
+    draft: { id: null, montadora: "", modelo: "", versao_modelo: "", ano: "", placa: "" },
+  };
   renderTripVehicles();
 });
 
@@ -491,11 +553,11 @@ form?.addEventListener("submit", async (e) => {
   btn.disabled = true;
 
   const origin = "Piraju - SP";
-  const destination = findCity(destinationInput?.value);
+  const destination = String(destinationInput?.value || "").trim();
   if (!origin || !destination) {
     showAlert(
       alertEl,
-      "Informe origem e destino usando uma cidade válida. Formatos aceitos: Cidade - UF (Brasil) ou Cidade - País / Cidade - Estado - País (internacional).",
+      "Informe o destino da viagem.",
     );
     btn.disabled = false;
     if (!origin) originInput?.focus();

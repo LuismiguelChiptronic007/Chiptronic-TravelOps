@@ -391,7 +391,7 @@ trips.post("/", async (c) => {
   }
 
   const origin = normalizeTripCityString(body.origin || "Piraju - SP") || "Piraju - SP";
-  const destination = normalizeTripCityString(body.destination || "") || "Piraju - SP";
+  const destination = String(body.destination || "").trim();
   const start_date = String(body.start_date || "").trim();
   const end_date = String(body.end_date || "").trim();
   const reason = String(body.reason || "").trim();
@@ -419,6 +419,7 @@ trips.post("/", async (c) => {
   for (const [index, vehicle] of vehicles.entries()) {
     if (!String(vehicle?.montadora || '').trim()) return err(`Veículo ${index + 1}: informe a montadora.`);
     if (!String(vehicle?.modelo || '').trim()) return err(`Veículo ${index + 1}: informe o modelo.`);
+    if (!String(vehicle?.versao_modelo || '').trim()) return err(`Veículo ${index + 1}: informe a versão do modelo.`);
     if (!validarAnoVeiculo(vehicle?.ano)) return err(`Veículo ${index + 1}: informe um ano válido.`);
     if (!validarPlaca(vehicle?.placa)) return err(`Veículo ${index + 1}: placa inválida. Use AAA-0000 ou AAA0A00.`);
   }
@@ -439,14 +440,6 @@ trips.post("/", async (c) => {
 
   const status = computeStatus({ start_date, end_date, status: "planned" });
   const coordinates = await geocodeTripCities(origin, destination);
-  if (
-    coordinates.origin_lat === null ||
-    coordinates.origin_lng === null ||
-    coordinates.destination_lat === null ||
-    coordinates.destination_lng === null
-  ) {
-    return err("Origem e destino devem ser cidades válidas (formato Cidade - UF para o Brasil, ou Cidade - País / Cidade - Estado - País para o exterior).");
-  }
   const result = await c.env.DB.prepare(
     `INSERT INTO trips (user_id, origin, destination, start_date, end_date, reason, sector, status, priority,
                         origin_lat, origin_lng, destination_lat, destination_lng)
@@ -593,7 +586,7 @@ trips.put("/:id", async (c) => {
   }
 
   const origin = normalizeTripCityString(body.origin ?? trip.origin ?? "Piraju - SP") || "Piraju - SP";
-  const destination = normalizeTripCityString(body.destination ?? trip.destination ?? "") || "Piraju - SP";
+  const destination = String(body.destination ?? trip.destination ?? "").trim();
   const start_date = String(body.start_date ?? trip.start_date).trim();
   const end_date = String(body.end_date ?? trip.end_date).trim();
   const reason = String(body.reason ?? trip.reason).trim();
@@ -620,6 +613,7 @@ trips.put("/:id", async (c) => {
     for (const [index, vehicle] of vehicles.entries()) {
       if (!String(vehicle?.montadora || '').trim()) return err(`Veículo ${index + 1}: informe a montadora.`);
       if (!String(vehicle?.modelo || '').trim()) return err(`Veículo ${index + 1}: informe o modelo.`);
+      if (!String(vehicle?.versao_modelo || '').trim()) return err(`Veículo ${index + 1}: informe a versão do modelo.`);
       if (!validarAnoVeiculo(vehicle?.ano)) return err(`Veículo ${index + 1}: informe um ano válido.`);
       if (!validarPlaca(vehicle?.placa)) return err(`Veículo ${index + 1}: placa inválida. Use AAA-0000 ou AAA0A00.`);
     }
@@ -636,13 +630,6 @@ trips.put("/:id", async (c) => {
     end_date,
     id,
   );
-  if (overlappingMemberIds.length) {
-    return err("Um ou mais integrantes já estão em outra viagem neste período.");
-  }
-
-  const status = computeStatus({ start_date, end_date, status: trip.status });
-  const citiesChanged =
-    origin !== trip.origin || destination !== trip.destination;
   const hasMissingCoordinates =
     trip.origin_lat == null ||
     trip.origin_lng == null ||
@@ -656,14 +643,6 @@ trips.put("/:id", async (c) => {
         destination_lat: trip.destination_lat ?? null,
         destination_lng: trip.destination_lng ?? null,
       };
-  if (
-    coordinates.origin_lat === null ||
-    coordinates.origin_lng === null ||
-    coordinates.destination_lat === null ||
-    coordinates.destination_lng === null
-  ) {
-    return err("Origem e destino devem ser cidades válidas (formato Cidade - UF para o Brasil, ou Cidade - País / Cidade - Estado - País para o exterior).");
-  }
   const changes = {};
   for (const [field, value] of Object.entries({
     origin,

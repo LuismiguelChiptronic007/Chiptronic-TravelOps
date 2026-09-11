@@ -170,13 +170,43 @@ function populateDemandVehicleFields(trip) {
   const activitySelect = document.getElementById("demanda_atividade_id");
   if (!vehicleFields || !vehicleSelect || !activityField || !activitySelect) return;
 
-  const vehicles = (trip?.demandas || []).flatMap((demand) =>
-    (demand.veiculos || []).map((vehicle) => ({
+  const normalizeVehicleIdentity = (vehicle) => [
+    vehicle.montadora,
+    vehicle.modelo,
+    vehicle.versao_modelo,
+    vehicle.ano,
+    vehicle.placa,
+  ].map((value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "")).join("|");
+  const vehiclesByIdentity = new Map();
+
+  for (const vehicle of trip?.vehicles || []) {
+    vehiclesByIdentity.set(normalizeVehicleIdentity(vehicle), {
       ...vehicle,
-      demanda_tipo_projeto: demand.tipo_projeto || "",
-      demanda_tipo_trabalho: demand.tipo_trabalho || "",
-    })),
-  );
+      id: `trip-${vehicle.id}`,
+      atividades: [],
+      vehicleFromTrip: true,
+    });
+  }
+
+  for (const demand of trip?.demandas || []) {
+    for (const vehicle of demand.veiculos || []) {
+      const identity = normalizeVehicleIdentity(vehicle);
+      const existing = vehiclesByIdentity.get(identity);
+      vehiclesByIdentity.set(identity, {
+        ...vehicle,
+        ...(existing || {}),
+        id: vehicle.id,
+        atividades: [
+          ...(existing?.atividades || []),
+          ...(vehicle.atividades || []),
+        ],
+        demanda_tipo_projeto: demand.tipo_projeto || "",
+        demanda_tipo_trabalho: demand.tipo_trabalho || "",
+      });
+    }
+  }
+
+  const vehicles = [...vehiclesByIdentity.values()];
   const currentVehicle = vehicleSelect.value;
   vehicleSelect.innerHTML = '<option value="">Sem veículo de demanda</option>' + vehicles
     .map((vehicle) => `<option value="${vehicle.id}">${escapeHtml(formatDemandVehicle(vehicle))}</option>`)
@@ -194,7 +224,8 @@ function populateDemandVehicleFields(trip) {
       return;
     }
 
-    activityField.classList.remove("hidden-fields");
+    if (vehicle.atividades?.length) activityField.classList.remove("hidden-fields");
+    else activityField.classList.add("hidden-fields");
     activitySelect.innerHTML = '<option value="">Selecione uma demanda</option>' +
       (vehicle.atividades || []).map((activity) =>
         `<option value="${activity.id}">${escapeHtml(activity.atividade_descricao || "Demanda")}${activity.prioridade ? ` · P${activity.prioridade}` : ""}</option>`,
@@ -1426,13 +1457,9 @@ function renderPersonalSchedule(t) {
       ${scheduleSections || '<div class="task-schedule-empty">Selecione um responsável para consultar os horários.</div>'}
     </div>
     ${extraNames.length && startTime && endTime ? `<div class="task-extra-responsibles"><span aria-hidden="true">ⓘ</span> ${escapeHtml(selectedStart)} também será reservado para ${escapeHtml(extraNames.join(" e "))} nessa tarefa.</div>` : ""}
-    ${conflict ? `<div class="task-schedule-conflict" role="alert"><span aria-hidden="true">⚠</span> ${escapeHtml(formatTimeLabel(conflict.start_time))}–${escapeHtml(formatTimeLabel(conflict.end_time))} já está ocupado para ${escapeHtml(conflict.responsible_name || "um responsável selecionado")}. <button type="button" class="btn btn-secondary btn-sm" data-allow-task-conflict>Salvar mesmo assim</button></div>` : ""}
+    ${conflict ? `<div class="task-schedule-conflict" role="alert"><span aria-hidden="true">⚠</span> ${escapeHtml(formatTimeLabel(conflict.start_time))}–${escapeHtml(formatTimeLabel(conflict.end_time))} já está ocupado para ${escapeHtml(conflict.responsible_name || "um responsável selecionado")}. </div>` : ""}
   `;
   panel.classList.remove("hidden-fields");
-  panel.querySelector("[data-allow-task-conflict]")?.addEventListener("click", () => {
-    personalTaskSchedule.allowConflict = true;
-    renderPersonalSchedule(t);
-  });
 }
 
 async function refreshPersonalSchedule(t, date) {
