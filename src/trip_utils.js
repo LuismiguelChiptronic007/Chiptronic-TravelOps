@@ -373,6 +373,7 @@ export async function fetchTripFull(db, tripId, userId) {
         const { results } = await db.prepare(`
           SELECT v.*, u.full_name AS created_by_name,
                  vd.id AS demand_id, vd.tipo_projeto AS demand_tipo_projeto,
+                 vd.tipo_trabalho AS demand_tipo_trabalho,
                  vd.atividade_modelo_id AS demand_atividade_modelo_id,
                  vd.atividade AS demand_atividade, vd.prioridade AS demand_prioridade,
                  vd.status AS demand_status, vd.created_at AS demand_created_at,
@@ -407,6 +408,7 @@ export async function fetchTripFull(db, tripId, userId) {
               vehicle_id: row.id,
               trip_id: tripId,
               tipo_projeto: row.demand_tipo_projeto,
+              tipo_trabalho: row.demand_tipo_trabalho,
               atividade_modelo_id: row.demand_atividade_modelo_id,
               atividade: row.demand_atividade,
               prioridade: row.demand_prioridade,
@@ -424,30 +426,40 @@ export async function fetchTripFull(db, tripId, userId) {
     })(),
   ]);
 
+  const normalizeDemandMatchValue = (value, field = '') => {
+    const normalized = String(value || '').trim().toLowerCase();
+    return field === 'placa' ? normalized.replace(/[^a-z0-9]/g, '') : normalized;
+  };
+
   const vehicleDemands = (vehiclesResult || []).flatMap((vehicle) =>
     (vehicle.demands || []).map((demand) => {
+      const projectMatches = (legacyDemand) => normalizeDemandMatchValue(legacyDemand.tipo_projeto) === normalizeDemandMatchValue(demand.tipo_projeto);
+      const activityMatches = (legacyVehicle) => (legacyVehicle.atividades || []).some((activity) =>
+        (String(activity.atividade_modelo_id || '') === String(demand.atividade_modelo_id || '') && demand.atividade_modelo_id)
+        || normalizeDemandMatchValue(activity.atividade_descricao) === normalizeDemandMatchValue(demand.atividade)
+      );
+      const vehicleMatches = (legacyVehicle) => {
+        const sameVehicle = [
+          'montadora',
+          'modelo',
+          'versao_modelo',
+          'ano',
+          'placa',
+        ].every((field) => normalizeDemandMatchValue(legacyVehicle[field], field) === normalizeDemandMatchValue(vehicle[field], field));
+        return sameVehicle && activityMatches(legacyVehicle);
+      };
       const matchingLegacyDemand = (demandasList || []).find((legacyDemand) => {
-        if (String(legacyDemand.tipo_projeto || '') !== String(demand.tipo_projeto || '')) return false;
+        if (!projectMatches(legacyDemand)) return false;
         return (legacyDemand.veiculos || []).some((legacyVehicle) => {
-          const sameVehicle = [
-            'montadora',
-            'modelo',
-            'versao_modelo',
-            'ano',
-            'placa',
-          ].every((field) => String(legacyVehicle[field] || '').trim().toUpperCase() === String(vehicle[field] || '').trim().toUpperCase());
-          if (!sameVehicle) return false;
-          return (legacyVehicle.atividades || []).some((activity) =>
-            String(activity.atividade_modelo_id || '') === String(demand.atividade_modelo_id || '')
-            || String(activity.atividade_descricao || '').trim() === String(demand.atividade || '').trim()
-          );
+          return vehicleMatches(legacyVehicle);
         });
-      });
+      }) || (demandasList || []).find((legacyDemand) => projectMatches(legacyDemand)
+        && (legacyDemand.veiculos || []).some((legacyVehicle) => activityMatches(legacyVehicle)));
 
       return {
         id: demand.id,
         tipo_projeto: demand.tipo_projeto || '',
-        tipo_trabalho: matchingLegacyDemand?.tipo_trabalho || '',
+        tipo_trabalho: demand.tipo_trabalho || matchingLegacyDemand?.tipo_trabalho || '',
         status: demand.status || 'pendente',
         criado_nome: demand.created_by_name || 'Líder',
         criado_em: demand.created_at || null,

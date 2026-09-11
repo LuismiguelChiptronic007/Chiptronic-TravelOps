@@ -69,6 +69,48 @@ function demandStatusLabel(status) {
   return status === 'concluida' ? 'Concluída' : 'Pendente';
 }
 
+function demandStatusBadge(status) {
+  const concluida = status === 'concluida';
+  const icon = concluida
+    ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"></path></svg>'
+    : '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5"></circle><path d="M8 4.8V8l2 1.3"></path></svg>';
+
+  return `<span class="status-badge ${concluida ? 'status-concluida' : 'status-pendente'}">${icon}${demandStatusLabel(status)}</span>`;
+}
+
+function confirmarExclusaoDemanda() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay demand-delete-overlay';
+    overlay.innerHTML = `
+      <div class="modal demand-delete-modal" role="dialog" aria-modal="true" aria-labelledby="demand-delete-title">
+        <div class="modal-header">
+          <h2 id="demand-delete-title">Excluir demanda</h2>
+          <button type="button" class="modal-close" aria-label="Fechar">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted">Deseja excluir esta demanda? Esta acao nao pode ser desfeita.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary demand-delete-cancel">Cancelar</button>
+          <button type="button" class="btn btn-danger demand-delete-confirm">Excluir demanda</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+    const finish = (confirmed) => {
+      overlay.remove();
+      resolve(confirmed);
+    };
+    overlay.querySelector('.demand-delete-confirm').addEventListener('click', () => finish(true));
+    overlay.querySelector('.demand-delete-cancel').addEventListener('click', () => finish(false));
+    overlay.querySelector('.modal-close').addEventListener('click', () => finish(false));
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) finish(false);
+    });
+  });
+}
+
 function demandPriorityClass(priority) {
   const value = Number(priority || 1);
   return value === 1 ? 'priority-p1' : value === 2 ? 'priority-p2' : 'priority-p3';
@@ -100,8 +142,8 @@ function renderDemandRows(vehicle, manage, open = false) {
           <div class="vehicle-demand-row">
             <span class="vehicle-demand-priority ${demandPriorityClass(demand.prioridade)}" aria-hidden="true"></span>
             <span class="vehicle-demand-priority-label ${demandPriorityClass(demand.prioridade)}">${demandPriorityLabel(demand.prioridade)}</span>
-            <strong>${escapeHtml(demand.atividade || 'Atividade')}</strong>
-            <span class="vehicle-demand-status-text ${demand.status === 'concluida' ? 'is-completed' : ''}">${demandStatusLabel(demand.status)}</span>
+            <strong class="${demand.status === 'concluida' ? 'demanda-activity-completed' : ''}">${escapeHtml(demand.atividade || 'Atividade')}</strong>
+            ${demandStatusBadge(demand.status)}
             ${manage ? `<button type="button" class="icon-btn vehicle-demand-delete btn-delete-vehicle-demand" data-demand-id="${demand.id}" aria-label="Excluir demanda" title="Excluir demanda"><i class="ti ti-trash" aria-hidden="true"></i></button>` : ''}
           </div>`).join('')}
       </div>
@@ -123,7 +165,7 @@ function renderVehicleCard(vehicle, manage, open = false) {
   </article>`;
 }
 
-function renderDemandDialog({ vehicle, projects, activities, onSaved }) {
+function renderDemandDialog({ vehicle, projects, workTypes, activities, onSaved }) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML = `<div class="modal vehicle-demand-modal" role="dialog" aria-modal="true">
@@ -132,6 +174,8 @@ function renderDemandDialog({ vehicle, projects, activities, onSaved }) {
       <p class="text-muted">Veículo: ${escapeHtml(vehicleLabel(vehicle))}</p>
       <label for="vehicle-demand-project">Tipo de projeto</label>
       <select id="vehicle-demand-project"><option value="">Selecione...</option>${projects.map((project) => `<option value="${escapeHtml(project.name)}">${escapeHtml(project.name)}</option>`).join('')}</select>
+      <label for="vehicle-demand-worktype">Tipo de trabalho</label>
+      <select id="vehicle-demand-worktype"><option value="">Selecione...</option>${workTypes.map((workType) => `<option value="${escapeHtml(workType.name)}">${escapeHtml(workType.name)}</option>`).join('')}</select>
       <label for="vehicle-demand-activity">Atividade</label>
       <select id="vehicle-demand-activity"><option value="">Selecione...</option>${activities.map((activity) => `<option value="${activity.id}">${escapeHtml(activity.descricao)}</option>`).join('')}</select>
       <label for="vehicle-demand-priority">Prioridade</label>
@@ -147,11 +191,19 @@ function renderDemandDialog({ vehicle, projects, activities, onSaved }) {
   overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
   overlay.querySelector('.modal-save').addEventListener('click', async () => {
     const alert = overlay.querySelector('#vehicle-demand-alert');
+    const workTypeSelect = overlay.querySelector('#vehicle-demand-worktype');
+    const tipoTrabalho = String(workTypeSelect?.value || workTypeSelect?.selectedOptions?.[0]?.textContent || '').trim();
     const payload = {
       tipo_projeto: overlay.querySelector('#vehicle-demand-project').value,
+      tipo_trabalho: tipoTrabalho === 'Selecione...' ? '' : tipoTrabalho,
       atividade_modelo_id: Number(overlay.querySelector('#vehicle-demand-activity').value || 0),
       prioridade: Number(overlay.querySelector('#vehicle-demand-priority').value || 0),
     };
+    if (!payload.tipo_trabalho) {
+      alert.textContent = 'Selecione um tipo de trabalho.';
+      alert.classList.remove('hidden');
+      return;
+    }
     try {
       const response = await api.createVehicleDemand(vehicle.trip_id, vehicle.id, payload);
       close();
@@ -165,7 +217,6 @@ function renderDemandDialog({ vehicle, projects, activities, onSaved }) {
 
 export async function renderTripVehicles(container, trip, user, { alertEl } = {}) {
   if (!container || !trip) return;
-  const manage = canManageDemands(user);
   container.innerHTML = '<div class="empty-state">Carregando veículos...</div>';
   try {
     const response = await api.listVehicles(trip.id);
@@ -191,21 +242,17 @@ function renderVehicleList(container, vehicles, trip, user, { alertEl } = {}) {
     chevron?.classList.toggle('ti-chevron-down', !isOpen);
   }));
   if (manage) {
-    container.querySelectorAll('.btn-add-vehicle-demand').forEach((button) => button.addEventListener('click', async () => {
+    container.querySelectorAll('.btn-add-vehicle-demand').forEach((button) => button.addEventListener('click', () => {
       const vehicle = vehicles.find((item) => Number(item.id) === Number(button.dataset.vehicleId));
       if (!vehicle) return;
-      try {
-        const [projectsResponse, activitiesResponse] = await Promise.all([api.leaderProjects.list(), api.demandas.atividadesModelo()]);
-        renderDemandDialog({ vehicle, projects: projectsResponse.projects || [], activities: activitiesResponse.atividades || [], onSaved: (next) => renderVehicleList(container, next, trip, user, { alertEl }) });
-      } catch (error) {
-        if (alertEl) showAlert(alertEl, error.message || 'Não foi possível carregar as opções de demanda.');
-      }
+      window.location.href = `demandas.html?id=${encodeURIComponent(trip.id)}&vehicle_id=${encodeURIComponent(vehicle.id)}`;
     }));
     container.querySelectorAll('.btn-delete-vehicle-demand').forEach((button) => button.addEventListener('click', async () => {
-      if (!window.confirm('Deseja excluir esta demanda?')) return;
+      if (!await confirmarExclusaoDemanda()) return;
       try {
         const response = await api.deleteVehicleDemand(button.dataset.demandId);
-        renderVehicleList(container, response.vehicles || [], trip, user, { alertEl });
+        const tripResponse = await api.getTrip(trip.id);
+        renderVehicleList(container, response.vehicles || [], tripResponse.trip || trip, user, { alertEl });
       } catch (error) {
         if (alertEl) showAlert(alertEl, error.message || 'Não foi possível excluir a demanda.');
       }

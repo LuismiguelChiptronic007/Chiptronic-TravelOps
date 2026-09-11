@@ -114,17 +114,19 @@ vehicleRoutes.post('/trips/:tripId/vehicles/:vehicleId/demands', async (c) => {
   let body;
   try { body = await c.req.json(); } catch { return err('JSON inválido.'); }
   const tipoProjeto = String(body.tipo_projeto || '').trim();
+  const tipoTrabalho = String(body.tipo_trabalho || body.work_type || '').trim();
   const atividadeModeloId = Number(body.atividade_modelo_id || 0);
   const prioridade = Number(body.prioridade || 1);
   if (!tipoProjeto) return err('Informe o tipo de projeto.');
+  if (!tipoTrabalho) return err('Informe o tipo de trabalho.');
   if (!atividadeModeloId) return err('Selecione uma atividade.');
   if (!Number.isInteger(prioridade) || prioridade < 1) return err('Informe uma prioridade válida.');
   const activity = await c.env.DB.prepare('SELECT id, descricao FROM atividades_modelo WHERE id = ? AND ativo = 1').bind(atividadeModeloId).first();
   if (!activity) return err('Atividade inválida.');
   await c.env.DB.prepare(`
-    INSERT INTO vehicle_demands (vehicle_id, trip_id, tipo_projeto, atividade_modelo_id, atividade, prioridade, status, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?)
-  `).bind(vehicleId, tripId, tipoProjeto, activity.id, activity.descricao, prioridade, c.get('userId')).run();
+    INSERT INTO vehicle_demands (vehicle_id, trip_id, tipo_projeto, tipo_trabalho, atividade_modelo_id, atividade, prioridade, status, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?)
+  `).bind(vehicleId, tripId, tipoProjeto, tipoTrabalho, activity.id, activity.descricao, prioridade, c.get('userId')).run();
   return json({ success: true, vehicles: await formatVehicles(c.env.DB, tripId) }, 201);
 });
 
@@ -154,6 +156,49 @@ vehicleRoutes.delete('/vehicle-demands/:demandId', async (c) => {
   if (!trip) return err('Viagem não encontrada.', 404);
   if (!canManageDemands(viewer, trip)) return err('Apenas líderes ou administradores podem excluir demandas.', 403);
 
+  const normalize = (value, plate = false) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    return plate ? normalized.replace(/[^a-z0-9]/g, '') : normalized;
+  };
+  const { results: legacyCandidates } = await c.env.DB.prepare(`
+    SELECT da.id AS atividade_id, dv.id AS demanda_veiculo_id, d.id AS demanda_id,
+           d.tipo_projeto, dv.montadora, dv.modelo, dv.versao_modelo, dv.ano, dv.placa,
+           da.atividade_modelo_id, am.descricao AS atividade_descricao
+    FROM demanda_atividades da
+    INNER JOIN demanda_veiculos dv ON dv.id = da.demanda_veiculo_id
+    INNER JOIN demandas d ON d.id = dv.demanda_id
+    LEFT JOIN atividades_modelo am ON am.id = da.atividade_modelo_id
+    WHERE d.viagem_id = ?
+  `).bind(demand.trip_id).all();
+  const vehicle = await getVehicle(c.env.DB, demand.trip_id, demand.vehicle_id);
+  const linkedLegacy = (legacyCandidates || []).find((candidate) =>
+    normalize(candidate.tipo_projeto) === normalize(demand.tipo_projeto)
+    && normalize(candidate.montadora) === normalize(vehicle?.montadora)
+    && normalize(candidate.modelo) === normalize(vehicle?.modelo)
+    && normalize(candidate.versao_modelo) === normalize(vehicle?.versao_modelo)
+    && normalize(candidate.ano) === normalize(vehicle?.ano)
+    && normalize(candidate.placa, true) === normalize(vehicle?.placa, true)
+    && (String(candidate.atividade_modelo_id || '') === String(demand.atividade_modelo_id || '')
+      || normalize(candidate.atividade_descricao) === normalize(demand.atividade))
+  );
+
   await c.env.DB.prepare('DELETE FROM vehicle_demands WHERE id = ?').bind(demandId).run();
+
+  if (linkedLegacy) {
+    await c.env.DB.prepare('DELETE FROM demanda_atividades WHERE id = ?').bind(linkedLegacy.atividade_id).run();
+    const remainingActivities = await c.env.DB.prepare(
+      'SELECT COUNT(*) AS total FROM demanda_atividades WHERE demanda_veiculo_id = ?'
+    ).bind(linkedLegacy.demanda_veiculo_id).first();
+    if (!Number(remainingActivities?.total || 0)) {
+      await c.env.DB.prepare('DELETE FROM demanda_veiculos WHERE id = ?').bind(linkedLegacy.demanda_veiculo_id).run();
+      const remainingVehicles = await c.env.DB.prepare(
+        'SELECT COUNT(*) AS total FROM demanda_veiculos WHERE demanda_id = ?'
+      ).bind(linkedLegacy.demanda_id).first();
+      if (!Number(remainingVehicles?.total || 0)) {
+        await c.env.DB.prepare('DELETE FROM demandas WHERE id = ?').bind(linkedLegacy.demanda_id).run();
+      }
+    }
+  }
+
   return json({ success: true, vehicles: await formatVehicles(c.env.DB, Number(demand.trip_id)) });
 });

@@ -8,6 +8,13 @@ export function prioridadeCor(prioridade) {
   return { bg: '#dcfce7', text: '#166534', border: '#bbf7d0', label: `P${p}` };
 }
 
+function prioridadeLabel(prioridade) {
+  const p = Number(prioridade || 1);
+  if (p === 1) return 'Alta (P1)';
+  if (p <= 3) return 'Média (P2 e P3)';
+  return 'Baixa (P4 em diante)';
+}
+
 export function statusDemandaBadge(status) {
   const map = {
     pendente: { cls: 'badge badge-planned', label: 'Pendente' },
@@ -71,6 +78,9 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
   let workTypesCache = [];
   let demandasExistentes = [];
   let tipoTrabalhoSelecionado = '';
+  const requestedVehicleId = fullPage
+    ? new URLSearchParams(window.location.search).get('vehicle_id')
+    : '';
 
   try {
     const res = await api.demandas.listarViagem(viagemId);
@@ -356,9 +366,9 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
       const pc = prioridadeCor(a.prioridade);
       const status = a.status === 'concluida' ? 'Concluída' : a.status === 'em_andamento' ? 'Em andamento' : 'Pendente';
       return `
-        <div class="demanda-ativ-row" style="display:grid;grid-template-columns:1fr 90px 110px;gap:8px;margin-bottom:6px;align-items:center;">
+        <div class="demanda-ativ-row" style="display:grid;grid-template-columns:1fr 180px 110px;gap:8px;margin-bottom:6px;align-items:center;">
           <div style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);">${escapeHtml(a.atividade_descricao || 'Atividade existente')}</div>
-          <span style="display:inline-flex;justify-content:center;padding:4px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.72rem;font-weight:700;">P${a.prioridade}</span>
+          <span style="display:inline-flex;justify-content:center;padding:4px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.72rem;font-weight:700;">${escapeHtml(prioridadeLabel(a.prioridade))}</span>
           <span class="text-muted" style="font-size:0.75rem;">${status}</span>
         </div>`;
     }
@@ -366,12 +376,16 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
       `<option value="${am.id}" ${Number(a.atividade_modelo_id) === Number(am.id) ? 'selected' : ''}>${escapeHtml(am.tipo_projeto ? `[${am.tipo_projeto}] ` : '')}${escapeHtml(am.descricao)}</option>`
     ).join('');
     return `
-      <div class="demanda-ativ-row" style="display:grid;grid-template-columns:1fr 90px 40px;gap:8px;margin-bottom:6px;align-items:center;">
+      <div class="demanda-ativ-row" style="display:grid;grid-template-columns:1fr 180px 40px;gap:8px;margin-bottom:6px;align-items:center;">
         <select data-idx="${idx}" data-aidx="${aidx}" data-campo="atividade_modelo_id" class="ativ-select">
           <option value="">Selecione a atividade…</option>
           ${opcoes}
         </select>
-        <input type="number" min="1" data-idx="${idx}" data-aidx="${aidx}" data-campo="prioridade" value="${a.prioridade || 1}" placeholder="P" title="Prioridade (1 maior, 2 média, 3+ menor)"/>
+        <select data-idx="${idx}" data-aidx="${aidx}" data-campo="prioridade" title="Prioridade da demanda">
+          <option value="1" ${Number(a.prioridade || 1) === 1 ? 'selected' : ''}>Alta (P1)</option>
+          <option value="2" ${Number(a.prioridade || 1) === 2 || Number(a.prioridade || 1) === 3 ? 'selected' : ''}>Média (P2 e P3)</option>
+          <option value="4" ${Number(a.prioridade || 1) >= 4 ? 'selected' : ''}>Baixa (P4 em diante)</option>
+        </select>
         <button type="button" class="btn btn-danger btn-sm btn-del-ativ" data-idx="${idx}" data-aidx="${aidx}" title="Remover atividade">✕</button>
       </div>`;
   }
@@ -409,12 +423,11 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
         veiculos[idx].atividades[aidx].atividade_modelo_id = sel.value ? Number(sel.value) : '';
       });
     });
-    modal.querySelectorAll('input[data-campo="prioridade"]').forEach(inp => {
-      inp.addEventListener('input', () => {
-        const idx = Number(inp.dataset.idx);
-        const aidx = Number(inp.dataset.aidx);
-        const val = Number(inp.value) || 0;
-        veiculos[idx].atividades[aidx].prioridade = val > 0 ? val : 1;
+    modal.querySelectorAll('select[data-campo="prioridade"]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const idx = Number(sel.dataset.idx);
+        const aidx = Number(sel.dataset.aidx);
+        veiculos[idx].atividades[aidx].prioridade = Number(sel.value) || 1;
       });
     });
     modal.querySelectorAll('.btn-del-ativ').forEach(btn => {
@@ -457,6 +470,7 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
             if (!atividadeId) continue;
             promises.push(api.createVehicleDemand(viagemId, vehicleId, {
               tipo_projeto,
+              tipo_trabalho,
               atividade_modelo_id: atividadeId,
               prioridade,
             }));
@@ -518,7 +532,19 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
   try {
     const response = await api.listVehicles(viagemId);
     tripVehicles = Array.isArray(response?.vehicles) ? response.vehicles : [];
-    if (tripVehicles.length && selectedTripVehicleId === 'outro') {
+    const requestedVehicle = tripVehicles.find((vehicle) => String(vehicle.id) === String(requestedVehicleId));
+    if (requestedVehicle) {
+      selectedTripVehicleId = String(requestedVehicle.id);
+      veiculos[0] = {
+        montadora: requestedVehicle.montadora || '',
+        modelo: requestedVehicle.modelo || '',
+        versao_modelo: requestedVehicle.versao_modelo || '',
+        ano: requestedVehicle.ano || '',
+        placa: requestedVehicle.placa || '',
+        tipo_projeto: veiculos[0]?.tipo_projeto || '',
+        atividades: veiculos[0]?.atividades || []
+      };
+    } else if (tripVehicles.length && selectedTripVehicleId === 'outro') {
       selectedTripVehicleId = String(tripVehicles[0].id);
       const firstVehicle = tripVehicles[0];
       veiculos[0] = {
