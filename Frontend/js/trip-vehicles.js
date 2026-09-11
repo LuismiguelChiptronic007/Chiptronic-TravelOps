@@ -27,6 +27,7 @@ function renderDemandRows(vehicle, manage) {
         <div><strong>${escapeHtml(demand.atividade || 'Atividade')}</strong><div class="text-muted">Projeto: ${escapeHtml(demand.tipo_projeto || '—')}</div></div>
         <span class="badge ${demandStatusClass(demand.status)}">P${Number(demand.prioridade || 1)} · ${demandStatusLabel(demand.status)}</span>
         ${manage && demand.status !== 'concluida' ? `<select class="vehicle-demand-status" data-demand-id="${demand.id}" aria-label="Status da demanda"><option value="pendente" ${demand.status === 'pendente' ? 'selected' : ''}>Pendente</option><option value="em_andamento" ${demand.status === 'em_andamento' ? 'selected' : ''}>Em andamento</option><option value="concluida">Concluída</option></select>` : ''}
+        ${manage ? `<button type="button" class="btn btn-secondary btn-sm btn-delete-vehicle-demand" data-demand-id="${demand.id}">Excluir</button>` : ''}
       </div>`).join('')}
   </div>`;
 }
@@ -126,6 +127,15 @@ function renderVehicleList(container, vehicles, trip, user, { alertEl } = {}) {
         renderVehicleList(container, vehicles, trip, user, { alertEl });
       } catch (error) {
         if (alertEl) showAlert(alertEl, error.message || 'Não foi possível atualizar a demanda.');
+      }
+    }));
+    container.querySelectorAll('.btn-delete-vehicle-demand').forEach((button) => button.addEventListener('click', async () => {
+      if (!window.confirm('Deseja excluir esta demanda?')) return;
+      try {
+        const response = await api.deleteVehicleDemand(button.dataset.demandId);
+        renderVehicleList(container, response.vehicles || [], trip, user, { alertEl });
+      } catch (error) {
+        if (alertEl) showAlert(alertEl, error.message || 'Não foi possível excluir a demanda.');
       }
     }));
   }

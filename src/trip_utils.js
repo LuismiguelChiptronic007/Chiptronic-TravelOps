@@ -165,6 +165,101 @@ function parseEquipmentChecklist(value) {
   }
 }
 
+function normalizeVehicleKey(vehicle = {}) {
+  const atividades = Array.isArray(vehicle.atividades) ? vehicle.atividades : [];
+  const atividadeKey = atividades
+    .map((atividade) => {
+      const atividadeId = atividade?.id ?? atividade?.atividade_modelo_id ?? '';
+      const descricao = atividade?.atividade_descricao ?? atividade?.descricao ?? '';
+      const prioridade = atividade?.prioridade ?? '';
+      const status = atividade?.status ?? '';
+      return `${atividadeId}|${descricao}|${prioridade}|${status}`;
+    })
+    .sort()
+    .join(';');
+
+  return [
+    vehicle.id ?? '',
+    vehicle.montadora ?? '',
+    vehicle.modelo ?? '',
+    vehicle.versao_modelo ?? '',
+    vehicle.ano ?? '',
+    vehicle.placa ?? '',
+    atividadeKey,
+  ].join('|');
+}
+
+function mergeDemandasLists(...sources) {
+  const merged = new Map();
+
+  for (const source of sources) {
+    const demandas = Array.isArray(source) ? source : [];
+
+    for (const demanda of demandas) {
+      if (!demanda || typeof demanda !== 'object') continue;
+
+      const demandaId = Number(demanda.id);
+      const key = Number.isFinite(demandaId) && demandaId > 0
+        ? `id:${demandaId}`
+        : `sig:${[
+            demanda.tipo_projeto ?? '',
+            demanda.tipo_trabalho ?? '',
+            demanda.status ?? '',
+            (Array.isArray(demanda.veiculos) ? demanda.veiculos : [])
+              .map((vehicle) => normalizeVehicleKey(vehicle))
+              .sort()
+              .join('||'),
+          ].join('|')}`;
+
+      const existing = merged.get(key);
+      if (!existing) {
+        merged.set(key, {
+          ...demanda,
+          veiculos: Array.isArray(demanda.veiculos) ? [...demanda.veiculos] : [],
+        });
+        continue;
+      }
+
+      const vehicleMap = new Map();
+      for (const vehicle of [...(existing.veiculos || []), ...(demanda.veiculos || [])]) {
+        const vehicleKey = normalizeVehicleKey(vehicle);
+        const current = vehicleMap.get(vehicleKey) || { ...vehicle, atividades: Array.isArray(vehicle.atividades) ? [...vehicle.atividades] : [] };
+
+        if (!vehicleMap.has(vehicleKey)) {
+          vehicleMap.set(vehicleKey, current);
+          continue;
+        }
+
+        const atividadesMap = new Map();
+        for (const atividade of [...(current.atividades || []), ...(vehicle.atividades || [])]) {
+          const atividadeKey = [
+            atividade?.id ?? atividade?.atividade_modelo_id ?? '',
+            atividade?.atividade_descricao ?? atividade?.descricao ?? '',
+            atividade?.prioridade ?? '',
+            atividade?.status ?? '',
+          ].join('|');
+
+          if (!atividadesMap.has(atividadeKey)) {
+            atividadesMap.set(atividadeKey, { ...atividade });
+          }
+        }
+
+        current.atividades = [...atividadesMap.values()];
+        vehicleMap.set(vehicleKey, current);
+      }
+
+      existing.veiculos = [...vehicleMap.values()];
+      existing.tipo_projeto = existing.tipo_projeto || demanda.tipo_projeto || '';
+      existing.tipo_trabalho = existing.tipo_trabalho || demanda.tipo_trabalho || '';
+      existing.status = existing.status || demanda.status || 'pendente';
+      existing.criado_nome = existing.criado_nome || demanda.criado_nome || '';
+      if (!existing.criado_em && demanda.criado_em) existing.criado_em = demanda.criado_em;
+    }
+  }
+
+  return [...merged.values()];
+}
+
 export function formatTrip(trip, checklist = null, expenses = [], attachments = [], members = [], tasks = [], demandas = [], vehicles = []) {
   const taskList = tasks || [];
   return {
@@ -330,29 +425,49 @@ export async function fetchTripFull(db, tripId, userId) {
   ]);
 
   const vehicleDemands = (vehiclesResult || []).flatMap((vehicle) =>
-    (vehicle.demands || []).map((demand) => ({
-      id: demand.id,
-      tipo_projeto: demand.tipo_projeto || '',
-      tipo_trabalho: '',
-      status: demand.status || 'pendente',
-      criado_nome: demand.created_by_name || 'Líder',
-      criado_em: demand.created_at || null,
-      veiculos: [{
-        id: vehicle.id,
-        montadora: vehicle.montadora,
-        modelo: vehicle.modelo,
-        versao_modelo: vehicle.versao_modelo,
-        ano: vehicle.ano,
-        placa: vehicle.placa,
-        atividades: [{
-          id: demand.id,
-          atividade_modelo_id: demand.atividade_modelo_id,
-          atividade_descricao: demand.atividade,
-          prioridade: demand.prioridade,
-          status: demand.status || 'pendente',
+    (vehicle.demands || []).map((demand) => {
+      const matchingLegacyDemand = (demandasList || []).find((legacyDemand) => {
+        if (String(legacyDemand.tipo_projeto || '') !== String(demand.tipo_projeto || '')) return false;
+        return (legacyDemand.veiculos || []).some((legacyVehicle) => {
+          const sameVehicle = [
+            'montadora',
+            'modelo',
+            'versao_modelo',
+            'ano',
+            'placa',
+          ].every((field) => String(legacyVehicle[field] || '').trim().toUpperCase() === String(vehicle[field] || '').trim().toUpperCase());
+          if (!sameVehicle) return false;
+          return (legacyVehicle.atividades || []).some((activity) =>
+            String(activity.atividade_modelo_id || '') === String(demand.atividade_modelo_id || '')
+            || String(activity.atividade_descricao || '').trim() === String(demand.atividade || '').trim()
+          );
+        });
+      });
+
+      return {
+        id: demand.id,
+        tipo_projeto: demand.tipo_projeto || '',
+        tipo_trabalho: matchingLegacyDemand?.tipo_trabalho || '',
+        status: demand.status || 'pendente',
+        criado_nome: demand.created_by_name || 'Líder',
+        criado_em: demand.created_at || null,
+        veiculos: [{
+          id: vehicle.id,
+          montadora: vehicle.montadora,
+          modelo: vehicle.modelo,
+          versao_modelo: vehicle.versao_modelo,
+          ano: vehicle.ano,
+          placa: vehicle.placa,
+          atividades: [{
+            id: demand.id,
+            atividade_modelo_id: demand.atividade_modelo_id,
+            atividade_descricao: demand.atividade,
+            prioridade: demand.prioridade,
+            status: demand.status || 'pendente',
+          }],
         }],
-      }],
-    })),
+      };
+    }),
   );
 
   let members = membersResult;
@@ -465,7 +580,16 @@ export async function fetchTripFull(db, tripId, userId) {
     }
   }
 
-  return formatTrip(trip, checklist, expenses.results || [], attachments.results || [], members, tasks, [...(demandasList || []), ...vehicleDemands], vehiclesResult);
+  return formatTrip(
+    trip,
+    checklist,
+    expenses.results || [],
+    attachments.results || [],
+    members,
+    tasks,
+    mergeDemandasLists(demandasList || [], vehicleDemands || []),
+    vehiclesResult,
+  );
 }
 
 export async function saveTripMembers(db, tripId, memberUserIds = []) {

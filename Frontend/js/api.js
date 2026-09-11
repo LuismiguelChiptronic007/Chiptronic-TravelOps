@@ -169,6 +169,7 @@ export const api = {
   createVehicle: (tripId, body) => request(`/trips/${tripId}/vehicles`, { method: "POST", json: body }),
   createVehicleDemand: (tripId, vehicleId, body) => request(`/trips/${tripId}/vehicles/${vehicleId}/demands`, { method: "POST", json: body }),
   updateVehicleDemand: (demandId, body) => request(`/vehicle-demands/${demandId}`, { method: "PATCH", json: body }),
+  deleteVehicleDemand: (demandId) => request(`/vehicle-demands/${demandId}`, { method: "DELETE" }),
   taskSchedule: (date, userIds = []) => {
     const params = new URLSearchParams({ date: date || "" });
     if (userIds.length) params.set("user_ids", userIds.join(","));

@@ -367,6 +367,26 @@ async function init() {
 const startDateInput = document.getElementById("start_date");
 const endDateInput = document.getElementById("end_date");
 
+function normalizeIsoDate(value) {
+  if (!value && value !== 0) return "";
+  const raw = String(value).trim();
+  if (!raw) return "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (!match) return "";
+
+  const [, day, month, year] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  if (Number.isNaN(date.getTime())) return "";
+
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 tripVehiclesList?.addEventListener("input", (event) => {
   const field = event.target.closest("[data-vehicle-field]");
   const row = field?.closest("[data-index]");
@@ -384,15 +404,22 @@ addTripVehicleButton?.addEventListener("click", () => {
 });
 
 function syncTripDates() {
-  const start = startDateInput?.value;
-  const end = endDateInput?.value;
   if (!endDateInput) return;
 
+  const start = normalizeIsoDate(startDateInput?.value || "");
+  const end = normalizeIsoDate(endDateInput?.value || "");
+
+  if (startDateInput) startDateInput.value = start;
   endDateInput.min = start || "1900-01-01";
   endDateInput.max = "2100-12-31";
 
   if (start && end && end < start) {
     endDateInput.value = start;
+  }
+
+  endDateInput.setCustomValidity("");
+  if (endDateInput.value && (!start || endDateInput.value < start)) {
+    endDateInput.setCustomValidity("A data de término deve ser igual ou posterior à data de início.");
   }
 }
 
@@ -409,6 +436,8 @@ function collectCarriedEquipmentList() {
   return result;
 }
 
+startDateInput?.addEventListener("input", syncTripDates);
+endDateInput?.addEventListener("input", syncTripDates);
 startDateInput?.addEventListener("change", syncTripDates);
 endDateInput?.addEventListener("change", syncTripDates);
 startDateInput?.addEventListener("change", refreshAvailableUsers);
@@ -479,8 +508,8 @@ form?.addEventListener("submit", async (e) => {
   const payload = {
     origin,
     destination,
-    start_date: document.getElementById("start_date").value,
-    end_date: document.getElementById("end_date").value,
+    start_date: normalizeIsoDate(document.getElementById("start_date").value),
+    end_date: normalizeIsoDate(document.getElementById("end_date").value),
     reason: document.getElementById("reason").value.trim(),
     priority: document.getElementById("priority").value || "normal",
     sector: sectorSelect.value,

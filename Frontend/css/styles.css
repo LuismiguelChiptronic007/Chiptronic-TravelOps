@@ -2415,9 +2415,12 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
 /* === Quadro de demandas do líder (compacto) === */
 #demandas .panel-header {
   padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.02);
 }
 #demandas .panel-header h2 {
   font-size: 1rem;
+  margin: 0;
 }
 #demandas .panel-body,
 #demandas .panel-content {
@@ -2447,36 +2450,25 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
 .demanda-group-card {
   margin-bottom: 0.75rem !important;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   background: var(--panel-bg);
 }
 .demanda-group-card.demanda-status-pendente {
-  border-color: #eab308;
-  background: linear-gradient(135deg, rgba(234,179,8,0.06), transparent);
+  border-color: #86efac;
+  background: linear-gradient(135deg, rgba(134,239,172,0.08), transparent);
 }
 .demanda-group-card.demanda-status-em_andamento {
-  border-color: #3b82f6;
-  background: linear-gradient(135deg, rgba(59,130,246,0.06), transparent);
+  border-color: #f5c76b;
+  background: linear-gradient(135deg, rgba(245,199,107,0.08), transparent);
 }
 .demanda-group-card.demanda-status-concluida {
-  border-color: #22c55e;
-  background: linear-gradient(135deg, rgba(34,197,94,0.06), transparent);
+  border-color: #86efac;
+  background: linear-gradient(135deg, rgba(134,239,172,0.08), transparent);
 }
 .demanda-group-header {
-  padding: 0.7rem 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border-bottom: 1px solid var(--border-subtle);
-}
-.demanda-group-header h3 {
-  font-size: 0.92rem !important;
-}
-.demanda-group-header .text-muted {
-  font-size: 0.72rem !important;
-  margin-top: 2px;
+  padding: 0;
+  display: none;
 }
 .demanda-status-highlight .badge {
   font-size: 0.72rem !important;
@@ -2487,6 +2479,7 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   margin: 0.55rem 0.7rem !important;
   margin-bottom: 0.55rem !important;
   border-radius: 8px !important;
+  background: rgba(255,255,255,0.02) !important;
 }
 .demanda-vehicle-card:last-child {
   margin-bottom: 0.7rem !important;
@@ -2499,16 +2492,28 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
   margin-top: 2px;
 }
 .demanda-vehicle-card table.data {
-  margin-top: 0.4rem !important;
+  margin-top: 0.45rem !important;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 .demanda-vehicle-card table.data th,
 .demanda-vehicle-card table.data td {
-  padding: 0.4rem 0.55rem !important;
+  padding: 0.45rem 0.55rem !important;
   font-size: 0.8rem;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
 }
-.demanda-vehicle-card table.data th {
+.demanda-vehicle-card table.data thead th {
   font-size: 0.7rem;
-  padding: 0.35rem 0.55rem !important;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+  background: rgba(148, 163, 184, 0.04);
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+}
+.demanda-vehicle-card table.data tbody tr:last-child td {
+  border-bottom: none;
 }
 .demanda-vehicle-card table.data td span {
   padding: 1px 6px !important;
@@ -2516,6 +2521,29 @@ html[data-theme='dark'] .sidebar-mobile-toggle {
 }
 .demanda-vehicle-card table.data td .text-muted {
   font-size: 0.68rem !important;
+}
+.demanda-vehicle-card-flat {
+  text-align: left;
+  border: 1px solid rgba(148, 163, 184, 0.35) !important;
+}
+.demanda-vehicle-card-flat .demanda-vehicle-data-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.8rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding: 0.1rem 0;
+  font-size: 0.76rem;
+  color: var(--text-2);
+}
+.demanda-vehicle-card-flat .demanda-vehicle-data-line span {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.22rem;
+}
+.demanda-vehicle-card-flat .demanda-vehicle-data-line strong {
+  color: var(--text);
 }
 #demandas .badge.planned,
 #demandas .badge.in_progress,

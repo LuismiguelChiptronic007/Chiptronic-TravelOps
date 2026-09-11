@@ -143,3 +143,17 @@ vehicleRoutes.patch('/vehicle-demands/:demandId', async (c) => {
   await c.env.DB.prepare('UPDATE vehicle_demands SET status = ? WHERE id = ?').bind(status, demandId).run();
   return json({ success: true, demand: await c.env.DB.prepare('SELECT * FROM vehicle_demands WHERE id = ?').bind(demandId).first() });
 });
+
+vehicleRoutes.delete('/vehicle-demands/:demandId', async (c) => {
+  const demandId = Number(c.req.param('demandId'));
+  const viewer = c.get('user');
+  const demand = await c.env.DB.prepare('SELECT * FROM vehicle_demands WHERE id = ?').bind(demandId).first();
+  if (!demand) return err('Demanda não encontrada.', 404);
+
+  const trip = await getAccessibleTrip(c, Number(demand.trip_id));
+  if (!trip) return err('Viagem não encontrada.', 404);
+  if (!canManageDemands(viewer, trip)) return err('Apenas líderes ou administradores podem excluir demandas.', 403);
+
+  await c.env.DB.prepare('DELETE FROM vehicle_demands WHERE id = ?').bind(demandId).run();
+  return json({ success: true, vehicles: await formatVehicles(c.env.DB, Number(demand.trip_id)) });
+});

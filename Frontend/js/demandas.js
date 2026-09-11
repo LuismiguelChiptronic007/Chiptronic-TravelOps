@@ -31,6 +31,8 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
   let veiculos = [
     { montadora: '', modelo: '', versao_modelo: '', ano: '', placa: '', tipo_projeto: '', atividades: [] }
   ];
+  let tripVehicles = [];
+  let selectedTripVehicleId = 'outro';
   let atividadesModeloCache = [];
   let projetosCache = [];
   let workTypesCache = [];
@@ -70,6 +72,12 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
     const veiculosHtml = veiculos.map((v, idx) => renderVeiculoCard(v, idx)).join('');
     const tipoProjetoGlobal = veiculos[0]?.tipo_projeto || '';
     const tipoTrabalhoGlobal = tipoTrabalhoSelecionado;
+    const tripVehicleOptions = tripVehicles.length
+      ? tripVehicles.map((vehicle) => {
+          const vehicleName = [vehicle.montadora, vehicle.modelo, vehicle.placa].filter(Boolean).join(' · ') || `Veículo ${vehicle.id}`;
+          return `<option value="${vehicle.id}" ${Number(selectedTripVehicleId) === Number(vehicle.id) ? 'selected' : ''}>${escapeHtml(vehicleName)}</option>`;
+        }).join('')
+      : '';
     const projetosHtml = projetosCache.length
       ? projetosCache.map(p => `<option value="${escapeHtml(p.name)}" ${p.name === tipoProjetoGlobal ? 'selected' : ''}>${escapeHtml(p.name)}</option>`).join('')
       : '<option value="">Nenhum projeto cadastrado para o setor</option>';
@@ -134,6 +142,13 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
         </div>
         <div class="${fullPage ? 'panel-body' : 'modal-body'}">
           <div style="margin-bottom: 12px;">
+            <label for="demanda-veiculo-selecionado">Veículo para a demanda</label>
+            <select id="demanda-veiculo-selecionado">
+              <option value="outro" ${selectedTripVehicleId === 'outro' ? 'selected' : ''}>Outro veículo</option>
+              ${tripVehicleOptions}
+            </select>
+          </div>
+          <div style="margin-bottom: 12px;">
             <label for="demanda-tipo-trabalho">Tipo de trabalho</label>
             <select id="demanda-tipo-trabalho" ${workTypesCache.length ? '' : 'disabled'}>
               <option value="">Selecione um tipo de trabalho...</option>
@@ -166,6 +181,39 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
     modal.querySelector('#demanda-tipo-projeto').addEventListener('change', (e) => {
       const val = e.target.value;
       veiculos.forEach(v => v.tipo_projeto = val);
+    });
+
+    modal.querySelector('#demanda-veiculo-selecionado')?.addEventListener('change', (e) => {
+      const value = e.target.value;
+      selectedTripVehicleId = value || 'outro';
+
+      if (selectedTripVehicleId === 'outro') {
+        veiculos = [{
+          montadora: '',
+          modelo: '',
+          versao_modelo: '',
+          ano: '',
+          placa: '',
+          tipo_projeto: veiculos[0]?.tipo_projeto || '',
+          atividades: veiculos[0]?.atividades || []
+        }];
+        render();
+        return;
+      }
+
+      const tripVehicle = tripVehicles.find((vehicle) => Number(vehicle.id) === Number(selectedTripVehicleId));
+      if (tripVehicle) {
+        veiculos = [{
+          montadora: tripVehicle.montadora || '',
+          modelo: tripVehicle.modelo || '',
+          versao_modelo: tripVehicle.versao_modelo || '',
+          ano: tripVehicle.ano || '',
+          placa: tripVehicle.placa || '',
+          tipo_projeto: veiculos[0]?.tipo_projeto || '',
+          atividades: veiculos[0]?.atividades || []
+        }];
+      }
+      render();
     });
 
     modal.querySelector('#demanda-tipo-trabalho')?.addEventListener('change', (e) => {
@@ -232,19 +280,32 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
 
   function renderVeiculoCard(v, idx) {
     const totalAtiv = v.atividades.length;
+    const isExistingVehicleSelected = selectedTripVehicleId && selectedTripVehicleId !== 'outro';
+    const selectedTripVehicle = tripVehicles.find((vehicle) => Number(vehicle.id) === Number(selectedTripVehicleId));
+    const selectedVehicleLabel = selectedTripVehicle
+      ? `${selectedTripVehicle.montadora || 'Veículo'} ${selectedTripVehicle.modelo ? `· ${selectedTripVehicle.modelo}` : ''} ${selectedTripVehicle.placa ? `· ${selectedTripVehicle.placa}` : ''}`.trim()
+      : '';
+
     return `
       <div class="demanda-veiculo-card" data-idx="${idx}" style="border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;background:var(--panel-bg);">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <h3 style="margin:0;font-size:1rem;">Veículo ${idx + 1}${totalAtiv ? ` · <span class="text-muted" style="font-size:0.85rem;font-weight:400;">${totalAtiv} atividade(s)</span>` : ''}</h3>
           <button type="button" class="btn btn-danger btn-sm btn-remover-veiculo" data-idx="${idx}" ${veiculos.length <= 1 ? 'disabled' : ''}>Remover</button>
         </div>
-        <div class="form-grid two">
-          <div><label>Montadora *</label><input data-campo="montadora" data-idx="${idx}" value="${escapeHtml(v.montadora)}" placeholder="Ex: Volkswagen"/></div>
-          <div><label>Modelo *</label><input data-campo="modelo" data-idx="${idx}" value="${escapeHtml(v.modelo)}" placeholder="Ex: T-Cross"/></div>
-          <div><label>Versão modelo</label><input data-campo="versao_modelo" data-idx="${idx}" value="${escapeHtml(v.versao_modelo)}" placeholder="Ex: Comfortline 200 TSI"/></div>
-          <div><label>Ano</label><input data-campo="ano" data-idx="${idx}" type="number" min="1900" max="2027" step="1" inputmode="numeric" value="${escapeHtml(v.ano)}" placeholder="Ex: 2024"/></div>
-          <div style="grid-column:1/-1;"><label>Placa (formato AAA-0000 ou AAA0A00)</label><input data-campo="placa" data-idx="${idx}" value="${escapeHtml(v.placa)}" placeholder="Ex: ABC-1D23" class="placa-input"/></div>
-        </div>
+
+        ${isExistingVehicleSelected ? `
+          <div class="text-muted" style="margin-bottom:12px; font-size:0.86rem;">
+            Demanda vinculada ao veículo cadastrado na viagem: <strong style="color:var(--text);">${escapeHtml(selectedVehicleLabel || 'Veículo selecionado')}</strong>
+          </div>
+        ` : `
+          <div class="form-grid two">
+            <div><label>Montadora *</label><input data-campo="montadora" data-idx="${idx}" value="${escapeHtml(v.montadora)}" placeholder="Ex: Volkswagen"/></div>
+            <div><label>Modelo *</label><input data-campo="modelo" data-idx="${idx}" value="${escapeHtml(v.modelo)}" placeholder="Ex: T-Cross"/></div>
+            <div><label>Versão modelo</label><input data-campo="versao_modelo" data-idx="${idx}" value="${escapeHtml(v.versao_modelo)}" placeholder="Ex: Comfortline 200 TSI"/></div>
+            <div><label>Ano</label><input data-campo="ano" data-idx="${idx}" type="number" min="1900" max="2027" step="1" inputmode="numeric" value="${escapeHtml(v.ano)}" placeholder="Ex: 2024"/></div>
+            <div style="grid-column:1/-1;"><label>Placa (formato AAA-0000 ou AAA0A00)</label><input data-campo="placa" data-idx="${idx}" value="${escapeHtml(v.placa)}" placeholder="Ex: ABC-1D23" class="placa-input"/></div>
+          </div>
+        `}
         <div style="margin-top:14px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
             <strong style="font-size:0.9rem;">Atividades de prioridade</strong>
@@ -344,6 +405,48 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
       else alert(message);
       return;
     }
+
+    if (selectedTripVehicleId && selectedTripVehicleId !== 'outro') {
+      const vehicleId = Number(selectedTripVehicleId);
+      if (!vehicleId) {
+        if (alertEl) showAlert(alertEl, 'Selecione um veículo válido para a demanda.');
+        else alert('Selecione um veículo válido para a demanda.');
+        return;
+      }
+      try {
+        const promises = [];
+        for (const v of veiculos) {
+          const atividades = Array.isArray(v.atividades) ? v.atividades.filter(a => !a.existente) : [];
+          if (!atividades.length) continue;
+          for (const atividade of atividades) {
+            const atividadeId = Number(atividade.atividade_modelo_id || 0);
+            const prioridade = Number(atividade.prioridade || 1);
+            if (!atividadeId) continue;
+            promises.push(api.createVehicleDemand(viagemId, vehicleId, {
+              tipo_projeto,
+              atividade_modelo_id: atividadeId,
+              prioridade,
+            }));
+          }
+        }
+        if (!promises.length) {
+          if (alertEl) showAlert(alertEl, 'Adicione pelo menos uma atividade para o veículo selecionado.');
+          else alert('Adicione pelo menos uma atividade para o veículo selecionado.');
+          return;
+        }
+        await Promise.all(promises);
+        if (alertEl) showAlert(alertEl, 'Demandas salvas com sucesso! Os integrantes foram notificados.', 'success');
+        veiculoEdicaoId = null;
+        closeForm();
+        if (typeof onCriada === 'function') onCriada([]);
+        return;
+      } catch (err) {
+        if (alertEl) showAlert(alertEl, err.message || 'Erro ao salvar demandas.');
+        else alert(err.message || 'Erro ao salvar demandas.');
+        return;
+      }
+    }
+
     const payload = {
       tipo_projeto,
       tipo_trabalho,
@@ -378,6 +481,26 @@ export async function abrirModalDemandasLider(viagemId, { onCriada, alertEl, ful
   }
 
   if (!fullPage) document.body.appendChild(modal);
+
+  try {
+    const response = await api.listVehicles(viagemId);
+    tripVehicles = Array.isArray(response?.vehicles) ? response.vehicles : [];
+    if (tripVehicles.length && selectedTripVehicleId === 'outro') {
+      selectedTripVehicleId = String(tripVehicles[0].id);
+      const firstVehicle = tripVehicles[0];
+      veiculos[0] = {
+        montadora: firstVehicle.montadora || '',
+        modelo: firstVehicle.modelo || '',
+        versao_modelo: firstVehicle.versao_modelo || '',
+        ano: firstVehicle.ano || '',
+        placa: firstVehicle.placa || '',
+        tipo_projeto: veiculos[0]?.tipo_projeto || '',
+        atividades: veiculos[0]?.atividades || []
+      };
+    }
+  } catch (e) {
+    tripVehicles = [];
+  }
 
   const [atividadesResult, projetosResult] = await Promise.allSettled([
     api.demandas.atividadesModelo(),
@@ -414,24 +537,16 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
     return;
   }
 
-  let totalPendentes = 0;
-  let totalAndamento = 0;
-  let totalConcluidas = 0;
-
-  const legacyCards = todas.map(demanda => {
+  const cards = todas.map(demanda => {
     const vCards = (demanda.veiculos || []).map(dv => {
       const atividadesSorted = [...(dv.atividades || [])].sort((a, b) => Number(a.prioridade) - Number(b.prioridade));
       const rows = atividadesSorted.map(a => {
-        if (a.status === 'pendente') totalPendentes++;
-        else if (a.status === 'em_andamento') totalAndamento++;
-        else if (a.status === 'concluida') totalConcluidas++;
-
         const pc = prioridadeCor(a.prioridade);
 
         return `
           <tr>
             <td><span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.75rem;font-weight:700;">${pc.label}</span></td>
-            <td><span style="font-size:0.8rem;font-weight:600;">${escapeHtml(demanda.tipo_projeto)}</span></td>
+            <td><span style="font-size:0.8rem;font-weight:600;">${escapeHtml(demanda.tipo_projeto || '—')}</span></td>
             <td>${escapeHtml(a.atividade_descricao || '—')}</td>
             <td>${statusDemandaBadge(a.status)}
                 ${a.status === 'concluida' && a.concluida_nome ? `<div class="text-muted" style="font-size:0.75rem;margin-top:2px;">${escapeHtml(a.concluida_nome)} · ${formatDateBR(String(a.concluida_em || '').slice(0,10))}</div>` : ''}
@@ -450,7 +565,7 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
           </div>
           ${(dv.atividades || []).length ? `
           <table class="data" style="width:100%;margin:0;">
-            <thead><tr><th style="width:60px;">Pri</th><th style="width:150px;">Projeto</th><th>Atividade</th><th style="width:170px;">Status</th></tr></thead>
+            <thead><tr><th style="width:60px;">PRI</th><th style="width:150px;">PROJETO</th><th>ATIVIDADE</th><th style="width:180px;">STATUS</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>` : '<div class="text-muted" style="padding:8px 4px;">Sem atividades cadastradas.</div>'}
         </div>`;
@@ -462,14 +577,6 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
       </div>`;
   }).join('');
 
-  const cards = renderDemandasGrid(todas);
-  const resumoHtml = `
-    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
-      <span class="badge planned">Pendentes: ${totalPendentes}</span>
-      <span class="badge in_progress">Em andamento: ${totalAndamento}</span>
-      <span class="badge completed">Concluídas: ${totalConcluidas}</span>
-    </div>`;
-
   container.innerHTML = `
     <div class="panel" style="margin-top:0;">
       <div class="panel-header">
@@ -477,7 +584,6 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
         <button type="button" class="panel-toggle" data-toggle="demandas-panel" aria-expanded="true" aria-label="Minimizar quadro de demandas" title="Minimizar quadro de demandas">▼</button>
       </div>
       <div class="panel-body panel-content demandas-panel-content">
-        ${resumoHtml}
         ${cards}
       </div>
     </div>`;
