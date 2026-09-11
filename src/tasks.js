@@ -50,6 +50,42 @@ async function atualizarStatusDemandaAtividade(db, demandaAtividadeId, userId) {
     .bind(novoStatus, demandaId).run();
 }
 
+async function registrarVeiculoDaAtividadeRealizada(db, tripId, userId, dados) {
+  const montadora = String(dados.montadora || '').trim();
+  const modelo = String(dados.modelo || '').trim();
+  if (!montadora || !modelo) return;
+
+  const versaoModelo = String(dados.submodelo || '').trim() || null;
+  const ano = String(dados.ano || '').trim() || null;
+  const placa = String(dados.plate || '').trim().toUpperCase() || null;
+  const existente = await db.prepare(`
+    SELECT id FROM vehicles
+    WHERE trip_id = ?
+      AND LOWER(TRIM(montadora)) = LOWER(TRIM(?))
+      AND LOWER(TRIM(modelo)) = LOWER(TRIM(?))
+      AND IFNULL(LOWER(TRIM(versao_modelo)), '') = IFNULL(LOWER(TRIM(?)), '')
+      AND IFNULL(TRIM(ano), '') = IFNULL(TRIM(?), '')
+      AND IFNULL(UPPER(TRIM(placa)), '') = IFNULL(UPPER(TRIM(?)), '')
+    LIMIT 1
+  `).bind(tripId, montadora, modelo, versaoModelo, ano, placa).first();
+
+  const vehicleId = existente?.id || (await db.prepare(`
+    INSERT INTO vehicles (trip_id, montadora, modelo, versao_modelo, ano, placa, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).bind(tripId, montadora, modelo, versaoModelo, ano, placa, userId).run()).meta.last_row_id;
+
+  let tipoProjeto = String(dados.work_type || '').trim() || 'Atividade realizada';
+  if (dados.projectId && Number(dados.projectId) > 0) {
+    const project = await db.prepare('SELECT name FROM leader_projects WHERE id = ?').bind(Number(dados.projectId)).first();
+    if (project?.name) tipoProjeto = project.name;
+  }
+
+  await db.prepare(`
+    INSERT INTO vehicle_demands (vehicle_id, trip_id, tipo_projeto, atividade_modelo_id, atividade, prioridade, status, created_by)
+    VALUES (?, ?, ?, NULL, ?, 1, 'concluida', ?)
+  `).bind(vehicleId, tripId, tipoProjeto, dados.summary, userId).run();
+}
+
 async function atualizarStatusDemandaVeiculo(db, demandaId) {
   await db.prepare("UPDATE vehicle_demands SET status = 'concluida' WHERE id = ?").bind(demandaId).run();
 }
@@ -452,6 +488,12 @@ taskRoutes.post("/:id/tasks", async (c) => {
     return err("Selecione a atividade de prioridade correspondente.");
   }
 
+  if (!eh_atividade_prioridade && !demanda_veiculo_id && (montadora || modelo || submodelo || ano || plate)) {
+    if (!montadora || !modelo) {
+      return err("Informe a montadora e o modelo para cadastrar o veículo da atividade.");
+    }
+  }
+
   const normalizedWorkType = work_type
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -641,6 +683,23 @@ taskRoutes.post("/:id/tasks", async (c) => {
       taskId = result.meta.last_row_id;
     } else {
       throw insertError;
+    }
+  }
+
+  if (!eh_atividade_prioridade && !demanda_veiculo_id) {
+    try {
+      await registrarVeiculoDaAtividadeRealizada(c.env.DB, id, userId, {
+        montadora,
+        modelo,
+        submodelo,
+        ano,
+        plate,
+        projectId: project_id,
+        workType: work_type,
+        summary,
+      });
+    } catch (vehicleError) {
+      console.error("Falha ao cadastrar veículo e demanda da atividade:", vehicleError);
     }
   }
 

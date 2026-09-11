@@ -18,6 +18,39 @@ export function statusDemandaBadge(status) {
   return `<span class="${cfg.cls}">${cfg.label}</span>`;
 }
 
+function perguntarVeiculoCompativel() {
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay demanda-compatibilidade-overlay';
+    overlay.innerHTML = `
+      <div class="modal demanda-compatibilidade-modal" role="dialog" aria-modal="true" aria-labelledby="demanda-compatibilidade-titulo">
+        <div class="modal-header">
+          <h2 id="demanda-compatibilidade-titulo">Veículo compatível?</h2>
+          <button type="button" class="modal-close" aria-label="Fechar">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted">Deseja preencher os dados do veículo, projeto e tipo de trabalho automaticamente com base na demanda selecionada?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary compatibilidade-nao">Não, preencher manualmente</button>
+          <button type="button" class="btn btn-primary compatibilidade-sim">Sim, preencher automaticamente</button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(overlay);
+    const finish = (compatible) => {
+      overlay.remove();
+      resolve(compatible);
+    };
+    overlay.querySelector('.compatibilidade-sim').addEventListener('click', () => finish(true));
+    overlay.querySelector('.compatibilidade-nao').addEventListener('click', () => finish(false));
+    overlay.querySelector('.modal-close').addEventListener('click', () => finish(false));
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) finish(false);
+    });
+  });
+}
+
 function validarPlaca(placa) {
   if (!placa) return true;
   const limpa = String(placa).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -537,44 +570,81 @@ export function renderQuadroDemandasIntegrante(container, demandas, tripId, { us
     return;
   }
 
-  const cards = todas.map(demanda => {
-    const vCards = (demanda.veiculos || []).map(dv => {
-      const atividadesSorted = [...(dv.atividades || [])].sort((a, b) => Number(a.prioridade) - Number(b.prioridade));
-      const rows = atividadesSorted.map(a => {
-        const pc = prioridadeCor(a.prioridade);
+  const normalizeVehiclePart = (value) => String(value ?? '').trim().toLowerCase();
+  const vehiclesByKey = new Map();
+
+  todas.forEach((demanda) => {
+    (demanda.veiculos || []).forEach((vehicle) => {
+      const vehicleKey = [
+        vehicle.montadora,
+        vehicle.modelo,
+        vehicle.versao_modelo,
+        vehicle.ano,
+        vehicle.placa,
+      ].map(normalizeVehiclePart).join('|');
+
+      if (!vehiclesByKey.has(vehicleKey)) {
+        vehiclesByKey.set(vehicleKey, {
+          vehicle,
+          projects: new Map(),
+        });
+      }
+
+      const groupedVehicle = vehiclesByKey.get(vehicleKey);
+      const projectName = String(demanda.tipo_projeto || 'Sem projeto').trim() || 'Sem projeto';
+      if (!groupedVehicle.projects.has(projectName)) groupedVehicle.projects.set(projectName, []);
+      groupedVehicle.projects.get(projectName).push(...(vehicle.atividades || []));
+    });
+  });
+
+  const statusLabel = (status) => ({
+    pendente: 'Pendente',
+    em_andamento: 'Em andamento',
+    concluida: 'Concluída',
+  }[status] || 'Pendente');
+
+  const cards = [...vehiclesByKey.values()].map(({ vehicle, projects }) => {
+    const projectsHtml = [...projects.entries()].map(([projectName, activities]) => {
+      const activitiesSorted = [...activities].sort((a, b) => Number(a.prioridade || 1) - Number(b.prioridade || 1));
+      const rows = activitiesSorted.map((activity) => {
+        const priority = prioridadeCor(activity.prioridade || 1);
+        const completed = activity.status === 'concluida';
+        const completedMeta = completed && (activity.concluida_nome || activity.concluida_em)
+          ? `<div class="demanda-completed-meta">${activity.concluida_nome ? escapeHtml(activity.concluida_nome) : ''}${activity.concluida_nome && activity.concluida_em ? ' · ' : ''}${activity.concluida_em ? formatDateBR(String(activity.concluida_em).slice(0, 10)) : ''}</div>`
+          : '';
 
         return `
-          <tr>
-            <td><span style="display:inline-flex;padding:2px 8px;border-radius:999px;background:${pc.bg};color:${pc.text};border:1px solid ${pc.border};font-size:0.75rem;font-weight:700;">${pc.label}</span></td>
-            <td><span style="font-size:0.8rem;font-weight:600;">${escapeHtml(demanda.tipo_projeto || '—')}</span></td>
-            <td>${escapeHtml(a.atividade_descricao || '—')}</td>
-            <td>${statusDemandaBadge(a.status)}
-                ${a.status === 'concluida' && a.concluida_nome ? `<div class="text-muted" style="font-size:0.75rem;margin-top:2px;">${escapeHtml(a.concluida_nome)} · ${formatDateBR(String(a.concluida_em || '').slice(0,10))}</div>` : ''}
-            </td>
-          </tr>`;
+          <div class="vehicle-demand-row demanda-integrante-row">
+            <span class="demanda-priority-pill" style="background:${priority.bg};color:${priority.text};border-color:${priority.border};">${priority.label}</span>
+            <strong class="${completed ? 'demanda-activity-completed' : ''}">${escapeHtml(activity.atividade_descricao || '—')}</strong>
+            <span class="demanda-status-readonly ${completed ? 'is-completed' : ''}">${statusLabel(activity.status)}${completedMeta}</span>
+          </div>`;
       }).join('');
 
       return `
-        <div class="demanda-vehicle-card demanda-vehicle-card-flat" style="border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;background:var(--panel-bg);">
-          <div class="demanda-vehicle-data-line" style="margin-bottom:10px;">
-            <span>MONTADORA: <strong>${escapeHtml(dv.montadora || '—')}</strong></span>
-            <span>MODELO: <strong>${escapeHtml(dv.modelo || '—')}</strong></span>
-            <span>VERSÃO MODELO: <strong>${escapeHtml(dv.versao_modelo || '—')}</strong></span>
-            <span>ANO/ANO: <strong>${escapeHtml(dv.ano ? `${dv.ano}/${dv.ano}` : '—')}</strong></span>
-            <span>PLACA: <strong>${escapeHtml(dv.placa ? String(dv.placa).toUpperCase() : '—')}</strong></span>
-          </div>
-          ${(dv.atividades || []).length ? `
-          <table class="data" style="width:100%;margin:0;">
-            <thead><tr><th style="width:60px;">PRI</th><th style="width:150px;">PROJETO</th><th>ATIVIDADE</th><th style="width:180px;">STATUS</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>` : '<div class="text-muted" style="padding:8px 4px;">Sem atividades cadastradas.</div>'}
-        </div>`;
+        <section class="vehicle-demand-project">
+          <h4>${escapeHtml(projectName)} <span>${activitiesSorted.length}</span></h4>
+          <div class="vehicle-demand-list">${rows || '<div class="vehicle-demand-empty">Sem atividades cadastradas.</div>'}</div>
+        </section>`;
     }).join('');
 
+    const vehicleLabel = [
+      vehicle.montadora,
+      vehicle.modelo,
+      vehicle.versao_modelo,
+      vehicle.ano,
+      vehicle.placa,
+    ].filter((value) => String(value ?? '').trim()).join(' · ') || 'Veículo';
+
     return `
-      <div class="demanda-group-card demanda-status-${demanda.status || 'pendente'}" style="margin-bottom:18px;">
-        ${vCards || '<div class="empty-state" style="padding:12px;">Sem veículos nesta demanda.</div>'}
-      </div>`;
+      <article class="vehicle-card demanda-integrante-vehicle-card">
+        <div class="vehicle-card-header">
+          <div class="vehicle-card-heading">
+            <strong>${escapeHtml(vehicleLabel)}</strong>
+          </div>
+        </div>
+        <div class="vehicle-demands">${projectsHtml}</div>
+      </article>`;
   }).join('');
 
   container.innerHTML = `
@@ -827,7 +897,7 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
 
   function bindGridCheckboxes() {
     wrap.querySelectorAll('input[name="demanda_ativ_cb"]').forEach(cb => {
-      cb.addEventListener('change', () => {
+      cb.addEventListener('change', async () => {
         if (cb.checked) {
           wrap.querySelectorAll('input[name="demanda_ativ_cb"]').forEach(other => {
             if (other !== cb) other.checked = false;
@@ -849,7 +919,12 @@ export function inserirCampoAtividadePrioridadeNoForm(formEl, trip, { onChange }
           wrap.dataset.ultimoVeicId = '';
         }
 
-        if (typeof onChange === 'function') onChange(atividadesSelecionadas);
+        if (typeof onChange === 'function') {
+          const veiculoCompativel = atividadeId
+            ? await perguntarVeiculoCompativel()
+            : null;
+          onChange(atividadesSelecionadas, { veiculoCompativel });
+        }
       });
     });
   }

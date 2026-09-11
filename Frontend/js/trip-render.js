@@ -18,7 +18,6 @@ import {
 } from "./task-field-rules.js";
 
 import {
-  renderQuadroDemandasIntegrante,
   inserirCampoAtividadePrioridadeNoForm,
   extrairPayloadDemandaDoForm,
   abrirModalDemandasLider,
@@ -1201,12 +1200,41 @@ export function fillProjects(projects) {
   if (current) sel.value = current;
 }
 
-function preencherCamposPelaDemanda(atividadesSelecionadas = []) {
+function preencherCamposPelaDemanda(atividadesSelecionadas = [], { veiculoCompativel = true } = {}) {
+  const taskFieldsSection = document.getElementById("task-fields-section");
+  const taskFieldsContent = taskFieldsSection?.querySelector(".collapsible-content");
+  const taskFieldsToggle = taskFieldsSection?.querySelector(".panel-toggle");
+  if (taskFieldsContent) taskFieldsContent.classList.remove("collapsed");
+  if (taskFieldsToggle) {
+    taskFieldsToggle.classList.remove("collapsed");
+    taskFieldsToggle.setAttribute("aria-expanded", "true");
+  }
+  try {
+    localStorage.setItem("panelState_taskFields", "expanded");
+  } catch (e) {}
+
   const demanda = atividadesSelecionadas[0];
   if (!demanda) return;
 
   const workTypeSelect = document.getElementById("work_type");
   const projectSelect = document.getElementById("project_id");
+
+  if (!veiculoCompativel) {
+    setVehicleDetailFields(null);
+    if (workTypeSelect) workTypeSelect.value = "";
+    if (projectSelect) projectSelect.value = "";
+    updateTaskTypeFields();
+    loadCustomFieldsForForm();
+    return;
+  }
+
+  setVehicleDetailFields({
+    montadora: demanda.montadora,
+    modelo: demanda.modelo,
+    versao_modelo: demanda.versaoModelo,
+    ano: demanda.ano,
+    placa: demanda.placa,
+  });
 
   if (workTypeSelect && demanda.tipoTrabalho) {
     const workTypeOption = [...workTypeSelect.options].find(
@@ -1845,24 +1873,6 @@ export function renderTrip(t) {
   prepareTaskForm(t, { clearDate: false });
   setReadOnly(false);
   window.__currentTrip = t;
-
-  const demandasContainer = document.getElementById("demandas-panel-container");
-  if (demandasContainer) {
-    renderQuadroDemandasIntegrante(demandasContainer, t.demandas || [], t.id, {
-      user: window.__currentUser || null,
-      onStatusChange: async (novasDemandas) => {
-        try {
-          const res = await api.getTrip(t.id);
-          if (res?.trip) {
-            window.__currentTrip = res.trip;
-            renderTrip(res.trip);
-            const alertEl = document.getElementById("alert");
-            if (alertEl) showAlert(alertEl, "Status da atividade atualizado.", "success");
-          }
-        } catch (e) {}
-      },
-    });
-  }
 
   const alertEl = document.getElementById("alert");
   const taskForm = document.getElementById("task-form");

@@ -1,5 +1,4 @@
 import { api, hideAlert, showAlert } from "./api.js";
-import { renderQuadroDemandasIntegrante } from "./demandas.js";
 import { renderTripVehicles } from "./trip-vehicles.js";
 import { mountShell } from "./layout.js";
 import {
@@ -829,15 +828,6 @@ function applyDemandCompletionOptimisticUpdate(trip, payload) {
         const total = todas.length || 1;
         demanda.status = concluidas >= total ? 'concluida' : 'em_andamento';
       }
-    }
-  }
-
-  if (updated) {
-    const demandasContainer = document.getElementById("demandas-panel-container");
-    if (demandasContainer) {
-      renderQuadroDemandasIntegrante(demandasContainer, nextTrip.demandas || [], nextTrip.id, {
-        user: window.__currentUser || null,
-      });
     }
   }
 

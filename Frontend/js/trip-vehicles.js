@@ -10,6 +10,61 @@ function vehicleLabel(vehicle) {
   return [vehicle.montadora, vehicle.modelo, vehicle.placa].filter(Boolean).join(' · ') || `Veículo ${vehicle.id}`;
 }
 
+function normalizeVehiclePart(value) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function vehicleIdentity(vehicle) {
+  return [vehicle.montadora, vehicle.modelo, vehicle.versao_modelo, vehicle.ano, vehicle.placa]
+    .map(normalizeVehiclePart)
+    .join('|');
+}
+
+function mergeTripDemandsIntoVehicles(vehicles, demandas) {
+  const mergedVehicles = (vehicles || []).map((vehicle) => ({
+    ...vehicle,
+    demands: [...(vehicle.demands || [])],
+  }));
+  const vehiclesByIdentity = new Map(mergedVehicles.map((vehicle) => [vehicleIdentity(vehicle), vehicle]));
+
+  for (const demanda of Array.isArray(demandas) ? demandas : []) {
+    for (const demandaVehicle of demanda.veiculos || []) {
+      const vehicle = vehiclesByIdentity.get(vehicleIdentity(demandaVehicle));
+      if (!vehicle) continue;
+
+      for (const activity of demandaVehicle.atividades || []) {
+        const demandKey = [
+          demanda.tipo_projeto || '',
+          activity.atividade_modelo_id || '',
+          activity.atividade_descricao || '',
+          activity.prioridade || 1,
+        ].map(normalizeVehiclePart).join('|');
+        const alreadyPresent = vehicle.demands.some((demand) => {
+          const existingKey = [
+            demand.tipo_projeto || '',
+            demand.atividade_modelo_id || '',
+            demand.atividade || '',
+            demand.prioridade || 1,
+          ].map(normalizeVehiclePart).join('|');
+          return existingKey === demandKey;
+        });
+        if (alreadyPresent) continue;
+
+        vehicle.demands.push({
+          id: activity.id,
+          tipo_projeto: demanda.tipo_projeto || 'Sem projeto',
+          atividade_modelo_id: activity.atividade_modelo_id,
+          atividade: activity.atividade_descricao,
+          prioridade: activity.prioridade || 1,
+          status: activity.status || 'pendente',
+        });
+      }
+    }
+  }
+
+  return mergedVehicles;
+}
+
 function demandStatusLabel(status) {
   return status === 'concluida' ? 'Concluída' : 'Pendente';
 }
@@ -17,6 +72,11 @@ function demandStatusLabel(status) {
 function demandPriorityClass(priority) {
   const value = Number(priority || 1);
   return value === 1 ? 'priority-p1' : value === 2 ? 'priority-p2' : 'priority-p3';
+}
+
+function demandPriorityLabel(priority) {
+  const value = Number(priority || 1);
+  return `P${value >= 3 ? 3 : value}`;
 }
 
 function renderDemandRows(vehicle, manage, open = false) {
@@ -39,6 +99,7 @@ function renderDemandRows(vehicle, manage, open = false) {
         ${projectDemands.map((demand) => `
           <div class="vehicle-demand-row">
             <span class="vehicle-demand-priority ${demandPriorityClass(demand.prioridade)}" aria-hidden="true"></span>
+            <span class="vehicle-demand-priority-label ${demandPriorityClass(demand.prioridade)}">${demandPriorityLabel(demand.prioridade)}</span>
             <strong>${escapeHtml(demand.atividade || 'Atividade')}</strong>
             <span class="vehicle-demand-status-text ${demand.status === 'concluida' ? 'is-completed' : ''}">${demandStatusLabel(demand.status)}</span>
             ${manage ? `<button type="button" class="icon-btn vehicle-demand-delete btn-delete-vehicle-demand" data-demand-id="${demand.id}" aria-label="Excluir demanda" title="Excluir demanda"><i class="ti ti-trash" aria-hidden="true"></i></button>` : ''}
@@ -108,8 +169,7 @@ export async function renderTripVehicles(container, trip, user, { alertEl } = {}
   container.innerHTML = '<div class="empty-state">Carregando veículos...</div>';
   try {
     const response = await api.listVehicles(trip.id);
-    const vehicles = response.vehicles || [];
-    renderVehicleList(container, vehicles, trip, user, { alertEl });
+    renderVehicleList(container, response.vehicles || [], trip, user, { alertEl });
   } catch (error) {
     container.innerHTML = `<div class="alert alert-error">${escapeHtml(error.message || 'Não foi possível carregar os veículos.')}</div>`;
   }
@@ -117,6 +177,7 @@ export async function renderTripVehicles(container, trip, user, { alertEl } = {}
 
 function renderVehicleList(container, vehicles, trip, user, { alertEl } = {}) {
   const manage = canManageDemands(user);
+  vehicles = mergeTripDemandsIntoVehicles(vehicles, trip.demandas || []);
   container.innerHTML = `<div class="vehicle-page-header"><div><h2>${manage ? 'Veículos e fornecer demandas' : 'Veículos'}</h2><p class="text-muted">Veículos disponíveis nesta viagem.</p></div><button type="button" class="btn btn-primary" id="btn-add-trip-vehicle-tab">Adicionar veículo</button></div>
     <div class="vehicle-list">${vehicles.length ? vehicles.map((vehicle, index) => renderVehicleCard(vehicle, manage, index === 0)).join('') : '<div class="empty-state">Nenhum veículo cadastrado nesta viagem.</div>'}</div>`;
   container.querySelector('#btn-add-trip-vehicle-tab')?.addEventListener('click', () => renderVehicleDialog(trip, (next) => renderVehicleList(container, next, trip, user, { alertEl })));
