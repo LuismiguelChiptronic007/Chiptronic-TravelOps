@@ -11,41 +11,54 @@ function vehicleLabel(vehicle) {
 }
 
 function demandStatusLabel(status) {
-  return ({ pendente: 'Pendente', em_andamento: 'Em andamento', concluida: 'Concluída' })[status] || status || '—';
+  return status === 'concluida' ? 'Concluída' : 'Pendente';
 }
 
-function demandStatusClass(status) {
-  return ({ pendente: 'badge-planned', em_andamento: 'badge-in_progress', concluida: 'badge-completed' })[status] || 'badge-planned';
+function demandPriorityClass(priority) {
+  const value = Number(priority || 1);
+  return value === 1 ? 'priority-p1' : value === 2 ? 'priority-p2' : 'priority-p3';
 }
 
-function renderDemandRows(vehicle, manage) {
+function renderDemandRows(vehicle, manage, open = false) {
   const demands = vehicle.demands || [];
-  if (!demands.length) return '<div class="empty-state">Nenhuma demanda cadastrada para este veículo.</div>';
-  return `<div class="vehicle-demand-list">
-    ${demands.map((demand) => `
-      <div class="vehicle-demand-row">
-        <div><strong>${escapeHtml(demand.atividade || 'Atividade')}</strong><div class="text-muted">Projeto: ${escapeHtml(demand.tipo_projeto || '—')}</div></div>
-        <span class="badge ${demandStatusClass(demand.status)}">P${Number(demand.prioridade || 1)} · ${demandStatusLabel(demand.status)}</span>
-        ${manage && demand.status !== 'concluida' ? `<select class="vehicle-demand-status" data-demand-id="${demand.id}" aria-label="Status da demanda"><option value="pendente" ${demand.status === 'pendente' ? 'selected' : ''}>Pendente</option><option value="em_andamento" ${demand.status === 'em_andamento' ? 'selected' : ''}>Em andamento</option><option value="concluida">Concluída</option></select>` : ''}
-        ${manage ? `<button type="button" class="btn btn-secondary btn-sm btn-delete-vehicle-demand" data-demand-id="${demand.id}">Excluir</button>` : ''}
-      </div>`).join('')}
-  </div>`;
+  if (!demands.length) {
+    return `<div class="vehicle-demands ${open ? '' : 'is-collapsed'}"><div class="vehicle-demand-empty">Nenhuma demanda cadastrada para este veículo.</div></div>`;
+  }
+
+  const groups = new Map();
+  demands.forEach((demand) => {
+    const project = String(demand.tipo_projeto || 'Sem projeto');
+    if (!groups.has(project)) groups.set(project, []);
+    groups.get(project).push(demand);
+  });
+
+  const groupsHtml = [...groups.entries()].map(([project, projectDemands]) => `
+    <section class="vehicle-demand-project">
+      <h4>${escapeHtml(project)} <span>${projectDemands.length}</span></h4>
+      <div class="vehicle-demand-list">
+        ${projectDemands.map((demand) => `
+          <div class="vehicle-demand-row">
+            <span class="vehicle-demand-priority ${demandPriorityClass(demand.prioridade)}" aria-hidden="true"></span>
+            <strong>${escapeHtml(demand.atividade || 'Atividade')}</strong>
+            <span class="vehicle-demand-status-text ${demand.status === 'concluida' ? 'is-completed' : ''}">${demandStatusLabel(demand.status)}</span>
+            ${manage ? `<button type="button" class="icon-btn vehicle-demand-delete btn-delete-vehicle-demand" data-demand-id="${demand.id}" aria-label="Excluir demanda" title="Excluir demanda"><i class="ti ti-trash" aria-hidden="true"></i></button>` : ''}
+          </div>`).join('')}
+      </div>
+    </section>`).join('');
+
+  return `<div class="vehicle-demands ${open ? '' : 'is-collapsed'}">${groupsHtml}</div>`;
 }
 
-function renderVehicleCard(vehicle, manage) {
+function renderVehicleCard(vehicle, manage, open = false) {
   return `<article class="vehicle-card">
     <div class="vehicle-card-header">
-      <div><h3>${escapeHtml(vehicleLabel(vehicle))}</h3><span class="text-muted">Cadastrado por ${escapeHtml(vehicle.created_by_name || 'Usuário')}</span></div>
+      <button type="button" class="vehicle-card-toggle" aria-expanded="${open}" aria-controls="vehicle-demands-${vehicle.id}" data-vehicle-toggle="${vehicle.id}">
+        <span class="vehicle-card-heading"><strong>${escapeHtml([vehicle.montadora, vehicle.modelo, vehicle.versao_modelo, vehicle.ano, vehicle.placa].filter(Boolean).join(' · ') || vehicleLabel(vehicle))}</strong><span class="text-muted">Cadastrado por ${escapeHtml(vehicle.created_by_name || 'Usuário')}</span></span>
+        <i class="ti ${open ? 'ti-chevron-up' : 'ti-chevron-down'}" aria-hidden="true"></i>
+      </button>
       ${manage ? `<button type="button" class="btn btn-secondary btn-sm btn-add-vehicle-demand" data-vehicle-id="${vehicle.id}">Adicionar demanda</button>` : ''}
     </div>
-    <div class="vehicle-card-data">
-      <span><b>Montadora</b>${escapeHtml(vehicle.montadora || '—')}</span>
-      <span><b>Modelo</b>${escapeHtml(vehicle.modelo || '—')}</span>
-      <span><b>Versão</b>${escapeHtml(vehicle.versao_modelo || '—')}</span>
-      <span><b>Ano</b>${escapeHtml(vehicle.ano || '—')}</span>
-      <span><b>Placa</b>${escapeHtml(vehicle.placa || '—')}</span>
-    </div>
-    ${manage ? `<div class="vehicle-demands"><h4>Demandas</h4>${renderDemandRows(vehicle, manage)}</div>` : ''}
+    ${manage ? `<div id="vehicle-demands-${vehicle.id}">${renderDemandRows(vehicle, manage, open)}</div>` : ''}
   </article>`;
 }
 
@@ -105,8 +118,17 @@ export async function renderTripVehicles(container, trip, user, { alertEl } = {}
 function renderVehicleList(container, vehicles, trip, user, { alertEl } = {}) {
   const manage = canManageDemands(user);
   container.innerHTML = `<div class="vehicle-page-header"><div><h2>${manage ? 'Veículos e fornecer demandas' : 'Veículos'}</h2><p class="text-muted">Veículos disponíveis nesta viagem.</p></div><button type="button" class="btn btn-primary" id="btn-add-trip-vehicle-tab">Adicionar veículo</button></div>
-    <div class="vehicle-list">${vehicles.length ? vehicles.map((vehicle) => renderVehicleCard(vehicle, manage)).join('') : '<div class="empty-state">Nenhum veículo cadastrado nesta viagem.</div>'}</div>`;
+    <div class="vehicle-list">${vehicles.length ? vehicles.map((vehicle, index) => renderVehicleCard(vehicle, manage, index === 0)).join('') : '<div class="empty-state">Nenhum veículo cadastrado nesta viagem.</div>'}</div>`;
   container.querySelector('#btn-add-trip-vehicle-tab')?.addEventListener('click', () => renderVehicleDialog(trip, (next) => renderVehicleList(container, next, trip, user, { alertEl })));
+  container.querySelectorAll('[data-vehicle-toggle]').forEach((toggle) => toggle.addEventListener('click', () => {
+    const demands = container.querySelector(`#vehicle-demands-${toggle.dataset.vehicleToggle}`);
+    if (!demands) return;
+    const isOpen = !demands.querySelector('.vehicle-demands')?.classList.toggle('is-collapsed');
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    const chevron = toggle.querySelector('.ti');
+    chevron?.classList.toggle('ti-chevron-up', isOpen);
+    chevron?.classList.toggle('ti-chevron-down', !isOpen);
+  }));
   if (manage) {
     container.querySelectorAll('.btn-add-vehicle-demand').forEach((button) => button.addEventListener('click', async () => {
       const vehicle = vehicles.find((item) => Number(item.id) === Number(button.dataset.vehicleId));
@@ -116,17 +138,6 @@ function renderVehicleList(container, vehicles, trip, user, { alertEl } = {}) {
         renderDemandDialog({ vehicle, projects: projectsResponse.projects || [], activities: activitiesResponse.atividades || [], onSaved: (next) => renderVehicleList(container, next, trip, user, { alertEl }) });
       } catch (error) {
         if (alertEl) showAlert(alertEl, error.message || 'Não foi possível carregar as opções de demanda.');
-      }
-    }));
-    container.querySelectorAll('.vehicle-demand-status').forEach((select) => select.addEventListener('change', async () => {
-      try {
-        const response = await api.updateVehicleDemand(select.dataset.demandId, { status: select.value });
-        const vehicle = vehicles.find((item) => (item.demands || []).some((demand) => Number(demand.id) === Number(select.dataset.demandId)));
-        const demand = vehicle?.demands?.find((item) => Number(item.id) === Number(select.dataset.demandId));
-        if (demand) demand.status = response.demand.status;
-        renderVehicleList(container, vehicles, trip, user, { alertEl });
-      } catch (error) {
-        if (alertEl) showAlert(alertEl, error.message || 'Não foi possível atualizar a demanda.');
       }
     }));
     container.querySelectorAll('.btn-delete-vehicle-demand').forEach((button) => button.addEventListener('click', async () => {

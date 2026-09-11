@@ -2657,33 +2657,45 @@ html[data-theme="dark"] .alert-info .alert-icon {
 .vehicle-card h4 { margin: 0; }
 .vehicle-list { display: grid; gap: 1rem; }
 .vehicle-card {
-  padding: 1.1rem;
+  padding: 0.75rem 0.85rem 0.85rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
 }
-.vehicle-card-data {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-top: 1rem;
-  padding: 0.85rem;
-  background: var(--neutral-bg);
-  border-radius: var(--radius-sm);
-}
-.vehicle-card-data span { display: grid; gap: 0.2rem; color: var(--text-2); font-size: 0.85rem; }
-.vehicle-card-data b { color: var(--muted); font-size: 0.7rem; text-transform: uppercase; }
-.vehicle-demands { margin-top: 1rem; }
-.vehicle-demand-list { display: grid; gap: 0.5rem; margin-top: 0.6rem; }
-.vehicle-demand-row { padding: 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-sm); }
-.vehicle-demand-status { width: auto; min-width: 130px; }
+.vehicle-card-header { align-items: center; padding-bottom: 0.1rem; }
+.vehicle-card-toggle { display: flex; flex: 1; align-items: center; min-width: 0; gap: 0.75rem; padding: 0; color: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; }
+.vehicle-card-toggle > .ti { margin-left: auto; color: var(--text-2); font-size: 1.1rem; }
+.vehicle-card-toggle > .ti-chevron-up::before,
+.vehicle-card-toggle > .ti-chevron-down::before { display: inline-block; width: 0.55rem; height: 0.55rem; content: ''; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; }
+.vehicle-card-toggle > .ti-chevron-up::before { transform: translateY(0.15rem) rotate(225deg); }
+.vehicle-card-toggle > .ti-chevron-down::before { transform: translateY(-0.15rem) rotate(45deg); }
+.vehicle-card-heading { display: grid; min-width: 0; gap: 0.2rem; }
+.vehicle-card-heading strong { overflow: hidden; color: var(--text); font-size: 0.96rem; text-overflow: ellipsis; white-space: nowrap; }
+.vehicle-card-heading .text-muted { font-size: 0.78rem; }
+.vehicle-demands { margin-top: 0.85rem; }
+.vehicle-demands.is-collapsed { display: none; }
+.vehicle-demand-project + .vehicle-demand-project { margin-top: 0.8rem; }
+.vehicle-demand-project h4 { display: flex; align-items: center; gap: 0.45rem; margin: 0 0 0.35rem; padding: 0 0.2rem; color: var(--text-2); font-size: 0.76rem; font-weight: 700; }
+.vehicle-demand-project h4 span { display: inline-grid; min-width: 1.2rem; height: 1.2rem; padding: 0 0.3rem; place-items: center; color: var(--text-2); font-size: 0.68rem; font-weight: 700; background: var(--neutral-bg); border: 1px solid var(--border); border-radius: 999px; }
+.vehicle-demand-list { overflow: hidden; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.vehicle-demand-row { position: relative; min-height: 2.25rem; gap: 0.65rem; padding: 0.35rem 0.35rem 0.35rem 0.75rem; border-bottom: 1px solid var(--border); }
+.vehicle-demand-row:last-child { border-bottom: 0; }
+.vehicle-demand-row strong { flex: 1; font-size: 0.8125rem; font-weight: 600; }
+.vehicle-demand-priority { align-self: stretch; width: 3px; margin: -0.4rem 0 -0.4rem -0.75rem; background: var(--border-strong); }
+.vehicle-demand-priority.priority-p1 { background: var(--border-danger, #c43d47); }
+.vehicle-demand-priority.priority-p2 { background: var(--border-warning, #c58b25); }
+.vehicle-demand-status-text { color: var(--text-2); font-size: 0.78rem; }
+.vehicle-demand-status-text.is-completed { color: var(--success-600, var(--text-2)); text-decoration: line-through; }
+.vehicle-demand-delete { flex: 0 0 auto; width: 1.9rem; height: 1.9rem; min-height: 1.9rem; padding: 0; color: var(--text-2); background: transparent; border: 0; border-radius: var(--radius-sm); box-shadow: none; }
+.vehicle-demand-delete .ti-trash::before { content: '\1F5D1'; font-size: 1rem; }
+.vehicle-demand-delete:hover { color: var(--danger-600, var(--text)); }
+.vehicle-demand-empty { padding: 1rem; color: var(--text-2); font-size: 0.82rem; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
 .demandas-grid-table { width: 100%; }
 
 @media (max-width: 880px) {
-  .vehicle-card-data { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vehicle-page-header,
-  .vehicle-demand-row { align-items: flex-start; flex-direction: column; }
+  .vehicle-demand-row { align-items: flex-start; }
 }
 
 .automatic-lunch-marker {
